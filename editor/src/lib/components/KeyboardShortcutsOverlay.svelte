@@ -28,6 +28,10 @@
 				{ keys: ['Ctrl', 'K'], description: 'Open command palette' },
 				{ keys: ['Ctrl', 'Shift', 'P'], description: 'Open command palette (alt)' },
 				{ keys: ['?'], description: 'Show keyboard shortcuts' },
+				{ keys: ['Ctrl', '1'], description: 'Focus Source Structure' },
+				{ keys: ['Ctrl', '2'], description: 'Focus Target Schema' },
+				{ keys: ['Ctrl', '3'], description: 'Focus Code Editor' },
+				{ keys: ['Ctrl', '4'], description: 'Focus Preview' },
 				{ keys: ['['], description: 'Previous record' },
 				{ keys: [']'], description: 'Next record' },
 				{ keys: ['Escape'], description: 'Close modal / Clear selection' }
@@ -58,6 +62,7 @@
 		{
 			title: 'Code Editor',
 			shortcuts: [
+				{ keys: ['Ctrl', "'"], description: 'Toggle between Full Code / Tweak tabs' },
 				{ keys: ['Ctrl', 'S'], description: 'Save changes' },
 				{ keys: ['Ctrl', 'Z'], description: 'Undo' },
 				{ keys: ['Ctrl', 'Shift', 'Z'], description: 'Redo' },

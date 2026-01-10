@@ -9,9 +9,10 @@
 		mappings?: Mapping[];
 		currentRecordIndex?: number;
 		onRecordChange?: (index: number) => void;
+		showShortcutHint?: boolean;
 	}
 
-	let { groovyCode, mappings = [], currentRecordIndex = 0, onRecordChange }: Props = $props();
+	let { groovyCode, mappings = [], currentRecordIndex = 0, onRecordChange, showShortcutHint = false }: Props = $props();
 
 	// Search state
 	let searchQuery = $state('');
@@ -293,6 +294,9 @@
 	<div class="preview-header">
 		<div class="header-left">
 			<span class="preview-title">Preview</span>
+			{#if showShortcutHint}
+				<kbd class="shortcut-hint">4</kbd>
+			{/if}
 			<button
 				class="search-toggle"
 				class:active={showSearch}
@@ -430,6 +434,22 @@
 		font-size: 13px;
 		font-weight: 500;
 		color: #f3f4f6;
+	}
+
+	.shortcut-hint {
+		padding: 2px 6px;
+		font-size: 10px;
+		font-family: ui-monospace, monospace;
+		font-weight: bold;
+		background: #3b82f6;
+		color: white;
+		border-radius: 4px;
+		animation: pulse 1s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.7; }
 	}
 
 	.search-toggle {

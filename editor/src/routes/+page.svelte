@@ -155,6 +155,11 @@
 
 	// Global keyboard shortcut handler (used with svelte:window)
 	function handleGlobalKeydown(e: KeyboardEvent) {
+		// Track Ctrl key state
+		if (e.key === 'Control' || e.ctrlKey || e.metaKey) {
+			ctrlHeld = true;
+		}
+
 		// Don't trigger if user is typing in an input, textarea, or contenteditable
 		const target = e.target as HTMLElement;
 		const isEditing =
@@ -214,6 +219,47 @@
 				return;
 			}
 		}
+
+		// Ctrl+1-4 - Jump to panes
+		if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+			switch (e.key) {
+				case '1':
+					e.preventDefault();
+					focusPane(sourcePaneRef, 'Source Structure');
+					return;
+				case '2':
+					e.preventDefault();
+					focusPane(targetPaneRef, 'Target Schema');
+					return;
+				case '3':
+					e.preventDefault();
+					focusPane(codePaneRef, 'Code Editor');
+					return;
+				case '4':
+					e.preventDefault();
+					focusPane(previewPaneRef, 'Preview');
+					return;
+			}
+		}
+
+		// Ctrl+' - Toggle between code editor tabs
+		if ((e.ctrlKey || e.metaKey) && e.key === "'") {
+			e.preventDefault();
+			activeCodeTab = activeCodeTab === 'full' ? 'tweak' : 'full';
+			return;
+		}
+	}
+
+	// Handle key up to reset Ctrl state
+	function handleGlobalKeyup(e: KeyboardEvent) {
+		if (e.key === 'Control' || e.key === 'Meta') {
+			ctrlHeld = false;
+		}
+	}
+
+	// Reset Ctrl state when window loses focus
+	function handleWindowBlur() {
+		ctrlHeld = false;
 	}
 
 	// Prevent default drag/drop behavior on document to enable custom drag/drop
@@ -326,6 +372,62 @@
 	let selectedNode = $state<TreeNode | null>(null);
 	let selectedType = $state<'source' | 'target'>('source');
 
+	// Pane refs for keyboard navigation
+	let sourcePaneRef: HTMLElement;
+	let targetPaneRef: HTMLElement;
+	let codePaneRef: HTMLElement;
+	let previewPaneRef: HTMLElement;
+
+	// Track Ctrl key state to show panel shortcuts
+	let ctrlHeld = $state(false);
+
+	// Focus a pane and find first focusable element
+	function focusPane(paneRef: HTMLElement | undefined, paneName: string) {
+		if (!paneRef) return;
+
+		// Special handling for different panes
+		if (paneName === 'Code Editor') {
+			// For code editor, focus Monaco if in full code mode, or first mapping in tweak
+			const monacoEditor = paneRef.querySelector('.monaco-editor textarea, .monaco-editor [contenteditable="true"]') as HTMLElement;
+			if (monacoEditor && activeCodeTab === 'full') {
+				monacoEditor.focus();
+				return;
+			}
+			// In tweak mode, focus the first mapping item
+			const firstMapping = paneRef.querySelector('.mapping-item') as HTMLElement;
+			if (firstMapping) {
+				firstMapping.focus();
+				return;
+			}
+		}
+
+		if (paneName === 'Preview') {
+			// For preview, open search and focus it
+			const searchToggle = paneRef.querySelector('.search-toggle') as HTMLElement;
+			if (searchToggle) {
+				searchToggle.click();
+				// Focus the search input after it opens
+				setTimeout(() => {
+					const searchInput = paneRef.querySelector('input[type="text"]') as HTMLElement;
+					if (searchInput) searchInput.focus();
+				}, 50);
+				return;
+			}
+		}
+
+		// Default: Try to focus the search input first, then any focusable element
+		const searchInput = paneRef.querySelector('input[type="text"]') as HTMLElement;
+		const firstFocusable = paneRef.querySelector('button, [tabindex="0"], input, textarea') as HTMLElement;
+
+		if (searchInput) {
+			searchInput.focus();
+		} else if (firstFocusable) {
+			firstFocusable.focus();
+		} else {
+			paneRef.focus();
+		}
+	}
+
 	// Code editor tab state
 	let activeCodeTab = $state<'full' | 'tweak'>('full');
 
@@ -430,7 +532,7 @@
 
 </script>
 
-<svelte:window onkeydown={handleGlobalKeydown} />
+<svelte:window onkeydown={handleGlobalKeydown} onkeyup={handleGlobalKeyup} onblur={handleWindowBlur} />
 
 <!-- Header -->
 <header class="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
@@ -466,10 +568,15 @@
 			<PaneGroup direction="horizontal">
 				<!-- Source Tree Panel -->
 				<Pane defaultSize={35} minSize={20}>
-					<div class="h-full flex flex-col bg-gray-900 border-r border-gray-700">
+					<div class="h-full flex flex-col bg-gray-900 border-r border-gray-700" bind:this={sourcePaneRef}>
 						<div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
 							<span class="text-sm font-medium">Source Structure</span>
-							<span class="text-xs text-gray-500">XML</span>
+							<span class="text-xs text-gray-500 flex items-center gap-1">
+								{#if ctrlHeld}
+									<kbd class="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded font-bold animate-pulse">1</kbd>
+								{/if}
+								XML
+							</span>
 						</div>
 						<div class="flex-1 overflow-auto">
 							<SourceTree
@@ -502,10 +609,15 @@
 
 				<!-- Target Tree Panel -->
 				<Pane defaultSize={35} minSize={20}>
-					<div class="h-full flex flex-col bg-gray-900 border-l border-gray-700">
+					<div class="h-full flex flex-col bg-gray-900 border-l border-gray-700" bind:this={targetPaneRef}>
 						<div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
 							<span class="text-sm font-medium">Target Schema</span>
-							<span class="text-xs text-gray-500">EDM</span>
+							<span class="text-xs text-gray-500 flex items-center gap-1">
+								{#if ctrlHeld}
+									<kbd class="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded font-bold animate-pulse">2</kbd>
+								{/if}
+								EDM
+							</span>
 						</div>
 						<div class="flex-1 overflow-auto">
 							<SourceTree
@@ -529,7 +641,7 @@
 			<PaneGroup direction="horizontal">
 				<!-- Code Editor Panel -->
 				<Pane defaultSize={50} minSize={30}>
-					<div class="h-full flex flex-col bg-gray-900 border-r border-gray-700">
+					<div class="h-full flex flex-col bg-gray-900 border-r border-gray-700" bind:this={codePaneRef}>
 						<!-- Tab header -->
 						<div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
 							<div class="flex items-center gap-1">
@@ -565,6 +677,9 @@
 								{/if}
 							</div>
 							<div class="flex items-center gap-2">
+								{#if ctrlHeld}
+									<kbd class="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded font-bold animate-pulse">3</kbd>
+								{/if}
 								{#if activeCodeTab === 'full' && userHasEdited}
 									<button
 										class="text-xs text-yellow-400 hover:text-yellow-300"
@@ -599,12 +714,15 @@
 
 				<!-- Preview Panel -->
 				<Pane defaultSize={50} minSize={30}>
-					<Preview
-						groovyCode={groovyCode}
-						mappings={currentMappings}
-						currentRecordIndex={currentRecordIndex}
-						onRecordChange={handleRecordChange}
-					/>
+					<div class="h-full" bind:this={previewPaneRef}>
+						<Preview
+							groovyCode={groovyCode}
+							mappings={currentMappings}
+							currentRecordIndex={currentRecordIndex}
+							onRecordChange={handleRecordChange}
+							showShortcutHint={ctrlHeld}
+						/>
+					</div>
 				</Pane>
 			</PaneGroup>
 		</Pane>

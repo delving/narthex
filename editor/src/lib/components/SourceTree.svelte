@@ -16,6 +16,7 @@
 	// Search state
 	let searchQuery = $state('');
 	let searchInputRef: HTMLInputElement;
+	let containerRef: HTMLElement;
 
 	// Keyboard navigation state
 	let highlightedIndex = $state(-1);
@@ -63,30 +64,44 @@
 		highlightedIndex = -1;
 	}
 
+	// Check if a node directly matches the search (not descendants)
+	function nodeDirectlyMatches(node: TreeNode, lowerQuery: string): boolean {
+		return node.name.toLowerCase().includes(lowerQuery);
+	}
+
 	// Check if a node or any of its descendants match the search
-	function nodeMatchesSearch(node: TreeNode, query: string): boolean {
-		const lowerQuery = query.toLowerCase();
-		if (node.name.toLowerCase().includes(lowerQuery)) {
+	function nodeOrDescendantsMatch(node: TreeNode, lowerQuery: string): boolean {
+		if (nodeDirectlyMatches(node, lowerQuery)) {
 			return true;
 		}
 		if (node.children) {
-			return node.children.some((child) => nodeMatchesSearch(child, lowerQuery));
+			return node.children.some((child) => nodeOrDescendantsMatch(child, lowerQuery));
 		}
 		return false;
 	}
 
 	// Filter nodes to only include those matching search
-	function filterNodes(nodeList: TreeNode[], query: string): TreeNode[] {
+	// When a parent matches, show ALL its children (don't filter them)
+	// When a parent doesn't match but descendants do, show parent and filter children
+	function filterNodes(nodeList: TreeNode[], query: string, parentMatched: boolean = false): TreeNode[] {
 		if (!query.trim()) return nodeList;
 
 		const lowerQuery = query.toLowerCase();
+
+		// If parent matched, return all nodes without filtering
+		if (parentMatched) {
+			return nodeList;
+		}
+
 		return nodeList
-			.filter((node) => nodeMatchesSearch(node, lowerQuery))
+			.filter((node) => nodeOrDescendantsMatch(node, lowerQuery))
 			.map((node) => {
+				const thisNodeMatches = nodeDirectlyMatches(node, lowerQuery);
 				if (node.children) {
 					return {
 						...node,
-						children: filterNodes(node.children, query)
+						// If this node matches, show all children; otherwise filter children
+						children: filterNodes(node.children, query, thisNodeMatches)
 					};
 				}
 				return node;
@@ -153,22 +168,24 @@
 
 	// Handle keyboard navigation
 	function handleKeydown(e: KeyboardEvent) {
-		// Don't handle if typing in search
+		// Handle search input keyboard events
 		if (e.target === searchInputRef) {
 			if (e.key === 'Escape') {
 				clearSearchQuery();
 				searchInputRef.blur();
 				return;
 			}
-			if (e.key === 'ArrowDown') {
+			if (e.key === 'ArrowDown' || e.key === 'Enter') {
 				e.preventDefault();
-				// Move focus to tree
+				// Move focus to tree results
 				if (flattenedNodes.length > 0) {
 					highlightedIndex = 0;
+					containerRef?.focus(); // Focus the container so it receives keyboard events
 					scrollToHighlighted();
 				}
 				return;
 			}
+			// Let other keys pass through for typing
 			return;
 		}
 
@@ -296,6 +313,8 @@
 	onfocusout={handleBlur}
 	role="tree"
 	aria-label="{treeType === 'source' ? 'Source' : 'Target'} tree"
+	tabindex="0"
+	bind:this={containerRef}
 >
 	<!-- Always visible search -->
 	<div class="search-container">
