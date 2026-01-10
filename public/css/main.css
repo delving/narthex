@@ -355,3 +355,20 @@ code.path span {
 .dataset-list-table .actions .dropdown-menu {
   min-width: 160px;
 }
+
+/* Delimiter page styles */
+.badge-candidate {
+  background: #d9534f;
+  color: #ffffff;
+  cursor: pointer;
+}
+.badge-candidate:hover {
+  background: #c9302c;
+}
+.record-root-candidate {
+  background-color: #fcf8e3 !important;
+  border-left: 3px solid #d9534f !important;
+}
+.record-root-candidate:hover {
+  background-color: #f5e79e !important;
+}

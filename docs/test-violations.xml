@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<records>
+  <!-- Record 1: Mojibake (UTF-8 interpreted as Latin-1) -->
+  <record id="test-mojibake-001">
+    <title>CafÃ© de la Paix</title>
+    <description>A famous cafÃ© in Paris with dÃ©cor from the Belle Ã‰poque</description>
+    <creator>FranÃ§ois MÃ¼ller</creator>
+    <date>1920</date>
+  </record>
+
+  <!-- Record 2: More Mojibake variants -->
+  <record id="test-mojibake-002">
+    <title>GÃ¶tterdÃ¤mmerung</title>
+    <description>Richard Wagner's opera, also known as Twilight of the Gods</description>
+    <creator>Richard Wagner</creator>
+    <subject>MÃ¼nchen Opera House</subject>
+    <date>1876</date>
+  </record>
+
+  <!-- Record 3: HTML entities that should be decoded -->
+  <record id="test-html-entities-001">
+    <title>Smith &amp; Jones Partnership</title>
+    <description>A company worth &gt; $1 million with &lt;100 employees</description>
+    <creator>John &quot;Jack&quot; Smith</creator>
+    <notes>Located at 123 Main St.&#160;&#160;&#160;Suite 400</notes>
+    <date>2020</date>
+  </record>
+
+  <!-- Record 4: Numeric HTML entities -->
+  <record id="test-html-entities-002">
+    <title>Test &#169; Copyright &#8212; Em Dash</title>
+    <description>Using &#8217; for apostrophe and &#8220;quotes&#8221;</description>
+    <creator>Test Author</creator>
+    <date>2021</date>
+  </record>
+
+  <!-- Record 5: Leading whitespace -->
+  <record id="test-whitespace-leading-001">
+    <title>   The Art of Programming</title>
+    <description>	Tab-indented description</description>
+    <creator>  John Doe</creator>
+    <date>2019</date>
+  </record>
+
+  <!-- Record 6: Trailing whitespace -->
+  <record id="test-whitespace-trailing-001">
+    <title>Museum Collection   </title>
+    <description>Description with trailing spaces    </description>
+    <creator>Jane Smith	</creator>
+    <date>2018</date>
+  </record>
+
+  <!-- Record 7: Multiple consecutive spaces -->
+  <record id="test-whitespace-multiple-001">
+    <title>Art  and  Science  Museum</title>
+    <description>Located at 123   Main   Street in the city</description>
+    <creator>Dr.  Robert  Johnson</creator>
+    <date>2017</date>
+  </record>
+
+  <!-- Record 8: Future date (outlier) -->
+  <record id="test-date-future-001">
+    <title>Scheduled Exhibition</title>
+    <description>An exhibition planned for the future</description>
+    <date>2099-12-31</date>
+    <endDate>2150</endDate>
+  </record>
+
+  <!-- Record 9: Ancient date (outlier) -->
+  <record id="test-date-ancient-001">
+    <title>Medieval Artifact</title>
+    <description>Dating from the early medieval period</description>
+    <date>1650</date>
+    <earliestDate>1423</earliestDate>
+  </record>
+
+  <!-- Record 10: Very ancient date -->
+  <record id="test-date-ancient-002">
+    <title>Ancient Roman Coin</title>
+    <description>A coin from the Roman Republic era</description>
+    <date>0150</date>
+    <period>150 BC</period>
+  </record>
+
+  <!-- Record 11: Escaped characters -->
+  <record id="test-escaped-001">
+    <title>File path: C:\\Users\\Documents\\file.txt</title>
+    <description>Contains newline\nand tab\tcharacters</description>
+    <notes>Quote: \"Hello World\"</notes>
+    <date>2022</date>
+  </record>
+
+  <!-- Record 12: Replacement character (U+FFFD) -->
+  <record id="test-replacement-001">
+    <title>Document with &#xFFFD; unknown characters</title>
+    <description>Some text &#xFFFD; that has &#xFFFD; replacement characters</description>
+    <creator>Unknown&#xFFFD;Author</creator>
+    <date>2020</date>
+  </record>
+
+  <!-- Record 13: Mixed violations -->
+  <record id="test-mixed-001">
+    <title>   CafÃ© &amp; Restaurant   </title>
+    <description>A place in MÃ¼nchen  with  great  food</description>
+    <creator>  FranÃ§ois Dubois  </creator>
+    <date>2099</date>
+  </record>
+
+  <!-- Record 14: More mixed violations -->
+  <record id="test-mixed-002">
+    <title>GÃ¶tterdÃ¤mmerung Performance</title>
+    <description>Scheduled for year 2150 at the MÃ¼nchen Opera &#160; House</description>
+    <location>  MÃ¼nchen, Germany  </location>
+    <date>2150-06-15</date>
+  </record>
+
+  <!-- Record 15: Clean record (no violations) -->
+  <record id="test-clean-001">
+    <title>Normal Museum Object</title>
+    <description>A perfectly normal description without any issues</description>
+    <creator>John Smith</creator>
+    <date>2023</date>
+  </record>
+
+  <!-- Record 16: Another clean record -->
+  <record id="test-clean-002">
+    <title>Historical Document</title>
+    <description>Dating from the 19th century</description>
+    <creator>Historical Society</creator>
+    <date>1850</date>
+  </record>
+
+  <!-- Record 17: Spanish mojibake -->
+  <record id="test-mojibake-spanish-001">
+    <title>EspaÃ±a y AmÃ©rica</title>
+    <description>ExposiciÃ³n sobre la historia de EspaÃ±a</description>
+    <creator>JosÃ© GarcÃ­a</creator>
+    <date>1995</date>
+  </record>
+
+  <!-- Record 18: Nordic mojibake -->
+  <record id="test-mojibake-nordic-001">
+    <title>KÃ¸benhavn Museum</title>
+    <description>Located in Ã˜sterbro, near the Ã…rhus road</description>
+    <creator>Lars Ã˜stergaard</creator>
+    <date>2010</date>
+  </record>
+
+  <!-- Record 19: Combined whitespace issues -->
+  <record id="test-whitespace-combined-001">
+    <title>   Museum    of    Modern    Art   </title>
+    <description>	  A great  museum  	</description>
+    <location>   New   York   City   </location>
+    <date>2015</date>
+  </record>
+
+  <!-- Record 20: Smart quotes mojibake -->
+  <record id="test-mojibake-quotes-001">
+    <title>The â€œBestâ€ Museum</title>
+    <description>Itâ€™s a wonderful place â€" truly amazing</description>
+    <creator>Authorâ€™s Name</creator>
+    <date>2022</date>
+  </record>
+</records>

@@ -173,6 +173,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                exportProblemRecords: function (spec, value, violationType, format) {
+                    return app.exportProblemRecords(spec, value, violationType || '', format || 'json').get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

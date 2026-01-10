@@ -27,6 +27,7 @@ define(
         "angular",
         "datasetList",
         "dataset",
+        "datasetDelimiter",
         "skos",
         "terms",
         "categories",
@@ -46,6 +47,7 @@ define(
             [
                 "narthex.datasetList",
                 "narthex.dataset",
+                "narthex.datasetDelimiter",
                 "narthex.skos",
                 "narthex.terms",
                 "narthex.categories",

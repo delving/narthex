@@ -86,24 +86,41 @@ define(["angular"], function () {
 
         // Service methods that respect analysis type
         function getIndex() {
+            // During raw analysis only (delimiter setting), always use base index
+            // Neither source nor processed analysis exists yet
+            if ($scope.rawAnalyzedState && !$scope.analyzedState && !$scope.info.stateSourceAnalyzed) {
+                return datasetService.index($scope.spec);
+            }
             return $scope.isSourceAnalysis
                 ? datasetService.sourceIndex($scope.spec)
                 : datasetService.index($scope.spec);
         }
 
         function getNodeStatus(path) {
+            // During raw analysis only (delimiter setting), use base endpoint
+            if ($scope.rawAnalyzedState && !$scope.analyzedState && !$scope.info.stateSourceAnalyzed) {
+                return datasetService.nodeStatus($scope.spec, path);
+            }
             return $scope.isSourceAnalysis
                 ? datasetService.sourceNodeStatus($scope.spec, path)
                 : datasetService.nodeStatus($scope.spec, path);
         }
 
         function getSample(path, size) {
+            // During raw analysis only (delimiter setting), use base endpoint
+            if ($scope.rawAnalyzedState && !$scope.analyzedState && !$scope.info.stateSourceAnalyzed) {
+                return datasetService.sample($scope.spec, path, size);
+            }
             return $scope.isSourceAnalysis
                 ? datasetService.sourceSample($scope.spec, path, size)
                 : datasetService.sample($scope.spec, path, size);
         }
 
         function getHistogram(path, size) {
+            // During raw analysis only (delimiter setting), use base endpoint
+            if ($scope.rawAnalyzedState && !$scope.analyzedState && !$scope.info.stateSourceAnalyzed) {
+                return datasetService.histogram($scope.spec, path, size);
+            }
             return $scope.isSourceAnalysis
                 ? datasetService.sourceHistogram($scope.spec, path, size)
                 : datasetService.histogram($scope.spec, path, size);

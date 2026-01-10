@@ -1407,7 +1407,12 @@ define(["angular"], function () {
         };
 
         $scope.goToDataset = function () {
-            $location.path("/dataset/" + $scope.dataset.datasetSpec);
+            // If raw analyzed but delimiters not valid, go to delimiter setting page
+            if ($scope.dataset.stateRawAnalyzed && !$scope.dataset.delimitersValid) {
+                $location.path("/dataset-delimiter/" + $scope.dataset.datasetSpec);
+            } else {
+                $location.path("/dataset/" + $scope.dataset.datasetSpec);
+            }
         };
 
         $scope.goToSparql = function () {
