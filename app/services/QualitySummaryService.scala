@@ -15,7 +15,6 @@
 //===========================================================================
 package services
 
-import java.io.File
 import javax.inject._
 import play.api.libs.json._
 import play.api.{Configuration, Logging}
@@ -471,6 +470,24 @@ class QualitySummaryService @Inject()(
         val multiple = (ws \ "multipleSpacesCount").asOpt[Int].getOrElse(0)
         if (leading > 0 || trailing > 0 || multiple > 0) {
           issues = "whitespace_issues" :: issues
+        }
+      }
+
+      // Encoding issues (Phase 12)
+      (vs \ "encodingIssues").asOpt[JsObject].foreach { enc =>
+        val total = (enc \ "total").asOpt[Int].getOrElse(0)
+        if (total > 0) {
+          issues = "encoding_issues" :: issues
+        }
+      }
+
+      // Outliers (Phase 13)
+      (vs \ "outliers").asOpt[JsObject].foreach { out =>
+        val futureDates = (out \ "futureDates").asOpt[Int].getOrElse(0)
+        val ancientDates = (out \ "ancientDates").asOpt[Int].getOrElse(0)
+        val suspiciousYears = (out \ "suspiciousYears").asOpt[Int].getOrElse(0)
+        if (futureDates > 0 || ancientDates > 0 || suspiciousYears > 0) {
+          issues = "date_outliers" :: issues
         }
       }
     }

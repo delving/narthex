@@ -336,6 +336,12 @@
                                             <span ng-switch-when="whitespace_issues">
                                                 <i class="fa fa-text-width text-warning"></i> Whitespace Issues
                                             </span>
+                                            <span ng-switch-when="encoding_issues">
+                                                <i class="fa fa-file-code-o text-danger"></i> Encoding Issues
+                                            </span>
+                                            <span ng-switch-when="date_outliers">
+                                                <i class="fa fa-calendar-times-o text-warning"></i> Date Outliers
+                                            </span>
                                             <span ng-switch-default>{{ issue }}</span>
                                         </span>
                                     </td>
@@ -429,6 +435,8 @@
                                                     <i ng-switch-when="mixed_types" class="fa fa-random text-info" title="Mixed Types"></i>
                                                     <i ng-switch-when="invalid_uris" class="fa fa-chain-broken text-danger" title="Invalid URIs"></i>
                                                     <i ng-switch-when="whitespace_issues" class="fa fa-text-width text-warning" title="Whitespace Issues"></i>
+                                                    <i ng-switch-when="encoding_issues" class="fa fa-file-code-o text-danger" title="Encoding Issues"></i>
+                                                    <i ng-switch-when="date_outliers" class="fa fa-calendar-times-o text-warning" title="Date Outliers"></i>
                                                 </span>
                                             </span>
                                         </td>
@@ -554,6 +562,8 @@
                                                         <i ng-switch-when="mixed_types" class="fa fa-random text-info" title="Mixed Types"></i>
                                                         <i ng-switch-when="invalid_uris" class="fa fa-chain-broken text-danger" title="Invalid URIs"></i>
                                                         <i ng-switch-when="whitespace_issues" class="fa fa-text-width text-warning" title="Whitespace Issues"></i>
+                                                        <i ng-switch-when="encoding_issues" class="fa fa-file-code-o text-danger" title="Encoding Issues"></i>
+                                                        <i ng-switch-when="date_outliers" class="fa fa-calendar-times-o text-warning" title="Date Outliers"></i>
                                                     </span>
                                                 </span>
                                             </td>
@@ -1077,7 +1087,7 @@
                 ng-show="activeView == 'quality' && selectedNode.quality"
             >
                 <!-- Issues Alert Box -->
-                <div data-ng-show="selectedNode.hasIssues || (status.typeInfo && status.typeInfo.isMixed) || (status.valueStats && status.valueStats.whitespaceIssues) || (status.patternInfo && status.patternInfo.uriValidation && status.patternInfo.uriValidation.invalid > 0)"
+                <div data-ng-show="selectedNode.hasIssues || (status.typeInfo && status.typeInfo.isMixed) || (status.valueStats && status.valueStats.whitespace) || (status.valueStats && status.valueStats.encodingIssues) || (status.valueStats && status.valueStats.outliers) || (status.patternInfo && status.patternInfo.uriValidation && status.patternInfo.uriValidation.invalid > 0)"
                      class="alert alert-warning" style="margin: 10px;">
                     <h5 style="margin-top: 0;"><i class="fa fa-exclamation-triangle"></i> Quality Issues Detected</h5>
                     <ul style="margin-bottom: 0; padding-left: 20px;">
@@ -1090,8 +1100,14 @@
                         <li data-ng-show="status.typeInfo && status.typeInfo.isMixed">
                             <strong>Mixed data types:</strong> Field contains multiple types ({{ status.typeInfo.consistency }}% consistency)
                         </li>
-                        <li data-ng-show="status.valueStats && status.valueStats.whitespaceIssues">
-                            <strong>Whitespace issues:</strong> {{ status.valueStats.whitespaceIssues.total }} values have leading/trailing spaces or multiple spaces
+                        <li data-ng-show="status.valueStats && status.valueStats.whitespace">
+                            <strong>Whitespace issues:</strong> {{ status.valueStats.whitespace.total }} values have leading/trailing spaces or multiple spaces
+                        </li>
+                        <li data-ng-show="status.valueStats && status.valueStats.encodingIssues">
+                            <strong>Encoding issues:</strong> {{ status.valueStats.encodingIssues.total }} values have encoding problems (mojibake, HTML entities, etc.)
+                        </li>
+                        <li data-ng-show="status.valueStats && status.valueStats.outliers && status.valueStats.outliers.total > 0">
+                            <strong>Date outliers:</strong> {{ status.valueStats.outliers.total }} dates are suspicious (future, ancient, or invalid)
                         </li>
                         <li data-ng-show="status.patternInfo && status.patternInfo.uriValidation && status.patternInfo.uriValidation.invalid > 0">
                             <strong>Invalid URIs:</strong> {{ status.patternInfo.uriValidation.invalid }} URIs are malformed
@@ -1245,23 +1261,71 @@
                                             <span class="text-muted" style="margin-left: 10px;">({{ status.valueStats.dateRange.count }} dates)</span>
                                         </td>
                                     </tr>
-                                    <tr data-ng-show="status.valueStats.whitespaceIssues">
+                                    <tr data-ng-show="status.valueStats.whitespace">
                                         <td><strong>Whitespace issues</strong></td>
                                         <td>
-                                            <span class="text-danger">
-                                                <i class="fa fa-exclamation-triangle"></i>
-                                                {{ status.valueStats.whitespaceIssues.total }} values with issues
+                                            <span class="text-warning">
+                                                <i class="fa fa-text-width"></i>
+                                                {{ status.valueStats.whitespace.total }} values with issues
                                             </span>
                                             <br>
                                             <small class="text-muted">
-                                                <span data-ng-show="status.valueStats.whitespaceIssues.leadingWhitespace > 0">
-                                                    Leading: {{ status.valueStats.whitespaceIssues.leadingWhitespace }}
+                                                <span data-ng-show="status.valueStats.whitespace.leadingCount > 0">
+                                                    Leading: {{ status.valueStats.whitespace.leadingCount }}
                                                 </span>
-                                                <span data-ng-show="status.valueStats.whitespaceIssues.trailingWhitespace > 0" style="margin-left: 8px;">
-                                                    Trailing: {{ status.valueStats.whitespaceIssues.trailingWhitespace }}
+                                                <span data-ng-show="status.valueStats.whitespace.trailingCount > 0" style="margin-left: 8px;">
+                                                    Trailing: {{ status.valueStats.whitespace.trailingCount }}
                                                 </span>
-                                                <span data-ng-show="status.valueStats.whitespaceIssues.multipleSpaces > 0" style="margin-left: 8px;">
-                                                    Multiple spaces: {{ status.valueStats.whitespaceIssues.multipleSpaces }}
+                                                <span data-ng-show="status.valueStats.whitespace.multipleSpacesCount > 0" style="margin-left: 8px;">
+                                                    Multiple spaces: {{ status.valueStats.whitespace.multipleSpacesCount }}
+                                                </span>
+                                            </small>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.valueStats.encodingIssues">
+                                        <td><strong>Encoding issues</strong></td>
+                                        <td>
+                                            <span class="text-danger">
+                                                <i class="fa fa-file-code-o"></i>
+                                                {{ status.valueStats.encodingIssues.total }} values with issues
+                                            </span>
+                                            <br>
+                                            <small class="text-muted">
+                                                <span data-ng-show="status.valueStats.encodingIssues.mojibake > 0">
+                                                    Mojibake: {{ status.valueStats.encodingIssues.mojibake }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.encodingIssues.htmlEntities > 0" style="margin-left: 8px;">
+                                                    HTML entities: {{ status.valueStats.encodingIssues.htmlEntities }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.encodingIssues.escapedChars > 0" style="margin-left: 8px;">
+                                                    Escaped chars: {{ status.valueStats.encodingIssues.escapedChars }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.encodingIssues.controlChars > 0" style="margin-left: 8px;">
+                                                    Control chars: {{ status.valueStats.encodingIssues.controlChars }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.encodingIssues.replacementChars > 0" style="margin-left: 8px;">
+                                                    Replacement chars: {{ status.valueStats.encodingIssues.replacementChars }}
+                                                </span>
+                                            </small>
+                                        </td>
+                                    </tr>
+                                    <tr data-ng-show="status.valueStats.outliers">
+                                        <td><strong>Date outliers</strong></td>
+                                        <td>
+                                            <span class="text-warning">
+                                                <i class="fa fa-calendar-times-o"></i>
+                                                {{ status.valueStats.outliers.total }} suspicious dates
+                                            </span>
+                                            <br>
+                                            <small class="text-muted">
+                                                <span data-ng-show="status.valueStats.outliers.futureDates > 0">
+                                                    Future dates: {{ status.valueStats.outliers.futureDates }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.outliers.ancientDates > 0" style="margin-left: 8px;">
+                                                    Ancient (pre-1800): {{ status.valueStats.outliers.ancientDates }}
+                                                </span>
+                                                <span data-ng-show="status.valueStats.outliers.suspiciousYears > 0" style="margin-left: 8px;">
+                                                    Invalid years: {{ status.valueStats.outliers.suspiciousYears }}
                                                 </span>
                                             </small>
                                         </td>

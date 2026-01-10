@@ -21,7 +21,7 @@ import scala.util.Try
 
 /**
  * Tracks value statistics during analysis for data quality reporting.
- * Includes length stats, word count, whitespace issues, and type-specific ranges.
+ * Includes length stats, word count, whitespace issues, encoding issues, and type-specific ranges.
  */
 object ValueStats {
 
@@ -43,6 +43,48 @@ object ValueStats {
     """^(\d{4})\d{4}$""".r,                 // YYYYMMDD
     """^(\d{4})$""".r                       // Year only
   )
+
+  // ===== Encoding Issues Detection =====
+
+  // Mojibake patterns - UTF-8 interpreted as Latin-1/Windows-1252
+  // These are common garbled character sequences
+  private val MojibakePatterns = Seq(
+    """Ã©""".r,    // é
+    """Ã¨""".r,    // è
+    """Ã«""".r,    // ë
+    """Ã¯""".r,    // ï
+    """Ã¢""".r,    // â
+    """Ã´""".r,    // ô
+    """Ã¼""".r,    // ü
+    """Ã¶""".r,    // ö
+    """Ã¤""".r,    // ä
+    """Ã±""".r,    // ñ
+    """Ã§""".r,    // ç
+    """Ã¡""".r,    // á
+    """Ã­""".r,    // í
+    """Ã³""".r,    // ó
+    """Ãº""".r,    // ú
+    """â€""".r,   // Various punctuation mojibake (—, ", ", etc.)
+    """â€œ""".r,  // "
+    """â€""".r, // " (right double quote)
+    """â€˜""".r,  // '
+    """â€™""".r,  // '
+    """Ââ€""".r,  // Common double-encoding pattern
+    """Ã¿""".r,   // ÿ
+    """Â""".r     // Stray  character (often from encoding issues)
+  )
+
+  // HTML entities that should have been decoded
+  private val HtmlEntityPattern = """&(amp|lt|gt|quot|apos|nbsp|#\d{1,5}|#x[0-9a-fA-F]{1,4});""".r
+
+  // Escaped characters that shouldn't appear in displayed text
+  private val EscapedCharsPattern = """\\[nrtbf"'\\]""".r
+
+  // Control characters (excluding tab, newline, carriage return which might be intentional)
+  private val ControlCharsPattern = """[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]""".r
+
+  // Replacement character (indicates encoding failure)
+  private val ReplacementCharPattern = "\uFFFD".r
 
   /**
    * Result of value statistics analysis.
@@ -72,7 +114,22 @@ object ValueStats {
     // Date/year range (if applicable)
     minYear: Option[Int],
     maxYear: Option[Int],
-    dateCount: Int
+    dateCount: Int,
+
+    // Encoding issues
+    mojibakeCount: Int = 0,
+    htmlEntitiesCount: Int = 0,
+    escapedCharsCount: Int = 0,
+    controlCharsCount: Int = 0,
+    replacementCharCount: Int = 0,
+
+    // Outlier detection (Phase 13)
+    futureDateCount: Int = 0,      // Dates in the future
+    ancientDateCount: Int = 0,     // Dates before 1800
+    suspiciousYearCount: Int = 0,  // Years outside 1000-2100 range
+    negativeNumberCount: Int = 0,  // Negative numbers (may be suspicious in some contexts)
+    zeroCount: Int = 0,            // Zero values
+    extremeNumericCount: Int = 0   // Values that are statistically extreme
   ) {
     def avgLength: Double = if (valueCount > 0) totalLength.toDouble / valueCount else 0.0
     def avgWords: Double = if (valueCount > 0) totalWords.toDouble / valueCount else 0.0
@@ -82,6 +139,19 @@ object ValueStats {
 
     def whitespaceIssueCount: Int =
       leadingWhitespaceCount + trailingWhitespaceCount + multipleSpacesCount
+
+    def hasEncodingIssues: Boolean =
+      mojibakeCount > 0 || htmlEntitiesCount > 0 || escapedCharsCount > 0 ||
+      controlCharsCount > 0 || replacementCharCount > 0
+
+    def encodingIssueCount: Int =
+      mojibakeCount + htmlEntitiesCount + escapedCharsCount + controlCharsCount + replacementCharCount
+
+    def hasOutliers: Boolean =
+      futureDateCount > 0 || ancientDateCount > 0 || suspiciousYearCount > 0
+
+    def outlierCount: Int =
+      futureDateCount + ancientDateCount + suspiciousYearCount
 
     def toJson: JsObject = {
       var json = Json.obj(
@@ -99,11 +169,23 @@ object ValueStats {
 
       // Add whitespace issues if present
       if (hasWhitespaceIssues) {
-        json = json + ("whitespaceIssues" -> Json.obj(
-          "leadingWhitespace" -> leadingWhitespaceCount,
-          "trailingWhitespace" -> trailingWhitespaceCount,
-          "multipleSpaces" -> multipleSpacesCount,
+        json = json + ("whitespace" -> Json.obj(
+          "leadingCount" -> leadingWhitespaceCount,
+          "trailingCount" -> trailingWhitespaceCount,
+          "multipleSpacesCount" -> multipleSpacesCount,
           "total" -> whitespaceIssueCount
+        ))
+      }
+
+      // Add encoding issues if present
+      if (hasEncodingIssues) {
+        json = json + ("encodingIssues" -> Json.obj(
+          "mojibake" -> mojibakeCount,
+          "htmlEntities" -> htmlEntitiesCount,
+          "escapedChars" -> escapedCharsCount,
+          "controlChars" -> controlCharsCount,
+          "replacementChars" -> replacementCharCount,
+          "total" -> encodingIssueCount
         ))
       }
 
@@ -123,6 +205,19 @@ object ValueStats {
           "maxYear" -> maxYear.get,
           "count" -> dateCount
         ))
+      }
+
+      // Add outlier information if present
+      if (hasOutliers || negativeNumberCount > 0 || zeroCount > 0) {
+        var outlierJson = Json.obj()
+        if (futureDateCount > 0) outlierJson = outlierJson + ("futureDates" -> Json.toJson(futureDateCount))
+        if (ancientDateCount > 0) outlierJson = outlierJson + ("ancientDates" -> Json.toJson(ancientDateCount))
+        if (suspiciousYearCount > 0) outlierJson = outlierJson + ("suspiciousYears" -> Json.toJson(suspiciousYearCount))
+        if (negativeNumberCount > 0) outlierJson = outlierJson + ("negativeNumbers" -> Json.toJson(negativeNumberCount))
+        if (zeroCount > 0) outlierJson = outlierJson + ("zeros" -> Json.toJson(zeroCount))
+        if (extremeNumericCount > 0) outlierJson = outlierJson + ("extremeValues" -> Json.toJson(extremeNumericCount))
+        outlierJson = outlierJson + ("total" -> Json.toJson(outlierCount))
+        json = json + ("outliers" -> outlierJson)
       }
 
       json
@@ -154,6 +249,24 @@ object ValueStats {
     private var maxYr: Option[Int] = None
     private var dtCount = 0
 
+    // Encoding issues counters
+    private var mojibake = 0
+    private var htmlEntities = 0
+    private var escapedChars = 0
+    private var controlChars = 0
+    private var replacementChars = 0
+
+    // Outlier counters
+    private var futureDates = 0
+    private var ancientDates = 0
+    private var suspiciousYears = 0
+    private var negativeNums = 0
+    private var zeros = 0
+    private var extremeNums = 0
+
+    // Current year for future date detection
+    private val currentYear = java.time.Year.now().getValue
+
     def record(value: String): Unit = {
       if (value.isEmpty) return
 
@@ -174,21 +287,46 @@ object ValueStats {
       if (TrailingWhitespace.findFirstIn(value).isDefined) trailingWs += 1
       if (MultipleSpaces.findFirstIn(value).isDefined) multipleWs += 1
 
+      // Encoding issues detection
+      if (hasMojibake(value)) mojibake += 1
+      if (HtmlEntityPattern.findFirstIn(value).isDefined) htmlEntities += 1
+      if (EscapedCharsPattern.findFirstIn(value).isDefined) escapedChars += 1
+      if (ControlCharsPattern.findFirstIn(value).isDefined) controlChars += 1
+      if (ReplacementCharPattern.findFirstIn(value).isDefined) replacementChars += 1
+
       // Try to parse as numeric
       Try(value.trim.replace(",", ".").toDouble).toOption.foreach { num =>
         numCount += 1
         minNum = Some(minNum.map(m => Math.min(m, num)).getOrElse(num))
         maxNum = Some(maxNum.map(m => Math.max(m, num)).getOrElse(num))
+
+        // Outlier detection for numbers
+        if (num < 0) negativeNums += 1
+        if (num == 0) zeros += 1
       }
 
       // Try to extract year from date-like values
       extractYear(value).foreach { year =>
-        if (year >= 1000 && year <= 2100) { // Reasonable year range
+        // Outlier detection for dates
+        if (year > currentYear) {
+          futureDates += 1
+        } else if (year < 1800) {
+          ancientDates += 1
+        }
+
+        if (year < 1000 || year > 2100) {
+          suspiciousYears += 1
+        } else {
+          // Only count reasonable years in the date range
           dtCount += 1
           minYr = Some(minYr.map(m => Math.min(m, year)).getOrElse(year))
           maxYr = Some(maxYr.map(m => Math.max(m, year)).getOrElse(year))
         }
       }
+    }
+
+    private def hasMojibake(value: String): Boolean = {
+      MojibakePatterns.exists(_.findFirstIn(value).isDefined)
     }
 
     private def extractYear(value: String): Option[Int] = {
@@ -220,7 +358,18 @@ object ValueStats {
         numericCount = numCount,
         minYear = minYr,
         maxYear = maxYr,
-        dateCount = dtCount
+        dateCount = dtCount,
+        mojibakeCount = mojibake,
+        htmlEntitiesCount = htmlEntities,
+        escapedCharsCount = escapedChars,
+        controlCharsCount = controlChars,
+        replacementCharCount = replacementChars,
+        futureDateCount = futureDates,
+        ancientDateCount = ancientDates,
+        suspiciousYearCount = suspiciousYears,
+        negativeNumberCount = negativeNums,
+        zeroCount = zeros,
+        extremeNumericCount = extremeNums
       )
     }
   }

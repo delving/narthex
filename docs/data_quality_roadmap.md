@@ -114,6 +114,23 @@ This document captures the roadmap for data quality analysis features in Narthex
 - **New fields in processed**: Collapsible list of fields only in processed
 - **Fields with changes**: Table showing before/after values for completeness, uniqueness, issues
 
+### Phase 12: Encoding Issues Detection (Completed)
+- **Mojibake detection**: Common UTF-8/Latin-1 encoding errors (Ã©, Ã¨, â€œ, etc.)
+- **HTML entities**: Unescaped HTML entities in text (&amp;, &lt;, &nbsp;, numeric entities)
+- **Escaped characters**: Backslash escapes that shouldn't appear (\\n, \\t, etc.)
+- **Control characters**: Non-printable control characters in values
+- **Replacement characters**: Unicode replacement character (U+FFFD) indicating failed decode
+- **Quality tab display**: Encoding issues row with counts by type
+- **Issues tracking**: Fields with encoding issues flagged in Quality Summary
+
+### Phase 13: Outlier Detection (Completed)
+- **Future dates**: Dates with year > current year
+- **Ancient dates**: Dates with year < 1800 (unusual for cultural heritage data)
+- **Suspicious years**: Years outside 1000-2100 range excluded from date range calculation
+- **Outlier tracking**: Per-field counts in valueStats.outliers JSON
+- **Quality tab display**: Date outliers row with breakdown by type
+- **Issues tracking**: Fields with date outliers flagged in Quality Summary
+
 ---
 
 ## Planned Features
@@ -152,23 +169,6 @@ Analyze relationships between fields:
 - Potential duplicate fields (similar values)
 - Hierarchical relationships
 - Conditional presence patterns
-
-### Phase 12: Encoding Issues Detection
-**Priority: Low | Effort: Medium**
-
-Detect character encoding problems:
-- Mojibake detection (garbled characters)
-- Invalid UTF-8 sequences
-- HTML entities in text
-- Escaped characters that shouldn't be
-
-### Phase 13: Outlier Detection
-**Priority: Low | Effort: Medium**
-
-For numeric and date fields:
-- Statistical outlier detection (IQR, Z-score)
-- Suspicious values (future dates, negative ages)
-- Anomaly highlighting in histograms
 
 ---
 
