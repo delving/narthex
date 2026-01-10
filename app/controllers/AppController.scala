@@ -560,6 +560,16 @@ class AppController @Inject() (
     }
   }
 
+  /**
+   * Get quality comparison between source and processed analysis
+   */
+  def qualityComparison(spec: String) = Action { request =>
+    qualitySummaryService.getQualityComparison(spec) match {
+      case Some(comparison) => Ok(Json.toJson(comparison))
+      case None => NotFound(Json.obj("error" -> "Comparison not available - neither source nor processed analysis exists"))
+    }
+  }
+
   def setRecordDelimiter(spec: String) = Action(parse.json) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     // todo: recordContainer instead perhaps

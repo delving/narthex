@@ -370,23 +370,34 @@ define(["angular"], function () {
         $scope.qualitySummary = null;
         $scope.qualitySummaryLoading = false;
         $scope.qualitySummaryError = null;
+        $scope.qualityComparison = null;
+        $scope.qualityComparisonLoading = false;
+        $scope.qualityComparisonError = null;
+        $scope.qualitySummaryTab = 'summary';  // 'summary' or 'comparison'
         // Use object to avoid child scope issues with ng-if
         $scope.qsToggles = {
             showAllProblematicFields: false,
             showFieldsInEveryRecord: false,
             showIdentifierFields: false,
-            showAllFieldsWithScores: false
+            showAllFieldsWithScores: false,
+            showFieldsOnlyInSource: false,
+            showFieldsOnlyInProcessed: false,
+            showFieldsWithChanges: false
         };
 
         $scope.showQualitySummary = function () {
             $scope.qualitySummaryLoading = true;
             $scope.qualitySummaryError = null;
             $scope.qualitySummary = null;
+            $scope.qualitySummaryTab = 'summary';
             // Reset toggle states when opening modal
             $scope.qsToggles.showAllProblematicFields = false;
             $scope.qsToggles.showFieldsInEveryRecord = false;
             $scope.qsToggles.showIdentifierFields = false;
             $scope.qsToggles.showAllFieldsWithScores = false;
+            $scope.qsToggles.showFieldsOnlyInSource = false;
+            $scope.qsToggles.showFieldsOnlyInProcessed = false;
+            $scope.qsToggles.showFieldsWithChanges = false;
 
             // Show the modal
             $('#qualitySummaryModal').modal('show');
@@ -402,6 +413,25 @@ define(["angular"], function () {
             }).catch(function (error) {
                 $scope.qualitySummaryError = error.data ? error.data.error : 'Failed to load quality summary';
                 $scope.qualitySummaryLoading = false;
+            });
+        };
+
+        $scope.switchQualityTab = function (tab) {
+            $scope.qualitySummaryTab = tab;
+            if (tab === 'comparison' && !$scope.qualityComparison && !$scope.qualityComparisonLoading) {
+                $scope.fetchQualityComparison();
+            }
+        };
+
+        $scope.fetchQualityComparison = function () {
+            $scope.qualityComparisonLoading = true;
+            $scope.qualityComparisonError = null;
+            datasetService.qualityComparison($scope.spec).then(function (data) {
+                $scope.qualityComparison = data;
+                $scope.qualityComparisonLoading = false;
+            }).catch(function (error) {
+                $scope.qualityComparisonError = error.data ? error.data.error : 'Failed to load comparison';
+                $scope.qualityComparisonLoading = false;
             });
         };
 

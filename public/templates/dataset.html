@@ -56,26 +56,40 @@
                 </button>
                 <h4 class="modal-title">
                     <i class="fa fa-pie-chart"></i>
-                    Quality Summary:
-                    <span ng-if="!isSourceAnalysis">Processed</span>
-                    <span ng-if="isSourceAnalysis" style="color: #5bc0de;">Source</span>
-                    Analysis
+                    Quality Summary
                 </h4>
+                <!-- Tabs -->
+                <ul class="nav nav-tabs" style="margin-top: 10px; margin-bottom: -16px;">
+                    <li ng-class="{active: qualitySummaryTab === 'summary'}">
+                        <a href ng-click="switchQualityTab('summary')">
+                            <i class="fa fa-bar-chart"></i>
+                            <span ng-if="!isSourceAnalysis">Processed</span>
+                            <span ng-if="isSourceAnalysis">Source</span>
+                        </a>
+                    </li>
+                    <li ng-class="{active: qualitySummaryTab === 'comparison'}">
+                        <a href ng-click="switchQualityTab('comparison')">
+                            <i class="fa fa-exchange"></i> Comparison
+                        </a>
+                    </li>
+                </ul>
             </div>
             <div class="modal-body">
-                <!-- Loading state -->
-                <div ng-if="qualitySummaryLoading" class="text-center" style="padding: 40px;">
-                    <i class="fa fa-spinner fa-spin fa-3x"></i>
-                    <p style="margin-top: 15px;">Loading quality summary...</p>
-                </div>
+                <!-- ========== SUMMARY TAB ========== -->
+                <div ng-if="qualitySummaryTab === 'summary'">
+                    <!-- Loading state -->
+                    <div ng-if="qualitySummaryLoading" class="text-center" style="padding: 40px;">
+                        <i class="fa fa-spinner fa-spin fa-3x"></i>
+                        <p style="margin-top: 15px;">Loading quality summary...</p>
+                    </div>
 
-                <!-- Error state -->
-                <div ng-if="qualitySummaryError" class="alert alert-danger">
-                    <i class="fa fa-exclamation-triangle"></i> {{ qualitySummaryError }}
-                </div>
+                    <!-- Error state -->
+                    <div ng-if="qualitySummaryError" class="alert alert-danger">
+                        <i class="fa fa-exclamation-triangle"></i> {{ qualitySummaryError }}
+                    </div>
 
-                <!-- Quality summary content -->
-                <div ng-if="qualitySummary && !qualitySummaryLoading">
+                    <!-- Quality summary content -->
+                    <div ng-if="qualitySummary && !qualitySummaryLoading">
                     <!-- Overall Score Card -->
                     <div class="row">
                         <div class="col-md-4">
@@ -554,6 +568,276 @@
                     <div class="alert alert-success" ng-if="qualitySummary.fieldsWithIssues === 0">
                         <i class="fa fa-check-circle"></i>
                         <strong>Great!</strong> No quality issues detected in this dataset.
+                    </div>
+                    </div>
+                </div>
+
+                <!-- ========== COMPARISON TAB ========== -->
+                <div ng-if="qualitySummaryTab === 'comparison'">
+                    <!-- Loading state -->
+                    <div ng-if="qualityComparisonLoading" class="text-center" style="padding: 40px;">
+                        <i class="fa fa-spinner fa-spin fa-3x"></i>
+                        <p style="margin-top: 15px;">Loading comparison data...</p>
+                    </div>
+
+                    <!-- Error state -->
+                    <div ng-if="qualityComparisonError" class="alert alert-danger">
+                        <i class="fa fa-exclamation-triangle"></i> {{ qualityComparisonError }}
+                    </div>
+
+                    <!-- Comparison content -->
+                    <div ng-if="qualityComparison && !qualityComparisonLoading">
+                        <!-- Availability warning -->
+                        <div class="alert alert-warning" ng-if="!qualityComparison.sourceAvailable || !qualityComparison.processedAvailable">
+                            <i class="fa fa-exclamation-triangle"></i>
+                            <span ng-if="!qualityComparison.sourceAvailable">Source analysis not available. </span>
+                            <span ng-if="!qualityComparison.processedAvailable">Processed analysis not available. </span>
+                            Run both analyses to see full comparison.
+                        </div>
+
+                        <!-- Summary comparison cards -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="panel panel-default">
+                                    <div class="panel-heading text-center">
+                                        <h4 style="margin: 0;">
+                                            <span class="text-info">{{ qualityComparison.sourceLeafFields }}</span>
+                                            <i class="fa fa-arrow-right" style="margin: 0 10px; color: #999;"></i>
+                                            <span class="text-primary">{{ qualityComparison.processedLeafFields }}</span>
+                                        </h4>
+                                        <small>
+                                            Fields
+                                            <span ng-if="qualityComparison.fieldCountDelta > 0" class="text-success">
+                                                (+{{ qualityComparison.fieldCountDelta }})
+                                            </span>
+                                            <span ng-if="qualityComparison.fieldCountDelta < 0" class="text-danger">
+                                                ({{ qualityComparison.fieldCountDelta }})
+                                            </span>
+                                            <span ng-if="qualityComparison.fieldCountDelta === 0" class="text-muted">
+                                                (no change)
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="panel panel-default">
+                                    <div class="panel-heading text-center">
+                                        <h4 style="margin: 0;">
+                                            <span class="text-info">{{ qualityComparison.sourceOverallScore | number:1 }}%</span>
+                                            <i class="fa fa-arrow-right" style="margin: 0 10px; color: #999;"></i>
+                                            <span class="text-primary">{{ qualityComparison.processedOverallScore | number:1 }}%</span>
+                                        </h4>
+                                        <small>
+                                            Quality Score
+                                            <span ng-if="qualityComparison.overallScoreDelta > 0" class="text-success">
+                                                (+{{ qualityComparison.overallScoreDelta | number:1 }})
+                                            </span>
+                                            <span ng-if="qualityComparison.overallScoreDelta < 0" class="text-danger">
+                                                ({{ qualityComparison.overallScoreDelta | number:1 }})
+                                            </span>
+                                            <span ng-if="qualityComparison.overallScoreDelta === 0" class="text-muted">
+                                                (no change)
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="panel panel-default">
+                                    <div class="panel-heading text-center">
+                                        <h4 style="margin: 0;">
+                                            <span class="text-info">{{ qualityComparison.sourceFieldsWithIssues }}</span>
+                                            <i class="fa fa-arrow-right" style="margin: 0 10px; color: #999;"></i>
+                                            <span class="text-primary">{{ qualityComparison.processedFieldsWithIssues }}</span>
+                                        </h4>
+                                        <small>
+                                            Fields with Issues
+                                            <span ng-if="qualityComparison.issuesDelta < 0" class="text-success">
+                                                ({{ qualityComparison.issuesDelta }})
+                                            </span>
+                                            <span ng-if="qualityComparison.issuesDelta > 0" class="text-danger">
+                                                (+{{ qualityComparison.issuesDelta }})
+                                            </span>
+                                            <span ng-if="qualityComparison.issuesDelta === 0" class="text-muted">
+                                                (no change)
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Completeness change summary -->
+                        <div class="row" style="margin-top: 10px;">
+                            <div class="col-md-4">
+                                <div class="panel panel-success">
+                                    <div class="panel-heading text-center">
+                                        <h4 style="margin: 0;"><i class="fa fa-arrow-up"></i> {{ qualityComparison.completenessImproved }}</h4>
+                                        <small>Fields with Improved Completeness</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="panel panel-danger">
+                                    <div class="panel-heading text-center">
+                                        <h4 style="margin: 0;"><i class="fa fa-arrow-down"></i> {{ qualityComparison.completenessDecreased }}</h4>
+                                        <small>Fields with Decreased Completeness</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="panel panel-default">
+                                    <div class="panel-heading text-center">
+                                        <h4 style="margin: 0;"><i class="fa fa-check"></i> {{ qualityComparison.fieldsUnchanged }}</h4>
+                                        <small>Fields Unchanged</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fields only in source (lost in processing) -->
+                        <div class="panel panel-warning" ng-if="qualityComparison.fieldsOnlyInSource.length > 0" style="margin-top: 15px;">
+                            <div class="panel-heading" style="cursor: pointer;"
+                                 ng-click="qsToggles.showFieldsOnlyInSource = !qsToggles.showFieldsOnlyInSource">
+                                <strong><i class="fa fa-minus-circle"></i> Fields Lost in Processing</strong>
+                                <span class="badge" style="margin-left: 5px;">{{ qualityComparison.fieldsOnlyInSource.length }}</span>
+                                <i class="fa pull-right" style="margin-top: 3px;"
+                                   ng-class="{'fa-chevron-up': qsToggles.showFieldsOnlyInSource, 'fa-chevron-down': !qsToggles.showFieldsOnlyInSource}"></i>
+                            </div>
+                            <div ng-if="qsToggles.showFieldsOnlyInSource">
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th>Field</th>
+                                                <th class="text-right">Source Completeness</th>
+                                                <th class="text-right">Source Uniqueness</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="field in qualityComparison.fieldsOnlyInSource">
+                                                <td>
+                                                    <code>{{ field.tag }}</code>
+                                                    <br><small class="text-muted">{{ field.path }}</small>
+                                                </td>
+                                                <td class="text-right">{{ field.sourceCompleteness | number:1 }}%</td>
+                                                <td class="text-right">{{ field.sourceUniqueness | number:1 }}%</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fields only in processed (new) -->
+                        <div class="panel panel-info" ng-if="qualityComparison.fieldsOnlyInProcessed.length > 0">
+                            <div class="panel-heading" style="cursor: pointer;"
+                                 ng-click="qsToggles.showFieldsOnlyInProcessed = !qsToggles.showFieldsOnlyInProcessed">
+                                <strong><i class="fa fa-plus-circle"></i> New Fields in Processed</strong>
+                                <span class="badge" style="margin-left: 5px;">{{ qualityComparison.fieldsOnlyInProcessed.length }}</span>
+                                <i class="fa pull-right" style="margin-top: 3px;"
+                                   ng-class="{'fa-chevron-up': qsToggles.showFieldsOnlyInProcessed, 'fa-chevron-down': !qsToggles.showFieldsOnlyInProcessed}"></i>
+                            </div>
+                            <div ng-if="qsToggles.showFieldsOnlyInProcessed">
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th>Field</th>
+                                                <th class="text-right">Processed Completeness</th>
+                                                <th class="text-right">Processed Uniqueness</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="field in qualityComparison.fieldsOnlyInProcessed">
+                                                <td>
+                                                    <code>{{ field.tag }}</code>
+                                                    <br><small class="text-muted">{{ field.path }}</small>
+                                                </td>
+                                                <td class="text-right">{{ field.processedCompleteness | number:1 }}%</td>
+                                                <td class="text-right">{{ field.processedUniqueness | number:1 }}%</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fields with changes -->
+                        <div class="panel panel-default" ng-if="qualityComparison.fieldsWithChanges.length > 0">
+                            <div class="panel-heading" style="cursor: pointer;"
+                                 ng-click="qsToggles.showFieldsWithChanges = !qsToggles.showFieldsWithChanges">
+                                <strong><i class="fa fa-exchange"></i> Fields with Changes</strong>
+                                <span class="badge" style="margin-left: 5px;">{{ qualityComparison.fieldsWithChanges.length }}</span>
+                                <i class="fa pull-right" style="margin-top: 3px;"
+                                   ng-class="{'fa-chevron-up': qsToggles.showFieldsWithChanges, 'fa-chevron-down': !qsToggles.showFieldsWithChanges}"></i>
+                            </div>
+                            <div ng-if="qsToggles.showFieldsWithChanges">
+                                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                    <table class="table table-condensed table-hover" style="margin-bottom: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th>Field</th>
+                                                <th class="text-center">Completeness</th>
+                                                <th class="text-center">Uniqueness</th>
+                                                <th class="text-center">Issues</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="field in qualityComparison.fieldsWithChanges">
+                                                <td>
+                                                    <code>{{ field.tag }}</code>
+                                                    <br><small class="text-muted">{{ field.path }}</small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="text-muted">{{ field.sourceCompleteness | number:1 }}%</span>
+                                                    <i class="fa fa-arrow-right" style="margin: 0 5px; color: #ccc;"></i>
+                                                    <span>{{ field.processedCompleteness | number:1 }}%</span>
+                                                    <br>
+                                                    <small ng-if="field.completenessDelta > 0" class="text-success">
+                                                        <i class="fa fa-arrow-up"></i> +{{ field.completenessDelta | number:1 }}
+                                                    </small>
+                                                    <small ng-if="field.completenessDelta < 0" class="text-danger">
+                                                        <i class="fa fa-arrow-down"></i> {{ field.completenessDelta | number:1 }}
+                                                    </small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="text-muted">{{ field.sourceUniqueness | number:1 }}%</span>
+                                                    <i class="fa fa-arrow-right" style="margin: 0 5px; color: #ccc;"></i>
+                                                    <span>{{ field.processedUniqueness | number:1 }}%</span>
+                                                    <br>
+                                                    <small ng-if="field.uniquenessDelta > 0" class="text-success">
+                                                        <i class="fa fa-arrow-up"></i> +{{ field.uniquenessDelta | number:1 }}
+                                                    </small>
+                                                    <small ng-if="field.uniquenessDelta < 0" class="text-danger">
+                                                        <i class="fa fa-arrow-down"></i> {{ field.uniquenessDelta | number:1 }}
+                                                    </small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="text-muted">{{ field.sourceIssueCount }}</span>
+                                                    <i class="fa fa-arrow-right" style="margin: 0 5px; color: #ccc;"></i>
+                                                    <span>{{ field.processedIssueCount }}</span>
+                                                    <br>
+                                                    <small ng-if="field.issueCountDelta < 0" class="text-success">
+                                                        <i class="fa fa-check"></i> {{ field.issueCountDelta }}
+                                                    </small>
+                                                    <small ng-if="field.issueCountDelta > 0" class="text-danger">
+                                                        <i class="fa fa-exclamation-triangle"></i> +{{ field.issueCountDelta }}
+                                                    </small>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No changes message -->
+                        <div class="alert alert-success" ng-if="qualityComparison.fieldsOnlyInSource.length === 0 && qualityComparison.fieldsOnlyInProcessed.length === 0 && qualityComparison.fieldsWithChanges.length === 0">
+                            <i class="fa fa-check-circle"></i>
+                            <strong>Great!</strong> No significant differences between source and processed analysis.
+                        </div>
                     </div>
                 </div>
             </div>

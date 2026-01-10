@@ -105,6 +105,63 @@ object QualitySummary {
 }
 
 /**
+ * Field comparison between source and processed
+ */
+case class FieldComparison(
+  path: String,
+  tag: String,
+  sourceCompleteness: Option[Double],
+  processedCompleteness: Option[Double],
+  completenessDelta: Option[Double],  // processed - source (positive = improved)
+  sourceUniqueness: Option[Double],
+  processedUniqueness: Option[Double],
+  uniquenessDelta: Option[Double],
+  sourceIssueCount: Option[Int],
+  processedIssueCount: Option[Int],
+  issueCountDelta: Option[Int],  // processed - source (negative = improved)
+  status: String  // "source_only", "processed_only", "both", "changed", "unchanged"
+)
+
+object FieldComparison {
+  implicit val writes: Writes[FieldComparison] = Json.writes[FieldComparison]
+}
+
+/**
+ * Quality comparison between source and processed analysis
+ */
+case class QualityComparison(
+  // Summary metrics
+  sourceLeafFields: Int,
+  processedLeafFields: Int,
+  fieldCountDelta: Int,  // processed - source
+  sourceTotalRecords: Int,
+  processedTotalRecords: Int,
+  sourceOverallScore: Double,
+  processedOverallScore: Double,
+  overallScoreDelta: Double,
+  sourceFieldsWithIssues: Int,
+  processedFieldsWithIssues: Int,
+  issuesDelta: Int,
+  // Field lists
+  fieldsOnlyInSource: List[FieldComparison],  // Lost in processing
+  fieldsOnlyInProcessed: List[FieldComparison],  // Gained/new in processing
+  fieldsWithChanges: List[FieldComparison],  // In both, but metrics changed
+  fieldsUnchanged: Int,  // Count of fields with no significant changes
+  // Completeness comparison
+  sourceAvgCompleteness: Double,
+  processedAvgCompleteness: Double,
+  completenessImproved: Int,  // Fields where completeness increased
+  completenessDecreased: Int,  // Fields where completeness decreased
+  // Available flag
+  sourceAvailable: Boolean,
+  processedAvailable: Boolean
+)
+
+object QualityComparison {
+  implicit val writes: Writes[QualityComparison] = Json.writes[QualityComparison]
+}
+
+/**
  * Service for computing quality summaries from analysis data
  */
 @Singleton
@@ -634,5 +691,203 @@ class QualitySummaryService @Inject()(
     }
 
     sb.toString()
+  }
+
+  /**
+   * Compare quality between source and processed analysis
+   */
+  def getQualityComparison(spec: String): Option[QualityComparison] = {
+    val sourceSummary = getQualitySummary(spec, isSource = true)
+    val processedSummary = getQualitySummary(spec, isSource = false)
+
+    // Need at least one summary to return comparison
+    if (sourceSummary.isEmpty && processedSummary.isEmpty) {
+      return None
+    }
+
+    // Build field maps for comparison
+    val sourceFields = sourceSummary.map(s =>
+      s.problematicFields.map(f => f.path -> f).toMap ++
+      s.allFields.map(f => f.path -> f).toMap
+    ).getOrElse(Map.empty)
+
+    // For processed, we need all leaf fields, not just problematic ones
+    // Get them from the raw collectFields call
+    val processedFields = processedSummary.map(s =>
+      s.problematicFields.map(f => f.path -> f).toMap ++
+      s.allFields.map(f => f.path -> f).toMap
+    ).getOrElse(Map.empty)
+
+    // If allFields is empty (scores disabled), we need to get fields differently
+    val sourceFieldsComplete = if (sourceFields.isEmpty && sourceSummary.isDefined) {
+      getFieldsMap(spec, isSource = true)
+    } else sourceFields
+
+    val processedFieldsComplete = if (processedFields.isEmpty && processedSummary.isDefined) {
+      getFieldsMap(spec, isSource = false)
+    } else processedFields
+
+    val allPaths = sourceFieldsComplete.keySet ++ processedFieldsComplete.keySet
+
+    // Classify fields
+    var fieldsOnlyInSource = List.empty[FieldComparison]
+    var fieldsOnlyInProcessed = List.empty[FieldComparison]
+    var fieldsWithChanges = List.empty[FieldComparison]
+    var fieldsUnchangedCount = 0
+    var completenessImproved = 0
+    var completenessDecreased = 0
+
+    allPaths.foreach { path =>
+      val sourceField = sourceFieldsComplete.get(path)
+      val processedField = processedFieldsComplete.get(path)
+
+      (sourceField, processedField) match {
+        case (Some(sf), None) =>
+          // Field only in source (lost in processing)
+          fieldsOnlyInSource = FieldComparison(
+            path = path,
+            tag = sf.tag,
+            sourceCompleteness = Some(sf.completeness),
+            processedCompleteness = None,
+            completenessDelta = None,
+            sourceUniqueness = Some(sf.uniqueness),
+            processedUniqueness = None,
+            uniquenessDelta = None,
+            sourceIssueCount = Some(sf.issueCount),
+            processedIssueCount = None,
+            issueCountDelta = None,
+            status = "source_only"
+          ) :: fieldsOnlyInSource
+
+        case (None, Some(pf)) =>
+          // Field only in processed (new/gained)
+          fieldsOnlyInProcessed = FieldComparison(
+            path = path,
+            tag = pf.tag,
+            sourceCompleteness = None,
+            processedCompleteness = Some(pf.completeness),
+            completenessDelta = None,
+            sourceUniqueness = None,
+            processedUniqueness = Some(pf.uniqueness),
+            uniquenessDelta = None,
+            sourceIssueCount = None,
+            processedIssueCount = Some(pf.issueCount),
+            issueCountDelta = None,
+            status = "processed_only"
+          ) :: fieldsOnlyInProcessed
+
+        case (Some(sf), Some(pf)) =>
+          // Field in both - check for changes
+          val completenessDelta = pf.completeness - sf.completeness
+          val uniquenessDelta = pf.uniqueness - sf.uniqueness
+          val issueCountDelta = pf.issueCount - sf.issueCount
+
+          // Track completeness changes
+          if (completenessDelta > 1) completenessImproved += 1
+          else if (completenessDelta < -1) completenessDecreased += 1
+
+          // Consider changed if any metric differs significantly
+          val hasSignificantChange =
+            Math.abs(completenessDelta) > 1 ||
+            Math.abs(uniquenessDelta) > 1 ||
+            issueCountDelta != 0
+
+          if (hasSignificantChange) {
+            fieldsWithChanges = FieldComparison(
+              path = path,
+              tag = sf.tag,
+              sourceCompleteness = Some(sf.completeness),
+              processedCompleteness = Some(pf.completeness),
+              completenessDelta = Some(Math.round(completenessDelta * 10) / 10.0),
+              sourceUniqueness = Some(sf.uniqueness),
+              processedUniqueness = Some(pf.uniqueness),
+              uniquenessDelta = Some(Math.round(uniquenessDelta * 10) / 10.0),
+              sourceIssueCount = Some(sf.issueCount),
+              processedIssueCount = Some(pf.issueCount),
+              issueCountDelta = Some(issueCountDelta),
+              status = "changed"
+            ) :: fieldsWithChanges
+          } else {
+            fieldsUnchangedCount += 1
+          }
+
+        case _ => // Should not happen
+      }
+    }
+
+    // Sort lists
+    fieldsOnlyInSource = fieldsOnlyInSource.sortBy(_.path)
+    fieldsOnlyInProcessed = fieldsOnlyInProcessed.sortBy(_.path)
+    fieldsWithChanges = fieldsWithChanges.sortBy(f => (-Math.abs(f.completenessDelta.getOrElse(0.0)), f.path))
+
+    // Calculate averages
+    val sourceAvgCompleteness = sourceSummary.map { s =>
+      if (s.leafFields > 0) s.completenessDistribution.map {
+        case ("excellent", c) => c * 95.0
+        case ("good", c) => c * 80.0
+        case ("fair", c) => c * 60.0
+        case ("poor", c) => c * 25.0
+        case _ => 0.0
+      }.sum / s.leafFields else 0.0
+    }.getOrElse(0.0)
+
+    val processedAvgCompleteness = processedSummary.map { s =>
+      if (s.leafFields > 0) s.completenessDistribution.map {
+        case ("excellent", c) => c * 95.0
+        case ("good", c) => c * 80.0
+        case ("fair", c) => c * 60.0
+        case ("poor", c) => c * 25.0
+        case _ => 0.0
+      }.sum / s.leafFields else 0.0
+    }.getOrElse(0.0)
+
+    Some(QualityComparison(
+      sourceLeafFields = sourceSummary.map(_.leafFields).getOrElse(0),
+      processedLeafFields = processedSummary.map(_.leafFields).getOrElse(0),
+      fieldCountDelta = processedSummary.map(_.leafFields).getOrElse(0) - sourceSummary.map(_.leafFields).getOrElse(0),
+      sourceTotalRecords = sourceSummary.map(_.totalRecords).getOrElse(0),
+      processedTotalRecords = processedSummary.map(_.totalRecords).getOrElse(0),
+      sourceOverallScore = sourceSummary.map(_.overallScore).getOrElse(0.0),
+      processedOverallScore = processedSummary.map(_.overallScore).getOrElse(0.0),
+      overallScoreDelta = Math.round((processedSummary.map(_.overallScore).getOrElse(0.0) -
+                                      sourceSummary.map(_.overallScore).getOrElse(0.0)) * 10) / 10.0,
+      sourceFieldsWithIssues = sourceSummary.map(_.fieldsWithIssues).getOrElse(0),
+      processedFieldsWithIssues = processedSummary.map(_.fieldsWithIssues).getOrElse(0),
+      issuesDelta = processedSummary.map(_.fieldsWithIssues).getOrElse(0) -
+                    sourceSummary.map(_.fieldsWithIssues).getOrElse(0),
+      fieldsOnlyInSource = fieldsOnlyInSource,
+      fieldsOnlyInProcessed = fieldsOnlyInProcessed,
+      fieldsWithChanges = fieldsWithChanges,
+      fieldsUnchanged = fieldsUnchangedCount,
+      sourceAvgCompleteness = Math.round(sourceAvgCompleteness * 10) / 10.0,
+      processedAvgCompleteness = Math.round(processedAvgCompleteness * 10) / 10.0,
+      completenessImproved = completenessImproved,
+      completenessDecreased = completenessDecreased,
+      sourceAvailable = sourceSummary.isDefined,
+      processedAvailable = processedSummary.isDefined
+    ))
+  }
+
+  /**
+   * Get a map of all fields for comparison (when allFields is empty)
+   */
+  private def getFieldsMap(spec: String, isSource: Boolean): Map[String, FieldQuality] = {
+    val ctx = orgContext.datasetContext(spec)
+    val indexFile = if (isSource) ctx.sourceIndex else ctx.index
+
+    if (!indexFile.exists()) {
+      return Map.empty
+    }
+
+    try {
+      val indexJson = Json.parse(FileUtils.readFileToString(indexFile, "UTF-8"))
+      val allFields = collectFields(indexJson, ctx, isSource)
+      val leafFields = allFields.filter(f => f.recordsWithValue > 0 || f.completeness > 0)
+      leafFields.map(f => f.path -> f).toMap
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to get fields map for $spec: ${e.getMessage}", e)
+        Map.empty
+    }
   }
 }

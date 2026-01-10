@@ -68,6 +68,7 @@ GET         /narthex/app/dataset/:spec/quality-summary                       con
 GET         /narthex/app/dataset/:spec/source-quality-summary                controllers.AppController.sourceQualitySummary(spec)
 GET         /narthex/app/dataset/:spec/export-quality-json                   controllers.AppController.exportQualitySummaryJson(spec, isSource: Boolean ?= false)
 GET         /narthex/app/dataset/:spec/export-quality-csv                    controllers.AppController.exportQualitySummaryCsv(spec, isSource: Boolean ?= false)
+GET         /narthex/app/dataset/:spec/quality-comparison                    controllers.AppController.qualityComparison(spec)
 
 GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)

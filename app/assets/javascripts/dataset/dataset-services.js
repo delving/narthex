@@ -148,6 +148,14 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                qualityComparison: function (spec) {
+                    return app.qualityComparison(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }
