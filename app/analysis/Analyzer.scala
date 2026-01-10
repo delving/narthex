@@ -40,11 +40,24 @@ import scala.util.{Failure, Success}
 
 object Analyzer {
 
-  case class AnalyzeFile(file: File, processed: Boolean)
+  /** Analysis type enumeration - replaces boolean processed flag */
+  object AnalysisType extends Enumeration {
+    type AnalysisType = Value
+    val RAW, SOURCE, PROCESSED = Value
+  }
+  import AnalysisType._
+
+  /** Message to start analysis. Optional treeRoot and indexFile for source analysis. */
+  case class AnalyzeFile(
+    file: File,
+    analysisType: AnalysisType,
+    treeRoot: Option[NodeRepo] = None,
+    indexFile: Option[File] = None
+  )
 
   case class AnalysisTreeComplete(json: JsValue)
 
-  case class AnalysisComplete(error: Option[String], processed: Boolean)
+  case class AnalysisComplete(error: Option[String], analysisType: AnalysisType)
 
   def props(datasetContext: DatasetContext) = Props(new Analyzer(datasetContext))
 
@@ -53,13 +66,17 @@ object Analyzer {
 class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLogging {
 
   import context.dispatcher
+  import Analyzer.AnalysisType
+  import Analyzer.AnalysisType._
 
   val LINE = """^ *(\d*) (.*)$""".r
   var progress: Option[ProgressReporter] = None
   var sorters = List.empty[ActorRef]
   var collators = List.empty[ActorRef]
   var recordCount = 0
-  var processedOpt: Option[Boolean] = None
+  var analysisTypeOpt: Option[AnalysisType] = None
+  var customTreeRoot: Option[NodeRepo] = None
+  var customIndexFile: Option[File] = None
 
   override val supervisorStrategy = OneForOneStrategy() {
     case throwable: Throwable =>
@@ -69,17 +86,25 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
 
   def receive = {
 
-    case AnalyzeFile(file, processed) => actorWork(context) {
-      log.info(s"Analyzer on $file processed=$processed")
-      processedOpt = Some(processed)
-      datasetContext.dropTree()
+    case AnalyzeFile(file, analysisType, treeRootOpt, indexFileOpt) => actorWork(context) {
+      log.info(s"Analyzer on $file analysisType=$analysisType")
+      analysisTypeOpt = Some(analysisType)
+      customTreeRoot = treeRootOpt
+      customIndexFile = indexFileOpt
+
+      // Only drop tree if no custom root (DatasetActor handles cleanup for source)
+      if (customTreeRoot.isEmpty) {
+        datasetContext.dropTree()
+      }
+
       Future {
         val (source, readProgress) = sourceFromFile(file)
         try {
           val progressReporter = ProgressReporter(SPLITTING, context.parent)
           progressReporter.setReadProgress(readProgress)
           progress = Some(progressReporter)
-          val tree = TreeNode(source, processed, datasetContext, progressReporter)
+          val tree = TreeNode(source, analysisType, datasetContext, progressReporter,
+                              customTreeRoot, customIndexFile)
           progress.get.checkInterrupt()
           tree.launchSorters { node =>
             if (node.lengths.isEmpty) {
@@ -151,7 +176,7 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
           deleteQuietly(nodeRepo.counted)
           progress.foreach { p =>
             if (sorters.isEmpty && collators.isEmpty) {
-              context.parent ! AnalysisComplete(None, processedOpt.get)
+              context.parent ! AnalysisComplete(None, analysisTypeOpt.get)
             }
             else {
               p.sendWorkers(sorters.size + collators.size)

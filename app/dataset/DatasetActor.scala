@@ -23,7 +23,7 @@ import akka.actor.OneForOneStrategy
 import akka.actor._
 import scala.concurrent.duration._
 import analysis.Analyzer
-import analysis.Analyzer.{AnalysisComplete, AnalyzeFile}
+import analysis.Analyzer.{AnalysisComplete, AnalyzeFile, AnalysisType}
 import dataset.DatasetActor._
 import dataset.DsInfo.DsState._
 import dataset.SourceRepo.SourceFacts
@@ -140,6 +140,8 @@ object DatasetActor {
   case class Command(name: String)
 
   case class StartAnalysis(processed: Boolean)
+
+  case class StartSourceAnalysis()
 
   case class Scheduled(modifiedAfter: Option[DateTime], file: File)
 
@@ -432,6 +434,10 @@ class DatasetActor(val datasetContext: DatasetContext,
             self ! StartAnalysis(processed = true)
             "analysis started"
 
+          case "start source analysis" =>
+            self ! StartSourceAnalysis()
+            "source analysis started"
+
           case "start saving" =>
             // full save, not incremental
             self ! StartSaving(None)
@@ -690,7 +696,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         val analyzer = createChildActor(
           Analyzer.props(datasetContext), "analyzer-processed")
         analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile,
-                               processed)
+                               AnalysisType.PROCESSED)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       } else {
         // Raw analysis: clean up all downstream workflow states (they're now stale)
@@ -709,8 +715,28 @@ class DatasetActor(val datasetContext: DatasetContext,
           throw new Exception(s"Unable to find 'raw' file to analyze"))
         val analyzer = createChildActor(
           Analyzer.props(datasetContext), "analyzer-raw")
-        analyzer ! AnalyzeFile(rawFile, processed = false)
+        analyzer ! AnalyzeFile(rawFile, AnalysisType.RAW)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
+      }
+
+    case Event(StartSourceAnalysis(), Dormant) =>
+      // Auto-enable: remove disabled state when starting any workflow
+      dsInfo.removeState(DISABLED)
+      datasetContext.dropSourceTree()  // Clean source tree before analysis
+      log.info(s"Start source analysis for ${dsInfo.spec}")
+
+      // Use source.xml.gz from the SIP file (created during SIP generation)
+      datasetContext.sipRepo.latestSipOpt.flatMap(_.copySourceToTempFile) match {
+        case Some(sourceFile) =>
+          val analyzer = createChildActor(
+            Analyzer.props(datasetContext), "analyzer-source")
+          analyzer ! AnalyzeFile(sourceFile, AnalysisType.SOURCE,
+                                 Some(datasetContext.sourceTreeRoot),
+                                 Some(datasetContext.sourceIndex))
+          goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
+        case None =>
+          log.warning(s"No SIP with source.xml.gz available for ${dsInfo.spec}")
+          stay() using Dormant
       }
 
     case Event(StartProcessing(scheduledOpt), Dormant) =>
@@ -946,11 +972,18 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   when(Analyzing) {
 
-    case Event(AnalysisComplete(errorOption, processed), active: Active) =>
-      val dsState = if (processed) ANALYZED else RAW_ANALYZED
+    case Event(AnalysisComplete(errorOption, analysisType), active: Active) =>
+      val dsState = analysisType match {
+        case AnalysisType.PROCESSED => ANALYZED
+        case AnalysisType.SOURCE => SOURCE_ANALYZED
+        case AnalysisType.RAW => RAW_ANALYZED
+      }
       if (errorOption.isDefined) {
         dsInfo.removeState(dsState)
-        datasetContext.dropTree()
+        analysisType match {
+          case AnalysisType.SOURCE => datasetContext.dropSourceTree()
+          case _ => datasetContext.dropTree()
+        }
       } else {
         dsInfo.setState(dsState)
       }
@@ -1235,7 +1268,7 @@ class DatasetActor(val datasetContext: DatasetContext,
           case Some(file) =>
             dsInfo.setState(RAW)
             val analyzer = createChildActor(Analyzer.props(datasetContext), "analyzer")
-            analyzer ! AnalyzeFile(file, processed = false)
+            analyzer ! AnalyzeFile(file, AnalysisType.RAW)
             goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
           case None =>
             goto(Idle) using Dormant

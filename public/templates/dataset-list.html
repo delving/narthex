@@ -332,6 +332,7 @@
                                             stateRaw: 'raw',
                                             stateRawAnalyzed: 'raw-analyzed',
                                             stateSourced: 'sourced',
+                                            stateSourceAnalyzed: 'source-analyzed',
                                             stateMappable: 'mappable',
                                             stateInError:'error',
                                             stateProcessable:'processable',
@@ -345,6 +346,7 @@
                                     <span ng-switch-when="stateRaw">Raw source</span>
                                     <span ng-switch-when="stateRawAnalyzed">Raw source analyzed</span>
                                     <span ng-switch-when="stateSourced">Sourced</span>
+                                    <span ng-switch-when="stateSourceAnalyzed">Source analyzed</span>
                                     <span ng-switch-when="stateMappable">Mappable</span>
                                     <span ng-switch-when="stateProcessable">Processable</span>
                                     <span ng-switch-when="stateIncrementalSaved">Incremental Processed</span>
@@ -424,6 +426,10 @@
                                         dataset.stateSourced.t }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
+                                    <a href data-ng-click="start('start source analysis')">
+                                        <i class="fa fa-fw fa-bar-chart"></i>
+                                        <span>Analyze Source</span>
+                                    </a>
                                     <a href data-ng-click="start('start generating sip')">
                                         <i class="fa fa-fw fa-cube"></i>
                                         <span>Make SIP</span>
@@ -431,6 +437,24 @@
                                     <a href data-ng-click="fastSave(dataset, 'stateSourced')" ng-disabled="dataset.isActive || datasetBusy">
                                         <i class="fa fa-fw fa-bolt"></i>
                                         <span>Fast Save</span>
+                                    </a>
+                                </div>
+                            </li>
+                            <li data-ng-show="dataset.stateSourceAnalyzed" class="ds-state list-group-item"
+                                data-ng-class="{ 'later': isCurrent('stateSourceAnalyzed') }">
+                                <h4 class="list-group-item-heading">
+                                    Source Analyzed
+                                    <small class="badge">{{ dataset.stateSourceAnalyzed.d }} {{
+                                        dataset.stateSourceAnalyzed.t }}</small>
+                                </h4>
+                                <div class="btn-toolbar">
+                                    <a href data-ng-click="viewSourceAnalysis(dataset)">
+                                        <i class="fa fa-fw fa-sitemap"></i>
+                                        <span>View Source Tree</span>
+                                    </a>
+                                    <a href data-ng-click="start('start source analysis')">
+                                        <i class="fa fa-fw fa-refresh"></i>
+                                        <span>Re-analyze</span>
                                     </a>
                                 </div>
                             </li>

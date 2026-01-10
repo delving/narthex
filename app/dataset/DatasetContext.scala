@@ -50,6 +50,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   val sipsDir = new File(rootDir, "sips")
   val sourceDir = new File(rootDir, "source")
   val treeDir = new File(rootDir, "tree")
+  val sourceTreeDir = new File(rootDir, "sourceTree")
   val processedDir = new File(rootDir, "processed")
   val harvestLogger = new File(rootDir, "harvesting_log.txt")
   val activityLog = new File(rootDir, "activity.jsonl")
@@ -63,6 +64,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def sipFiles = orgContext.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${dsInfo}__")).sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
+  val sourceTreeRoot = new NodeRepo(this, sourceTreeDir)
 
   // Use org-level sipsDir to match where createSipFile writes
   lazy val sipRepo = new SipRepo(orgContext.sipsDir, dsInfo.spec, orgContext.appConfig.rdfBaseUrl)
@@ -236,6 +238,12 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     logger.debug("Dropping analysis tree")
   }
 
+  def dropSourceTree() = {
+    deleteQuietly(sourceTreeDir)
+    dsInfo.removeState(SOURCE_ANALYZED)
+    logger.debug("Dropping source analysis tree")
+  }
+
   def dropRecords = {
     dsInfo.removeState(SAVED)
     dsInfo.dropDatasetRecords
@@ -285,6 +293,38 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def uniqueText(path: String): Option[File] = nodeRepo(path).map(_.uniqueText)
 
   def histogramText(path: String): Option[File] = nodeRepo(path).map(_.histogramText)
+
+  // ==================================================
+  // Source Analysis Methods
+
+  def sourceIndex = new File(sourceTreeDir, "index.json")
+
+  def sourceNodeRepo(path: String): Option[NodeRepo] = {
+    val nodeDir = path.split('/').toList.foldLeft(sourceTreeDir)((file, tag) => new File(file, pathToDirectory(tag)))
+    if (nodeDir.exists()) Some(new NodeRepo(this, nodeDir)) else None
+  }
+
+  def sourceStatus(path: String): Option[File] = sourceNodeRepo(path).map(_.status)
+
+  def sourceSample(path: String, size: Int): Option[File] = {
+    sourceNodeRepo(path) match {
+      case None => None
+      case Some(repo) =>
+        val fileList = repo.sampleJson.filter(pair => pair._1 == size)
+        if (fileList.isEmpty) None else Some(fileList.head._2)
+    }
+  }
+
+  def sourceHistogram(path: String, size: Int): Option[File] = sourceNodeRepo(path).map { repo =>
+    val fileList = repo.histogramJson.filter(pair => pair._1 == size)
+    fileList.headOption.map(_._2)
+  } getOrElse None
+
+  def sourceUriText(path: String): Option[File] = sourceNodeRepo(path).map(_.uriText)
+
+  def sourceUniqueText(path: String): Option[File] = sourceNodeRepo(path).map(_.uniqueText)
+
+  def sourceHistogramText(path: String): Option[File] = sourceNodeRepo(path).map(_.histogramText)
 
   override def toString = dsInfo.toString
 

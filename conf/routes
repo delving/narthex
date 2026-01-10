@@ -57,6 +57,12 @@ GET         /narthex/app/dataset/:spec/status/*path                          con
 GET         /narthex/app/dataset/:spec/sample/:size/*path                    controllers.AppController.sample(spec, path, size:Int)
 GET         /narthex/app/dataset/:spec/histogram/:size/*path                 controllers.AppController.histogram(spec, path, size:Int)
 
+# Source analysis stats
+GET         /narthex/app/dataset/:spec/source-index                          controllers.AppController.sourceIndex(spec)
+GET         /narthex/app/dataset/:spec/source-status/*path                   controllers.AppController.sourceNodeStatus(spec, path)
+GET         /narthex/app/dataset/:spec/source-sample/:size/*path             controllers.AppController.sourceSample(spec, path, size:Int)
+GET         /narthex/app/dataset/:spec/source-histogram/:size/*path          controllers.AppController.sourceHistogram(spec, path, size:Int)
+
 GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)
 + nocsrf

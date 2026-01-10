@@ -477,6 +477,35 @@ class AppController @Inject() (
     }
   }
 
+  // ====== source analysis stats files =====
+
+  def sourceIndex(spec: String) = Action { request =>
+    val indexFile = orgContext.datasetContext(spec).sourceIndex
+    if (indexFile.exists()) Utils.okFile(indexFile)
+    else NotFound(Json.obj("error" -> "Source not analyzed"))
+  }
+
+  def sourceNodeStatus(spec: String, path: String) = Action { request =>
+    orgContext.datasetContext(spec).sourceStatus(path) match {
+      case None => NotFound(Json.obj("path" -> path))
+      case Some(file) => Utils.okFile(file)
+    }
+  }
+
+  def sourceSample(spec: String, path: String, size: Int) = Action { request =>
+    orgContext.datasetContext(spec).sourceSample(path, size) match {
+      case None => NotFound(Json.obj("path" -> path, "size" -> size))
+      case Some(file) => Utils.okFile(file)
+    }
+  }
+
+  def sourceHistogram(spec: String, path: String, size: Int) = Action { request =>
+    orgContext.datasetContext(spec).sourceHistogram(path, size) match {
+      case None => NotFound(Json.obj("path" -> path, "size" -> size))
+      case Some(file) => Utils.okFile(file)
+    }
+  }
+
   def setRecordDelimiter(spec: String) = Action(parse.json) { request =>
     val datasetContext = orgContext.datasetContext(spec)
     // todo: recordContainer instead perhaps

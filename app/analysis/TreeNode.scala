@@ -16,6 +16,7 @@
 
 package analysis
 
+import java.io.File
 import analysis.TreeNode.LengthHistogram
 import dataset.DatasetContext
 import org.apache.commons.io.FileUtils
@@ -38,10 +39,17 @@ object TreeNode {
 
   private val logger = Logger(getClass)
 
-  def apply(source: Source, processed: Boolean,
+  import analysis.Analyzer.AnalysisType
+  import analysis.Analyzer.AnalysisType._
+
+  def apply(source: Source, analysisType: AnalysisType,
             datasetContext: DatasetContext,
-            progressReporter: ProgressReporter): TreeNode = {
-    val base = new TreeNode(datasetContext.treeRoot, null, null, null)
+            progressReporter: ProgressReporter,
+            customTreeRoot: Option[NodeRepo] = None,
+            customIndexFile: Option[File] = None): TreeNode = {
+    val actualTreeRoot = customTreeRoot.getOrElse(datasetContext.treeRoot)
+    val actualIndexFile = customIndexFile.getOrElse(datasetContext.index)
+    val base = new TreeNode(actualTreeRoot, null, null, null)
     var node = base
     val events = new XMLEventReader(source)
     def getNamespace(pre: String, scope: NamespaceBinding) = {
@@ -92,7 +100,7 @@ object TreeNode {
     val root = base.kids.values.head
     base.finish()
     val pretty = Json.prettyPrint(Json.toJson(root))
-    FileUtils.writeStringToFile(datasetContext.index, pretty, "UTF-8")
+    FileUtils.writeStringToFile(actualIndexFile, pretty, "UTF-8")
     root
   }
 

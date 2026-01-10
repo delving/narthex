@@ -35,6 +35,14 @@ define(["angular", "common"], function (angular) {
             };
 
             return {
+                command: function (spec, command) {
+                    return app.command(spec, command).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
                 datasetInfo: function (spec) {
                     return app.datasetInfo(spec).get().then(
                         function (response) {
@@ -85,6 +93,39 @@ define(["angular", "common"], function (angular) {
                 },
                 histogram: function (spec, path, size) {
                     return app.histogram(spec, path, size).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                // Source analysis methods
+                sourceIndex: function (spec) {
+                    return app.sourceIndex(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                sourceNodeStatus: function (spec, path) {
+                    return app.sourceNodeStatus(spec, path).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                sourceSample: function (spec, path, size) {
+                    return app.sourceSample(spec, path, size).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                sourceHistogram: function (spec, path, size) {
+                    return app.sourceHistogram(spec, path, size).get().then(
                         function (response) {
                             return response.data;
                         },

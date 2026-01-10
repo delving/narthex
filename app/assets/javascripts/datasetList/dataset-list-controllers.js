@@ -410,6 +410,7 @@ define(["angular"], function () {
             {name: 'stateRaw', label: 'Raw', count: 0},
             {name: 'stateRawAnalyzed', label: 'Raw analyzed', count: 0},
             {name: 'stateSourced', label: 'Sourced', count: 0},
+            {name: 'stateSourceAnalyzed', label: 'Source analyzed', count: 0},
             {name: 'stateMappable', label: 'Mappable', count: 0},
             {name: 'stateProcessable', label: 'Processable', count: 0},
             {name: 'stateInError', label: 'In error', count: 0},
@@ -1468,6 +1469,15 @@ define(["angular"], function () {
 
         $scope.remove = function (commandMessage, question) {
             command(commandMessage, question);
+        };
+
+        /**
+         * View the source analysis tree in a new window.
+         * Opens the source-index JSON endpoint for the dataset.
+         */
+        $scope.viewSourceAnalysis = function (dataset) {
+            var spec = dataset ? dataset.datasetSpec : $scope.dataset.datasetSpec;
+            $location.path('/dataset/' + spec).search({type: 'source'});
         };
 
         function fetchSipFileList() {

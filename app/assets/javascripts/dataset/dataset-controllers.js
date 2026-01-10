@@ -23,6 +23,56 @@ define(["angular"], function () {
 
         $scope.apiPrefix = "/narthex/api/";
 
+        // Analysis type: 'processed' (default) or 'source'
+        function updateAnalysisType() {
+            $scope.analysisType = $location.search().type || 'processed';
+            $scope.isSourceAnalysis = $scope.analysisType === 'source';
+        }
+        updateAnalysisType();
+
+        $scope.toggleAnalysisType = function() {
+            var newType = $scope.analysisType === 'source' ? 'processed' : 'source';
+
+            // Check if target analysis exists
+            if (newType === 'source' && !$scope.info.stateSourceAnalyzed) {
+                modalAlert.confirm(
+                    "Source Analysis Not Available",
+                    "Source analysis has not been run yet. Would you like to run it now?",
+                    function() {
+                        datasetService.command($scope.spec, 'start source analysis').then(function() {
+                            modalAlert.info("Analysis Started", "Source analysis has been started. Please wait for it to complete, then try again.");
+                        });
+                    }
+                );
+                return;
+            }
+
+            if (newType === 'processed' && !$scope.info.stateAnalyzed) {
+                modalAlert.confirm(
+                    "Processed Analysis Not Available",
+                    "Processed analysis has not been run yet. Would you like to run it now?",
+                    function() {
+                        datasetService.command($scope.spec, 'analyze').then(function() {
+                            modalAlert.info("Analysis Started", "Processed analysis has been started. Please wait for it to complete, then try again.");
+                        });
+                    }
+                );
+                return;
+            }
+
+            $location.search('type', newType === 'processed' ? null : newType);
+        };
+
+        // Watch for type parameter changes and reload tree
+        $scope.$watch(function() { return $location.search().type; }, function(newType, oldType) {
+            if (newType !== oldType) {
+                updateAnalysisType();
+                $scope.selectedNode = null;
+                $scope.tree = null;
+                fetchInfo(fetchTree);
+            }
+        });
+
         $scope.scrollTo = function (options) {
             pageScroll.scrollTo(options);
         };
@@ -31,8 +81,33 @@ define(["angular"], function () {
         $scope.uniqueIdNode = null;
         $scope.recordRootNode = null;
 
+        // Service methods that respect analysis type
+        function getIndex() {
+            return $scope.isSourceAnalysis
+                ? datasetService.sourceIndex($scope.spec)
+                : datasetService.index($scope.spec);
+        }
+
+        function getNodeStatus(path) {
+            return $scope.isSourceAnalysis
+                ? datasetService.sourceNodeStatus($scope.spec, path)
+                : datasetService.nodeStatus($scope.spec, path);
+        }
+
+        function getSample(path, size) {
+            return $scope.isSourceAnalysis
+                ? datasetService.sourceSample($scope.spec, path, size)
+                : datasetService.sample($scope.spec, path, size);
+        }
+
+        function getHistogram(path, size) {
+            return $scope.isSourceAnalysis
+                ? datasetService.sourceHistogram($scope.spec, path, size)
+                : datasetService.histogram($scope.spec, path, size);
+        }
+
         function fetchTree() {
-            datasetService.index($scope.spec).then(function (tree) {
+            getIndex().then(function (tree) {
 
                 function sortKids(node) {
 
@@ -138,7 +213,7 @@ define(["angular"], function () {
             }
             $scope.selectedNode = node;
             setActivePath(node.path);
-            datasetService.nodeStatus($scope.spec, node.path).then(function (data) {
+            getNodeStatus(node.path).then(function (data) {
                 $scope.status = data;
                 var filePath = node.path.replace(":", "_").replace("@", "_");
                 $scope.apiPathUnique = $scope.apiPrefix + $scope.spec + "/unique" + filePath;
@@ -247,7 +322,7 @@ define(["angular"], function () {
         };
 
         $scope.fetchSample = function () {
-            datasetService.sample($scope.spec, $routeParams.path, $scope.sampleSize).then(function (data) {
+            getSample($routeParams.path, $scope.sampleSize).then(function (data) {
                 $scope.sample = data;
                 $scope.histogram = undefined;
             });
@@ -274,7 +349,7 @@ define(["angular"], function () {
         }
 
         $scope.fetchHistogram = function () {
-            datasetService.histogram($scope.spec, $routeParams.path, $scope.histogramSize).then(function (data) {
+            getHistogram($routeParams.path, $scope.histogramSize).then(function (data) {
                 _.forEach(data.histogram, function (entry) {
                     var percent = (100 * entry[0]) / $scope.selectedNode.count;
                     entry.push(percent);

@@ -72,6 +72,7 @@ object DsInfo {
     val RAW = Value("stateRaw")
     val RAW_ANALYZED = Value("stateRawAnalyzed")
     val SOURCED = Value("stateSourced")
+    val SOURCE_ANALYZED = Value("stateSourceAnalyzed")
     val MAPPABLE = Value("stateMappable")
     val PROCESSABLE = Value("stateProcessable")
     val PROCESSED = Value("stateProcessed")
@@ -180,6 +181,7 @@ object DsInfo {
       StringField("stateRaw", stateRaw),
       StringField("stateRawAnalyzed", stateRawAnalyzed),
       StringField("stateSourced", stateSourced),
+      StringField("stateSourceAnalyzed", stateSourceAnalyzed),
       StringField("stateMappable", stateMappable),
       StringField("stateProcessable", stateProcessable),
       StringField("stateAnalyzed", stateAnalyzed),

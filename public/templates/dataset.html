@@ -13,6 +13,23 @@
     </div>
     <!-- page specifiction actions/tools -->
     <div class="actions">
+        <!-- Analysis type toggle -->
+        <div class="btn-group" style="margin-right: 10px;">
+            <button
+                ng-click="toggleAnalysisType()"
+                class="btn"
+                ng-class="{'btn-primary': !isSourceAnalysis, 'btn-default': isSourceAnalysis}"
+            >
+                <i class="fa fa-file-code-o"></i> Processed
+            </button>
+            <button
+                ng-click="toggleAnalysisType()"
+                class="btn"
+                ng-class="{'btn-primary': isSourceAnalysis, 'btn-default': !isSourceAnalysis}"
+            >
+                <i class="fa fa-file-text-o"></i> Source
+            </button>
+        </div>
         <button
             ng-click="sidebarNav('dataset-list', spec)"
             class="btn btn-default"
@@ -26,7 +43,8 @@
     <div class="col-sm-5">
         <div class="widget widget-schema">
             <div class="widget-header">
-                <span>Schema</span>
+                <span ng-if="!isSourceAnalysis">Processed Schema</span>
+                <span ng-if="isSourceAnalysis" style="color: #5bc0de;">Source Schema</span>
                 <span class="dropdown pull-right">
                     <a
                         href

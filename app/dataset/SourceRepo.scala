@@ -405,4 +405,105 @@ class SourceRepo(home: File, orgContext: OrgContext) {
   def acquisitionHistory: List[(DateTime, Int)] = {
     List.empty
   }
+
+  /**
+   * Get a sample of source records for preview.
+   * Returns up to `count` records as Pocket objects.
+   *
+   * @param count Maximum number of records to return
+   * @param idFilter The ID filter to apply
+   * @return List of Pocket objects with id and text
+   */
+  def getSampleRecords(count: Int, idFilter: IdFilter): List[Pocket] = {
+    val records = scala.collection.mutable.ListBuffer[Pocket]()
+    var collected = 0
+
+    val parser = new PocketParser(sourceFacts, idFilter, orgContext)
+    val deletedIds = deletedIdSet
+
+    // Iterate through zip files until we have enough records
+    val zipFiles = listZipFiles
+    val iterator = zipFiles.iterator
+
+    while (iterator.hasNext && collected < count) {
+      val zipFile = iterator.next()
+      val idSet = avoidSet(zipFile) ++ deletedIds
+      val (source, _) = sourceFromFile(zipFile)
+      try {
+        parser.parse(source, idSet, { pocket =>
+          if (collected < count) {
+            records += pocket
+            collected += 1
+          }
+        }, ProgressReporter())
+      } finally {
+        source.close()
+      }
+    }
+
+    records.toList
+  }
+
+  /**
+   * Get a specific source record by ID.
+   * Returns None if the record is not found.
+   *
+   * @param recordId The record ID to find
+   * @param idFilter The ID filter to apply
+   * @return Option[Pocket] if found
+   */
+  def getRecordById(recordId: String, idFilter: IdFilter): Option[Pocket] = {
+    val parser = new PocketParser(sourceFacts, idFilter, orgContext)
+    val deletedIds = deletedIdSet
+    var found: Option[Pocket] = None
+
+    val zipFiles = listZipFiles
+    val iterator = zipFiles.iterator
+
+    while (iterator.hasNext && found.isEmpty) {
+      val zipFile = iterator.next()
+      val idSet = avoidSet(zipFile) ++ deletedIds
+      val (source, _) = sourceFromFile(zipFile)
+      try {
+        parser.parse(source, idSet, { pocket =>
+          if (found.isEmpty && pocket.id == recordId) {
+            found = Some(pocket)
+          }
+        }, ProgressReporter())
+      } finally {
+        source.close()
+      }
+    }
+
+    found
+  }
+
+  /**
+   * Get source statistics.
+   * Returns total record count, zip file count, and source facts.
+   */
+  def getSourceStats: SourceStats = {
+    val actFiles = fileList.filter(f => f.getName.endsWith(".act"))
+    val activeIdCounts = actFiles.map(FileUtils.readFileToString).map(s => s.trim.toInt)
+    val totalActiveIds = activeIdCounts.sum
+    val deletedCount = deletedIdSet.size
+
+    SourceStats(
+      totalRecords = totalActiveIds,
+      deletedRecords = deletedCount,
+      zipFileCount = listZipFiles.size,
+      sourceFacts = sourceFacts
+    )
+  }
+
 }
+
+/**
+ * Statistics about source records.
+ */
+case class SourceStats(
+  totalRecords: Int,
+  deletedRecords: Int,
+  zipFileCount: Int,
+  sourceFacts: SourceRepo.SourceFacts
+)
