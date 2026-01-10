@@ -47,19 +47,28 @@ This document captures the roadmap for data quality analysis features in Narthex
   - Lists all issues with clear explanations
   - Includes: low completeness, high empty rate, mixed types, whitespace issues, invalid URIs
 
+### Phase 5: Quality Summary Dashboard (Completed)
+- **Quality Summary button**: In dataset analysis view header
+- **Modal overlay**: Shows aggregated quality metrics for entire dataset
+- **Overall Quality Score**: Weighted composite score (0-100%)
+  - Completeness: 40%, Type consistency: 25%, No issues: 20%, Value presence: 15%
+- **Summary cards** (row 1): Overall score, fields with values, fields with issues
+- **Record statistics** (row 2):
+  - Fields in every record (100% completeness) - clickable to expand list
+  - Avg fields per record (total field values / records)
+  - Avg unique fields per record (unique field presence / records)
+- **Fields in every record list**: Expandable table showing all fields with 100% completeness
+  - Field name and path (clickable to navigate)
+  - Average occurrences per record (highlights fields with >1 avg)
+- **Completeness distribution**: Excellent/Good/Fair/Poor breakdown
+- **Issues by type table**: Low completeness, high empty rate, mixed types, invalid URIs, whitespace issues
+- **Top 10 problematic fields**: Clickable list with completeness bars and issue icons
+- **Navigation**: Click field to jump to it in tree view
+- **Source/Processed support**: Works with both analysis types
+
 ---
 
 ## Planned Features
-
-### Phase 5: Quality Summary Dashboard
-**Priority: High | Effort: Medium**
-
-Overview page showing aggregated quality metrics for entire dataset:
-- Total fields analyzed
-- Fields with quality issues (grouped by issue type)
-- Overall dataset quality score
-- Top 10 problematic fields
-- Completeness distribution chart
 
 ### Phase 6: Data Quality Score
 **Priority: Medium | Effort: Medium**

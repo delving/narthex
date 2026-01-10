@@ -361,6 +361,40 @@ define(["angular"], function () {
             setActiveView("quality");
         };
 
+        // Quality Summary Modal
+        $scope.qualitySummary = null;
+        $scope.qualitySummaryLoading = false;
+        $scope.qualitySummaryError = null;
+
+        $scope.showQualitySummary = function () {
+            $scope.qualitySummaryLoading = true;
+            $scope.qualitySummaryError = null;
+            $scope.qualitySummary = null;
+
+            // Show the modal
+            $('#qualitySummaryModal').modal('show');
+
+            // Fetch the quality summary based on current analysis type
+            var fetchFn = $scope.isSourceAnalysis
+                ? datasetService.sourceQualitySummary
+                : datasetService.qualitySummary;
+
+            fetchFn($scope.spec).then(function (data) {
+                $scope.qualitySummary = data;
+                $scope.qualitySummaryLoading = false;
+            }).catch(function (error) {
+                $scope.qualitySummaryError = error.data ? error.data.error : 'Failed to load quality summary';
+                $scope.qualitySummaryLoading = false;
+            });
+        };
+
+        $scope.navigateToField = function (path) {
+            // Close the modal
+            $('#qualitySummaryModal').modal('hide');
+            // Navigate to the field in the tree
+            $location.search('path', path);
+        };
+
         function checkSkosField(uri) {
             if (!$scope.info) return false;
             if (_.isArray($scope.info.skosField)) {

@@ -63,6 +63,10 @@ GET         /narthex/app/dataset/:spec/source-status/*path                   con
 GET         /narthex/app/dataset/:spec/source-sample/:size/*path             controllers.AppController.sourceSample(spec, path, size:Int)
 GET         /narthex/app/dataset/:spec/source-histogram/:size/*path          controllers.AppController.sourceHistogram(spec, path, size:Int)
 
+# Quality summary dashboard
+GET         /narthex/app/dataset/:spec/quality-summary                       controllers.AppController.qualitySummary(spec)
+GET         /narthex/app/dataset/:spec/source-quality-summary                controllers.AppController.sourceQualitySummary(spec)
+
 GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)
 + nocsrf
@@ -161,6 +165,11 @@ GET         /narthex/api/:spec/histogram/*path                               con
 #GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
 GET         /narthex/webjars/*file                                           org.webjars.play.WebJarAssets.at(file)
 GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
+
+# Mapping Editor SPA (Svelte)
+GET         /narthex/editor                                                  controllers.Assets.at(path="/public/editor", file="index.html")
+GET         /narthex/editor/                                                 controllers.Assets.at(path="/public/editor", file="index.html")
+GET         /narthex/editor/*file                                            controllers.Assets.at(path="/public/editor", file)
 
 # Monitoring
 GET         /non-public/monitoring/metrics                                   com.kenshoo.play.metrics.MetricsController.metrics

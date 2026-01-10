@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
-import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, Temporal, TrendTrackingService}
+import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, QualitySummaryService, Temporal, TrendTrackingService}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -60,7 +60,8 @@ import web.Utils
 @Singleton
 class AppController @Inject() (
    orgContext: OrgContext,
-   indexStatsService: IndexStatsService
+   indexStatsService: IndexStatsService,
+   qualitySummaryService: QualitySummaryService
 )(implicit
    ec: ExecutionContext,
    ts: TripleStore
@@ -503,6 +504,28 @@ class AppController @Inject() (
     orgContext.datasetContext(spec).sourceHistogram(path, size) match {
       case None => NotFound(Json.obj("path" -> path, "size" -> size))
       case Some(file) => Utils.okFile(file)
+    }
+  }
+
+  // ====== quality summary endpoints =====
+
+  /**
+   * Get quality summary for a dataset's processed analysis
+   */
+  def qualitySummary(spec: String) = Action { request =>
+    qualitySummaryService.getQualitySummary(spec, isSource = false) match {
+      case Some(summary) => Ok(Json.toJson(summary))
+      case None => NotFound(Json.obj("error" -> "Quality summary not available - dataset not analyzed"))
+    }
+  }
+
+  /**
+   * Get quality summary for a dataset's source analysis
+   */
+  def sourceQualitySummary(spec: String) = Action { request =>
+    qualitySummaryService.getQualitySummary(spec, isSource = true) match {
+      case Some(summary) => Ok(Json.toJson(summary))
+      case None => NotFound(Json.obj("error" -> "Source quality summary not available - source not analyzed"))
     }
   }
 

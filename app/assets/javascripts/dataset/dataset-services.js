@@ -131,6 +131,23 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                // Quality summary methods
+                qualitySummary: function (spec) {
+                    return app.qualitySummary(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                sourceQualitySummary: function (spec) {
+                    return app.sourceQualitySummary(spec).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }
