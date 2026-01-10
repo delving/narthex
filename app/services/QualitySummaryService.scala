@@ -33,6 +33,9 @@ case class FieldQuality(
   recordsWithValue: Int,
   totalRecords: Int,
   avgPerRecord: Double,
+  totalCount: Int,  // Total number of values
+  uniqueCount: Int,  // Number of unique values
+  uniqueness: Double,  // Percentage of unique values (uniqueCount / totalCount * 100)
   issues: List[String],
   issueCount: Int,
   typeInfo: Option[JsObject] = None,
@@ -69,6 +72,8 @@ case class QualitySummary(
   fieldsInEveryRecordList: List[FieldInEveryRecord],  // List of fields with 100% completeness
   avgFieldsPerRecord: Double,  // Average number of field values per record
   avgUniqueFieldsPerRecord: Double,  // Average number of unique fields per record
+  avgUniqueness: Double,  // Average uniqueness percentage across all fields
+  uniquenessDistribution: Map[String, Int],  // Distribution: identifier (100%), high (>80%), medium (20-80%), low (<20%)
   issuesByType: Map[String, Int],
   overallScore: Double,
   completenessDistribution: Map[String, Int],
@@ -149,6 +154,24 @@ class QualitySummaryService @Inject()(
         Math.round((totalFieldPresence / totalRecords) * 100) / 100.0
       } else 0.0
 
+      // Uniqueness statistics
+      val fieldsWithValues = leafFields.filter(_.totalCount > 0)
+      val avgUniqueness = if (fieldsWithValues.nonEmpty) {
+        Math.round(fieldsWithValues.map(_.uniqueness).sum / fieldsWithValues.size * 100) / 100.0
+      } else 0.0
+
+      // Uniqueness distribution:
+      // - identifier: 100% unique (likely identifiers)
+      // - high: >80% unique
+      // - medium: 20-80% unique
+      // - low: <20% unique (controlled vocabularies, repeated values)
+      val uniquenessDistribution = Map(
+        "identifier" -> fieldsWithValues.count(f => f.uniqueness >= 100),
+        "high" -> fieldsWithValues.count(f => f.uniqueness >= 80 && f.uniqueness < 100),
+        "medium" -> fieldsWithValues.count(f => f.uniqueness >= 20 && f.uniqueness < 80),
+        "low" -> fieldsWithValues.count(f => f.uniqueness < 20)
+      )
+
       // Calculate overall score
       val overallScore = calculateOverallScore(leafFields)
 
@@ -166,6 +189,8 @@ class QualitySummaryService @Inject()(
         fieldsInEveryRecordList = fieldsInEveryRecordList,
         avgFieldsPerRecord = avgFieldsPerRecord,
         avgUniqueFieldsPerRecord = avgUniqueFieldsPerRecord,
+        avgUniqueness = avgUniqueness,
+        uniquenessDistribution = uniquenessDistribution,
         issuesByType = issuesByType,
         overallScore = overallScore,
         completenessDistribution = completenessDistribution,
@@ -187,6 +212,7 @@ class QualitySummaryService @Inject()(
     val quality = (node \ "quality").asOpt[JsObject]
     val kids = (node \ "kids").asOpt[JsArray].getOrElse(Json.arr())
     val lengths = (node \ "lengths").asOpt[JsArray].getOrElse(Json.arr())
+    val totalCount = (node \ "count").asOpt[Int].getOrElse(0)  // Total values for this field
 
     // Only process nodes with quality info
     val currentField = quality.map { q =>
@@ -200,11 +226,21 @@ class QualitySummaryService @Inject()(
       val isLeaf = lengths.value.nonEmpty
 
       // Load status.json for detailed type/pattern info (only for leaf nodes)
-      val (typeInfo, patternInfo, valueStats) = if (isLeaf && path.nonEmpty) {
+      val statusInfo = if (isLeaf && path.nonEmpty) {
         loadStatusInfo(ctx, path, isSource)
       } else {
-        (None, None, None)
+        None
       }
+
+      val uniqueCount = statusInfo.map(_.uniqueCount).getOrElse(0)
+      val typeInfo = statusInfo.flatMap(_.typeInfo)
+      val patternInfo = statusInfo.flatMap(_.patternInfo)
+      val valueStats = statusInfo.flatMap(_.valueStats)
+
+      // Calculate uniqueness percentage
+      val uniqueness = if (totalCount > 0) {
+        Math.round((uniqueCount.toDouble / totalCount) * 10000) / 100.0  // Round to 2 decimals
+      } else 0.0
 
       // Collect issues
       val issues = collectIssues(completeness, emptyRate, typeInfo, patternInfo, valueStats)
@@ -217,6 +253,9 @@ class QualitySummaryService @Inject()(
         recordsWithValue = recordsWithValue,
         totalRecords = totalRecords,
         avgPerRecord = avgPerRecord,
+        totalCount = totalCount,
+        uniqueCount = uniqueCount,
+        uniqueness = uniqueness,
         issues = issues,
         issueCount = issues.size,
         typeInfo = typeInfo,
@@ -232,24 +271,35 @@ class QualitySummaryService @Inject()(
   }
 
   /**
-   * Load type info, pattern info, and value stats from status.json
+   * Status info loaded from status.json
    */
-  private def loadStatusInfo(ctx: dataset.DatasetContext, path: String, isSource: Boolean): (Option[JsObject], Option[JsObject], Option[JsObject]) = {
+  private case class StatusInfo(
+    uniqueCount: Int,
+    typeInfo: Option[JsObject],
+    patternInfo: Option[JsObject],
+    valueStats: Option[JsObject]
+  )
+
+  /**
+   * Load type info, pattern info, value stats, and uniqueCount from status.json
+   */
+  private def loadStatusInfo(ctx: dataset.DatasetContext, path: String, isSource: Boolean): Option[StatusInfo] = {
     val statusOpt = if (isSource) ctx.sourceStatus(path) else ctx.status(path)
 
     statusOpt.flatMap { statusFile =>
       try {
         val statusJson = Json.parse(FileUtils.readFileToString(statusFile, "UTF-8"))
+        val uniqueCount = (statusJson \ "uniqueCount").asOpt[Int].getOrElse(0)
         val typeInfo = (statusJson \ "typeInfo").asOpt[JsObject]
         val patternInfo = (statusJson \ "patternInfo").asOpt[JsObject]
         val valueStats = (statusJson \ "valueStats").asOpt[JsObject]
-        Some((typeInfo, patternInfo, valueStats))
+        Some(StatusInfo(uniqueCount, typeInfo, patternInfo, valueStats))
       } catch {
         case e: Exception =>
           logger.debug(s"Failed to read status.json for $path: ${e.getMessage}")
           None
       }
-    }.getOrElse((None, None, None))
+    }
   }
 
   /**

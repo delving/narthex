@@ -220,6 +220,44 @@
                         </div>
                     </div>
 
+                    <!-- Uniqueness Distribution -->
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <strong><i class="fa fa-fingerprint"></i> Uniqueness Distribution</strong>
+                            <span class="pull-right text-muted">
+                                <small>Avg: {{ qualitySummary.avgUniqueness | number:1 }}%</small>
+                            </span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-primary" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.uniquenessDistribution.identifier || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Identifiers (100%)</small></p>
+                                </div>
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-success" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.uniquenessDistribution.high || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>High (80-99%)</small></p>
+                                </div>
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-warning" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.uniquenessDistribution.medium || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Medium (20-79%)</small></p>
+                                </div>
+                                <div class="col-xs-3 text-center">
+                                    <span class="label label-default" style="font-size: 16px; padding: 8px 12px;">
+                                        {{ qualitySummary.uniquenessDistribution.low || 0 }}
+                                    </span>
+                                    <p style="margin-top: 5px;"><small>Low (&lt;20%)</small></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Issues by Type -->
                     <div class="panel panel-default" ng-if="qualitySummary.fieldsWithIssues > 0">
                         <div class="panel-heading">
@@ -281,6 +319,7 @@
                                     <tr>
                                         <th>Field Path</th>
                                         <th class="text-right">Completeness</th>
+                                        <th class="text-right">Uniqueness</th>
                                         <th class="text-center">Issues</th>
                                     </tr>
                                 </thead>
@@ -305,6 +344,16 @@
                                                 </div>
                                             </div>
                                             <span style="margin-left: 5px;">{{ field.completeness | number:1 }}%</span>
+                                        </td>
+                                        <td class="text-right">
+                                            <span ng-class="{
+                                                'text-primary': field.uniqueness >= 100,
+                                                'text-success': field.uniqueness >= 80 && field.uniqueness < 100,
+                                                'text-warning': field.uniqueness >= 20 && field.uniqueness < 80,
+                                                'text-muted': field.uniqueness < 20
+                                            }">
+                                                {{ field.uniqueness | number:1 }}%
+                                            </span>
                                         </td>
                                         <td class="text-center">
                                             <span ng-repeat="issue in field.issues" style="margin-right: 3px;">

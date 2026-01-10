@@ -61,6 +61,12 @@ This document captures the roadmap for data quality analysis features in Narthex
   - Field name and path (clickable to navigate)
   - Average occurrences per record (highlights fields with >1 avg)
 - **Completeness distribution**: Excellent/Good/Fair/Poor breakdown
+- **Uniqueness distribution**: Shows value uniqueness across fields
+  - Identifiers (100%): Likely unique identifier fields
+  - High (80-99%): Mostly unique values
+  - Medium (20-79%): Mixed uniqueness
+  - Low (<20%): Controlled vocabularies or repeated values
+  - Average uniqueness percentage displayed in header
 - **Issues by type table**: Low completeness, high empty rate, mixed types, invalid URIs, whitespace issues
 - **Fields with issues**: Expandable list showing all problematic fields
   - Shows top 10 by default, "Show All" button to expand
