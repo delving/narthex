@@ -70,6 +70,11 @@ GET         /narthex/app/dataset/:spec/export-quality-json                   con
 GET         /narthex/app/dataset/:spec/export-quality-csv                    controllers.AppController.exportQualitySummaryCsv(spec, isSource: Boolean ?= false)
 GET         /narthex/app/dataset/:spec/quality-comparison                    controllers.AppController.qualityComparison(spec)
 
+# Violation record lookup
+GET         /narthex/app/dataset/:spec/records-by-value                      controllers.AppController.recordsByValue(spec, value: String, limit: Int ?= 100)
+GET         /narthex/app/dataset/:spec/record-count-by-value                 controllers.AppController.recordCountByValue(spec, value: String)
+GET         /narthex/app/dataset/:spec/export-problem-records                controllers.AppController.exportProblemRecords(spec, value: String, violationType: String ?= "", format: String ?= "json")
+
 GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
 GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)
 + nocsrf

@@ -16,7 +16,8 @@
 
 package analysis
 
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{JsObject, Json, Writes}
+import scala.collection.mutable
 import scala.util.Try
 
 /**
@@ -24,6 +25,19 @@ import scala.util.Try
  * Includes length stats, word count, whitespace issues, encoding issues, and type-specific ranges.
  */
 object ValueStats {
+
+  // Maximum number of violation samples to collect per type
+  private val MaxViolationSamples = 10
+
+  /**
+   * A sample of a value that triggered a violation.
+   * Used to show users examples of problematic data.
+   */
+  case class ViolationSample(value: String, violationType: String)
+
+  object ViolationSample {
+    implicit val writes: Writes[ViolationSample] = Json.writes[ViolationSample]
+  }
 
   // Word splitting pattern - splits on whitespace
   private val WordPattern = """\s+""".r
@@ -129,7 +143,12 @@ object ValueStats {
     suspiciousYearCount: Int = 0,  // Years outside 1000-2100 range
     negativeNumberCount: Int = 0,  // Negative numbers (may be suspicious in some contexts)
     zeroCount: Int = 0,            // Zero values
-    extremeNumericCount: Int = 0   // Values that are statistically extreme
+    extremeNumericCount: Int = 0,  // Values that are statistically extreme
+
+    // Violation samples (Phase 14) - for drill-down to records
+    encodingSamples: List[ViolationSample] = List.empty,
+    whitespaceSamples: List[ViolationSample] = List.empty,
+    outlierSamples: List[ViolationSample] = List.empty
   ) {
     def avgLength: Double = if (valueCount > 0) totalLength.toDouble / valueCount else 0.0
     def avgWords: Double = if (valueCount > 0) totalWords.toDouble / valueCount else 0.0
@@ -169,24 +188,32 @@ object ValueStats {
 
       // Add whitespace issues if present
       if (hasWhitespaceIssues) {
-        json = json + ("whitespace" -> Json.obj(
+        var wsJson = Json.obj(
           "leadingCount" -> leadingWhitespaceCount,
           "trailingCount" -> trailingWhitespaceCount,
           "multipleSpacesCount" -> multipleSpacesCount,
           "total" -> whitespaceIssueCount
-        ))
+        )
+        if (whitespaceSamples.nonEmpty) {
+          wsJson = wsJson + ("samples" -> Json.toJson(whitespaceSamples))
+        }
+        json = json + ("whitespace" -> wsJson)
       }
 
       // Add encoding issues if present
       if (hasEncodingIssues) {
-        json = json + ("encodingIssues" -> Json.obj(
+        var encJson = Json.obj(
           "mojibake" -> mojibakeCount,
           "htmlEntities" -> htmlEntitiesCount,
           "escapedChars" -> escapedCharsCount,
           "controlChars" -> controlCharsCount,
           "replacementChars" -> replacementCharCount,
           "total" -> encodingIssueCount
-        ))
+        )
+        if (encodingSamples.nonEmpty) {
+          encJson = encJson + ("samples" -> Json.toJson(encodingSamples))
+        }
+        json = json + ("encodingIssues" -> encJson)
       }
 
       // Add numeric range if we found numeric values
@@ -217,6 +244,9 @@ object ValueStats {
         if (zeroCount > 0) outlierJson = outlierJson + ("zeros" -> Json.toJson(zeroCount))
         if (extremeNumericCount > 0) outlierJson = outlierJson + ("extremeValues" -> Json.toJson(extremeNumericCount))
         outlierJson = outlierJson + ("total" -> Json.toJson(outlierCount))
+        if (outlierSamples.nonEmpty) {
+          outlierJson = outlierJson + ("samples" -> Json.toJson(outlierSamples))
+        }
         json = json + ("outliers" -> outlierJson)
       }
 
@@ -267,6 +297,29 @@ object ValueStats {
     // Current year for future date detection
     private val currentYear = java.time.Year.now().getValue
 
+    // Violation sample collectors (bounded to MaxViolationSamples)
+    private val encodingSampleList = mutable.ListBuffer[ViolationSample]()
+    private val whitespaceSampleList = mutable.ListBuffer[ViolationSample]()
+    private val outlierSampleList = mutable.ListBuffer[ViolationSample]()
+
+    private def addEncodingSample(value: String, violationType: String): Unit = {
+      if (encodingSampleList.size < MaxViolationSamples) {
+        encodingSampleList += ViolationSample(value.take(500), violationType)  // Truncate long values
+      }
+    }
+
+    private def addWhitespaceSample(value: String, violationType: String): Unit = {
+      if (whitespaceSampleList.size < MaxViolationSamples) {
+        whitespaceSampleList += ViolationSample(value.take(500), violationType)
+      }
+    }
+
+    private def addOutlierSample(value: String, violationType: String): Unit = {
+      if (outlierSampleList.size < MaxViolationSamples) {
+        outlierSampleList += ViolationSample(value.take(500), violationType)
+      }
+    }
+
     def record(value: String): Unit = {
       if (value.isEmpty) return
 
@@ -282,17 +335,41 @@ object ValueStats {
       if (words < minWordCount) minWordCount = words
       if (words > maxWordCount) maxWordCount = words
 
-      // Whitespace issues
-      if (LeadingWhitespace.findFirstIn(value).isDefined) leadingWs += 1
-      if (TrailingWhitespace.findFirstIn(value).isDefined) trailingWs += 1
-      if (MultipleSpaces.findFirstIn(value).isDefined) multipleWs += 1
+      // Whitespace issues (with sample collection)
+      if (LeadingWhitespace.findFirstIn(value).isDefined) {
+        leadingWs += 1
+        addWhitespaceSample(value, "leading")
+      }
+      if (TrailingWhitespace.findFirstIn(value).isDefined) {
+        trailingWs += 1
+        addWhitespaceSample(value, "trailing")
+      }
+      if (MultipleSpaces.findFirstIn(value).isDefined) {
+        multipleWs += 1
+        addWhitespaceSample(value, "multipleSpaces")
+      }
 
-      // Encoding issues detection
-      if (hasMojibake(value)) mojibake += 1
-      if (HtmlEntityPattern.findFirstIn(value).isDefined) htmlEntities += 1
-      if (EscapedCharsPattern.findFirstIn(value).isDefined) escapedChars += 1
-      if (ControlCharsPattern.findFirstIn(value).isDefined) controlChars += 1
-      if (ReplacementCharPattern.findFirstIn(value).isDefined) replacementChars += 1
+      // Encoding issues detection (with sample collection)
+      if (hasMojibake(value)) {
+        mojibake += 1
+        addEncodingSample(value, "mojibake")
+      }
+      if (HtmlEntityPattern.findFirstIn(value).isDefined) {
+        htmlEntities += 1
+        addEncodingSample(value, "htmlEntities")
+      }
+      if (EscapedCharsPattern.findFirstIn(value).isDefined) {
+        escapedChars += 1
+        addEncodingSample(value, "escapedChars")
+      }
+      if (ControlCharsPattern.findFirstIn(value).isDefined) {
+        controlChars += 1
+        addEncodingSample(value, "controlChars")
+      }
+      if (ReplacementCharPattern.findFirstIn(value).isDefined) {
+        replacementChars += 1
+        addEncodingSample(value, "replacementChars")
+      }
 
       // Try to parse as numeric
       Try(value.trim.replace(",", ".").toDouble).toOption.foreach { num =>
@@ -307,15 +384,18 @@ object ValueStats {
 
       // Try to extract year from date-like values
       extractYear(value).foreach { year =>
-        // Outlier detection for dates
+        // Outlier detection for dates (with sample collection)
         if (year > currentYear) {
           futureDates += 1
+          addOutlierSample(value, "futureDates")
         } else if (year < 1800) {
           ancientDates += 1
+          addOutlierSample(value, "ancientDates")
         }
 
         if (year < 1000 || year > 2100) {
           suspiciousYears += 1
+          addOutlierSample(value, "suspiciousYears")
         } else {
           // Only count reasonable years in the date range
           dtCount += 1
@@ -369,7 +449,11 @@ object ValueStats {
         suspiciousYearCount = suspiciousYears,
         negativeNumberCount = negativeNums,
         zeroCount = zeros,
-        extremeNumericCount = extremeNums
+        extremeNumericCount = extremeNums,
+        // Violation samples for drill-down
+        encodingSamples = encodingSampleList.toList,
+        whitespaceSamples = whitespaceSampleList.toList,
+        outlierSamples = outlierSampleList.toList
       )
     }
   }

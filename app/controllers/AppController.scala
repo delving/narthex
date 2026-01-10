@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
-import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, QualitySummaryService, Temporal, TrendTrackingService}
+import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, QualitySummaryService, Temporal, TrendTrackingService, ViolationRecordService}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -61,7 +61,8 @@ import web.Utils
 class AppController @Inject() (
    orgContext: OrgContext,
    indexStatsService: IndexStatsService,
-   qualitySummaryService: QualitySummaryService
+   qualitySummaryService: QualitySummaryService,
+   violationRecordService: ViolationRecordService
 )(implicit
    ec: ExecutionContext,
    ts: TripleStore
@@ -567,6 +568,78 @@ class AppController @Inject() (
     qualitySummaryService.getQualityComparison(spec) match {
       case Some(comparison) => Ok(Json.toJson(comparison))
       case None => NotFound(Json.obj("error" -> "Comparison not available - neither source nor processed analysis exists"))
+    }
+  }
+
+  /**
+   * Find records containing a specific value.
+   * Used for drill-down from violation samples to source records.
+   */
+  def recordsByValue(spec: String, value: String, limit: Int) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    if (value.isEmpty) {
+      BadRequest(Json.obj("error" -> "Value parameter is required"))
+    } else {
+      val matches = violationRecordService.findRecordsByValue(datasetContext, value, limit)
+      Ok(Json.obj(
+        "spec" -> spec,
+        "searchValue" -> value,
+        "matchCount" -> matches.size,
+        "matches" -> Json.toJson(matches.map { m =>
+          Json.obj(
+            "recordId" -> m.recordId,
+            "matchedValue" -> m.matchedValue,
+            "context" -> m.context,
+            "matchCount" -> m.matchCount
+          )
+        })
+      ))
+    }
+  }
+
+  /**
+   * Count records containing a specific value (faster than full search).
+   */
+  def recordCountByValue(spec: String, value: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    if (value.isEmpty) {
+      BadRequest(Json.obj("error" -> "Value parameter is required"))
+    } else {
+      val count = violationRecordService.countRecordsWithValue(datasetContext, value)
+      Ok(Json.obj(
+        "spec" -> spec,
+        "searchValue" -> value,
+        "recordCount" -> count
+      ))
+    }
+  }
+
+  /**
+   * Export all record IDs containing a specific value.
+   * Supports JSON and CSV formats for bulk remediation workflows.
+   */
+  def exportProblemRecords(spec: String, value: String, violationType: String, format: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    if (value.isEmpty) {
+      BadRequest(Json.obj("error" -> "Value parameter is required"))
+    } else {
+      val export = violationRecordService.exportProblemRecordIds(datasetContext, value, violationType)
+
+      format.toLowerCase match {
+        case "csv" =>
+          val csvContent = violationRecordService.formatAsCsv(export)
+          Ok(csvContent)
+            .as("text/csv")
+            .withHeaders(
+              "Content-Disposition" -> s"attachment; filename=${spec}_problem_records.csv"
+            )
+
+        case _ => // Default to JSON
+          Ok(Json.toJson(export))
+      }
     }
   }
 

@@ -442,6 +442,39 @@ define(["angular"], function () {
             $location.search('path', path);
         };
 
+        // Record lookup for violation samples
+        $scope.recordLookupResult = null;
+        $scope.recordLookupLoading = false;
+        $scope.recordLookupError = null;
+
+        $scope.lookupRecordsByValue = function (sampleValue, violationType) {
+            $scope.recordLookupLoading = true;
+            $scope.recordLookupError = null;
+            $scope.recordLookupResult = null;
+            $scope.recordLookupValue = sampleValue;
+            $scope.recordLookupType = violationType || '';
+
+            // Show the modal
+            $('#recordLookupModal').modal('show');
+
+            datasetService.recordsByValue($scope.spec, sampleValue, 100).then(function (data) {
+                $scope.recordLookupResult = data;
+                $scope.recordLookupLoading = false;
+            }).catch(function (error) {
+                $scope.recordLookupError = error.data ? error.data.error : 'Failed to lookup records';
+                $scope.recordLookupLoading = false;
+            });
+        };
+
+        // Generate export URL for problem records
+        $scope.getExportUrl = function (format) {
+            var baseUrl = '/narthex/app/dataset/' + $scope.spec + '/export-problem-records';
+            var params = '?value=' + encodeURIComponent($scope.recordLookupValue || '');
+            params += '&violationType=' + encodeURIComponent($scope.recordLookupType || '');
+            params += '&format=' + format;
+            return baseUrl + params;
+        };
+
         function checkSkosField(uri) {
             if (!$scope.info) return false;
             if (_.isArray($scope.info.skosField)) {

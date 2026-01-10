@@ -156,6 +156,23 @@ define(["angular", "common"], function (angular) {
                         },
                         rejection
                     );
+                },
+                // Violation record lookup methods
+                recordsByValue: function (spec, value, limit) {
+                    return app.recordsByValue(spec, value, limit || 100).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+                recordCountByValue: function (spec, value) {
+                    return app.recordCountByValue(spec, value).get().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
                 }
             };
         }

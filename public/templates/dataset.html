@@ -875,6 +875,100 @@
     </div>
 </div>
 
+<!-- Record Lookup Modal -->
+<div class="modal fade" id="recordLookupModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">
+                    <i class="fa fa-search"></i>
+                    Records with Violation
+                </h4>
+            </div>
+            <div class="modal-body">
+                <!-- Search info -->
+                <div class="alert alert-info" style="margin-bottom: 15px;">
+                    <strong>Searching for:</strong>
+                    <code style="font-size: 12px; background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">{{ recordLookupValue | limitTo:100 }}</code>
+                    <span ng-if="recordLookupType" class="label label-default" style="margin-left: 8px;">{{ recordLookupType }}</span>
+                </div>
+
+                <!-- Loading state -->
+                <div ng-if="recordLookupLoading" class="text-center" style="padding: 40px;">
+                    <i class="fa fa-spinner fa-spin fa-3x"></i>
+                    <p style="margin-top: 15px;">Searching source records...</p>
+                    <p class="text-muted"><small>This may take a moment for large datasets</small></p>
+                </div>
+
+                <!-- Error state -->
+                <div ng-if="recordLookupError" class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle"></i> {{ recordLookupError }}
+                </div>
+
+                <!-- Results -->
+                <div ng-if="recordLookupResult && !recordLookupLoading">
+                    <div class="alert" ng-class="{'alert-success': recordLookupResult.matchCount > 0, 'alert-warning': recordLookupResult.matchCount === 0}">
+                        <strong>{{ recordLookupResult.matchCount }}</strong> record(s) found
+                        <span ng-if="recordLookupResult.matchCount >= 100" class="text-muted">(limited to first 100)</span>
+                    </div>
+
+                    <!-- Match list -->
+                    <div ng-if="recordLookupResult.matches.length > 0" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-condensed table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="width: 250px;">Record ID</th>
+                                    <th>Context</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="match in recordLookupResult.matches">
+                                    <td>
+                                        <code style="font-size: 11px; word-break: break-all;">{{ match.recordId }}</code>
+                                    </td>
+                                    <td>
+                                        <div style="font-family: monospace; font-size: 11px; background: #f9f9f9; padding: 8px; border-radius: 3px; white-space: pre-wrap; word-break: break-word; max-height: 100px; overflow-y: auto;">{{ match.context }}</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- No results message -->
+                    <div ng-if="recordLookupResult.matches.length === 0" class="text-center text-muted" style="padding: 20px;">
+                        <i class="fa fa-info-circle fa-2x"></i>
+                        <p style="margin-top: 10px;">No records found containing this exact value.</p>
+                        <p><small>The value may have been modified during processing.</small></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="btn-group dropup pull-left" ng-if="recordLookupResult && recordLookupResult.matchCount > 0">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                        <i class="fa fa-download"></i> Export All Records <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a ng-href="{{ getExportUrl('csv') }}" target="_blank">
+                                <i class="fa fa-file-text-o"></i> Export as CSV
+                            </a>
+                        </li>
+                        <li>
+                            <a ng-href="{{ getExportUrl('json') }}" target="_blank">
+                                <i class="fa fa-file-code-o"></i> Export as JSON
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row" ng-show="tree">
     <div class="col-sm-5">
         <div class="widget widget-schema">
@@ -1280,6 +1374,20 @@
                                                     Multiple spaces: {{ status.valueStats.whitespace.multipleSpacesCount }}
                                                 </span>
                                             </small>
+                                            <!-- Whitespace Samples -->
+                                            <div data-ng-show="status.valueStats.whitespace.samples.length > 0" style="margin-top: 8px;">
+                                                <small><strong>Sample values:</strong> <span class="text-muted">(click to find records)</span></small>
+                                                <ul class="list-unstyled" style="margin: 4px 0 0 0; padding-left: 0;">
+                                                    <li data-ng-repeat="sample in status.valueStats.whitespace.samples | limitTo:5"
+                                                        ng-click="lookupRecordsByValue(sample.value, sample.violationType)"
+                                                        style="font-family: monospace; font-size: 11px; padding: 2px 6px; background: #fcf8e3; border-radius: 3px; margin: 2px 0; display: inline-block; margin-right: 4px; white-space: pre; cursor: pointer;"
+                                                        title="Click to find records with this value">
+                                                        <span class="text-warning">"{{ sample.value | limitTo:60 }}"</span>
+                                                        <span class="label label-warning" style="font-size: 9px; margin-left: 4px;">{{ sample.violationType }}</span>
+                                                        <i class="fa fa-search" style="margin-left: 4px; opacity: 0.5;"></i>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                     <tr data-ng-show="status.valueStats.encodingIssues">
@@ -1307,6 +1415,20 @@
                                                     Replacement chars: {{ status.valueStats.encodingIssues.replacementChars }}
                                                 </span>
                                             </small>
+                                            <!-- Violation Samples -->
+                                            <div data-ng-show="status.valueStats.encodingIssues.samples.length > 0" style="margin-top: 8px;">
+                                                <small><strong>Sample values:</strong> <span class="text-muted">(click to find records)</span></small>
+                                                <ul class="list-unstyled" style="margin: 4px 0 0 0; padding-left: 0;">
+                                                    <li data-ng-repeat="sample in status.valueStats.encodingIssues.samples | limitTo:5"
+                                                        ng-click="lookupRecordsByValue(sample.value, sample.violationType)"
+                                                        style="font-family: monospace; font-size: 11px; padding: 2px 6px; background: #f9f2f4; border-radius: 3px; margin: 2px 0; display: inline-block; margin-right: 4px; cursor: pointer;"
+                                                        title="Click to find records with this value">
+                                                        <span class="text-danger">{{ sample.value | limitTo:80 }}</span>
+                                                        <span class="label label-default" style="font-size: 9px; margin-left: 4px;">{{ sample.violationType }}</span>
+                                                        <i class="fa fa-search" style="margin-left: 4px; opacity: 0.5;"></i>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                     <tr data-ng-show="status.valueStats.outliers">
@@ -1328,6 +1450,20 @@
                                                     Invalid years: {{ status.valueStats.outliers.suspiciousYears }}
                                                 </span>
                                             </small>
+                                            <!-- Outlier Samples -->
+                                            <div data-ng-show="status.valueStats.outliers.samples.length > 0" style="margin-top: 8px;">
+                                                <small><strong>Sample values:</strong> <span class="text-muted">(click to find records)</span></small>
+                                                <ul class="list-unstyled" style="margin: 4px 0 0 0; padding-left: 0;">
+                                                    <li data-ng-repeat="sample in status.valueStats.outliers.samples | limitTo:5"
+                                                        ng-click="lookupRecordsByValue(sample.value, sample.violationType)"
+                                                        style="font-family: monospace; font-size: 11px; padding: 2px 6px; background: #fcf8e3; border-radius: 3px; margin: 2px 0; display: inline-block; margin-right: 4px; cursor: pointer;"
+                                                        title="Click to find records with this value">
+                                                        <span class="text-warning">{{ sample.value | limitTo:80 }}</span>
+                                                        <span class="label label-warning" style="font-size: 9px; margin-left: 4px;">{{ sample.violationType }}</span>
+                                                        <i class="fa fa-search" style="margin-left: 4px; opacity: 0.5;"></i>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -1380,6 +1516,19 @@
                                                     ({{ status.patternInfo.uriValidation.valid }} valid / {{ status.patternInfo.uriValidation.total }} total)
                                                 </span>
                                             </span>
+                                            <!-- Invalid URI Samples -->
+                                            <div data-ng-show="status.patternInfo.uriValidation.samples.length > 0" style="margin-top: 8px;">
+                                                <small><strong>Sample invalid URIs:</strong> <span class="text-muted">(click to find records)</span></small>
+                                                <ul class="list-unstyled" style="margin: 4px 0 0 0; padding-left: 0;">
+                                                    <li data-ng-repeat="sample in status.patternInfo.uriValidation.samples | limitTo:5"
+                                                        ng-click="lookupRecordsByValue(sample.value, 'invalid_uri')"
+                                                        style="font-family: monospace; font-size: 11px; padding: 2px 6px; background: #f9f2f4; border-radius: 3px; margin: 2px 0; word-break: break-all; cursor: pointer;"
+                                                        title="Click to find records with this value">
+                                                        <span class="text-danger">{{ sample.value | limitTo:100 }}</span>
+                                                        <i class="fa fa-search" style="margin-left: 4px; opacity: 0.5;"></i>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>

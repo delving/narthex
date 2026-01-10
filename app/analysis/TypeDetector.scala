@@ -17,8 +17,10 @@
 package analysis
 
 import play.api.libs.json.{JsObject, Json}
+import scala.collection.mutable
 import scala.util.Try
 import java.net.URI
+import analysis.ValueStats.ViolationSample
 
 /**
  * Detects data types from string values for data quality analysis.
@@ -209,6 +211,9 @@ object TypeDetector {
     }.getOrElse(false)
   }
 
+  // Maximum number of violation samples for URIs
+  private val MaxUriSamples = 10
+
   /**
    * Result of pattern analysis on a collection of values.
    */
@@ -217,7 +222,8 @@ object TypeDetector {
     totalValues: Int,
     validUriCount: Int,
     invalidUriCount: Int,
-    uriLikeCount: Int  // Values that look like URIs (have scheme)
+    uriLikeCount: Int,  // Values that look like URIs (have scheme)
+    invalidUriSamples: List[ViolationSample] = List.empty  // Samples of invalid URIs
   ) {
     def dominantPattern: PatternType = {
       if (patternDistribution.isEmpty) PatternType.NONE
@@ -264,14 +270,16 @@ object TypeDetector {
         }
 
         if (uriLikeCount > 0) {
-          json = json ++ Json.obj(
-            "uriValidation" -> Json.obj(
-              "total" -> uriLikeCount,
-              "valid" -> validUriCount,
-              "invalid" -> invalidUriCount,
-              "validRate" -> BigDecimal(uriValidRate).setScale(1, BigDecimal.RoundingMode.HALF_UP)
-            )
+          var uriJson = Json.obj(
+            "total" -> uriLikeCount,
+            "valid" -> validUriCount,
+            "invalid" -> invalidUriCount,
+            "validRate" -> BigDecimal(uriValidRate).setScale(1, BigDecimal.RoundingMode.HALF_UP)
           )
+          if (invalidUriSamples.nonEmpty) {
+            uriJson = uriJson + ("samples" -> Json.toJson(invalidUriSamples))
+          }
+          json = json ++ Json.obj("uriValidation" -> uriJson)
         }
 
         json
@@ -289,6 +297,9 @@ object TypeDetector {
     private var invalidUri = 0
     private var uriLike = 0
 
+    // Invalid URI sample collector (bounded)
+    private val invalidUriSampleList = mutable.ListBuffer[ViolationSample]()
+
     // Pattern to detect URI-like values (has a scheme)
     private val UriLikePattern = """^[a-zA-Z][a-zA-Z0-9+.-]*:""".r
 
@@ -303,8 +314,15 @@ object TypeDetector {
       // Check URI validation for URI-like values
       if (UriLikePattern.findFirstIn(trimmed).isDefined) {
         uriLike += 1
-        if (isValidUri(trimmed)) validUri += 1
-        else invalidUri += 1
+        if (isValidUri(trimmed)) {
+          validUri += 1
+        } else {
+          invalidUri += 1
+          // Collect sample of invalid URIs
+          if (invalidUriSampleList.size < MaxUriSamples) {
+            invalidUriSampleList += ViolationSample(trimmed.take(500), "invalid_uri")
+          }
+        }
       }
     }
 
@@ -314,7 +332,8 @@ object TypeDetector {
         totalValues = total,
         validUriCount = validUri,
         invalidUriCount = invalidUri,
-        uriLikeCount = uriLike
+        uriLikeCount = uriLike,
+        invalidUriSamples = invalidUriSampleList.toList
       )
     }
   }
