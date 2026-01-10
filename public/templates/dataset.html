@@ -256,13 +256,26 @@
                         </div>
                     </div>
 
-                    <!-- Top Problematic Fields -->
-                    <div class="panel panel-default" ng-if="qualitySummary.topProblematicFields.length > 0">
+                    <!-- Problematic Fields -->
+                    <div class="panel panel-default" ng-if="qualitySummary.problematicFields.length > 0">
                         <div class="panel-heading">
-                            <strong><i class="fa fa-warning"></i> Top Problematic Fields</strong>
-                            <span class="badge pull-right">{{ qualitySummary.topProblematicFields.length }}</span>
+                            <strong><i class="fa fa-warning"></i> Fields with Issues</strong>
+                            <span class="badge" style="margin-left: 5px;">{{ qualitySummary.problematicFields.length }}</span>
+                            <div class="pull-right">
+                                <button class="btn btn-xs"
+                                        ng-class="{'btn-primary': showAllProblematicFields, 'btn-default': !showAllProblematicFields}"
+                                        ng-click="showAllProblematicFields = !showAllProblematicFields"
+                                        ng-if="qualitySummary.problematicFields.length > 10">
+                                    <span ng-if="!showAllProblematicFields">
+                                        <i class="fa fa-expand"></i> Show All ({{ qualitySummary.problematicFields.length }})
+                                    </span>
+                                    <span ng-if="showAllProblematicFields">
+                                        <i class="fa fa-compress"></i> Show Top 10
+                                    </span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="table-responsive">
+                        <div class="table-responsive" ng-style="{'max-height': showAllProblematicFields ? '400px' : 'none', 'overflow-y': showAllProblematicFields ? 'auto' : 'visible'}">
                             <table class="table table-condensed table-hover" style="margin-bottom: 0;">
                                 <thead>
                                     <tr>
@@ -272,7 +285,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr ng-repeat="field in qualitySummary.topProblematicFields">
+                                    <tr ng-repeat="field in qualitySummary.problematicFields | limitTo: (showAllProblematicFields ? qualitySummary.problematicFields.length : 10)">
                                         <td>
                                             <a href ng-click="navigateToField(field.path)">
                                                 <code>{{ field.tag }}</code>
@@ -307,6 +320,11 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="panel-footer text-center" ng-if="!showAllProblematicFields && qualitySummary.problematicFields.length > 10">
+                            <small class="text-muted">
+                                Showing top 10 of {{ qualitySummary.problematicFields.length }} fields with issues
+                            </small>
                         </div>
                     </div>
 

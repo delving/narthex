@@ -62,7 +62,10 @@ This document captures the roadmap for data quality analysis features in Narthex
   - Average occurrences per record (highlights fields with >1 avg)
 - **Completeness distribution**: Excellent/Good/Fair/Poor breakdown
 - **Issues by type table**: Low completeness, high empty rate, mixed types, invalid URIs, whitespace issues
-- **Top 10 problematic fields**: Clickable list with completeness bars and issue icons
+- **Fields with issues**: Expandable list showing all problematic fields
+  - Shows top 10 by default, "Show All" button to expand
+  - Sorted by issue count (most issues first), then by completeness
+  - Clickable to navigate to field in tree view
 - **Navigation**: Click field to jump to it in tree view
 - **Source/Processed support**: Works with both analysis types
 

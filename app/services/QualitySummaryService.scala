@@ -72,7 +72,7 @@ case class QualitySummary(
   issuesByType: Map[String, Int],
   overallScore: Double,
   completenessDistribution: Map[String, Int],
-  topProblematicFields: List[FieldQuality]
+  problematicFields: List[FieldQuality]  // All fields with issues, sorted by severity
 )
 
 object QualitySummary {
@@ -152,10 +152,10 @@ class QualitySummaryService @Inject()(
       // Calculate overall score
       val overallScore = calculateOverallScore(leafFields)
 
-      // Top 10 problematic fields (sorted by issue count, then by completeness)
-      val topProblematic = fieldsWithIssues
+      // All problematic fields (sorted by issue count desc, then by completeness asc)
+      val allProblematic = fieldsWithIssues
         .sortBy(f => (-f.issueCount, f.completeness))
-        .take(10)
+        .toList
 
       Some(QualitySummary(
         totalFields = allFields.size,
@@ -169,7 +169,7 @@ class QualitySummaryService @Inject()(
         issuesByType = issuesByType,
         overallScore = overallScore,
         completenessDistribution = completenessDistribution,
-        topProblematicFields = topProblematic.toList
+        problematicFields = allProblematic
       ))
     } catch {
       case e: Exception =>
