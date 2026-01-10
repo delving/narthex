@@ -42,6 +42,41 @@ object TreeNode {
   import analysis.Analyzer.AnalysisType
   import analysis.Analyzer.AnalysisType._
 
+  /**
+   * Quality statistics for a field, calculated after analysis.
+   * @param totalRecords Total number of records in the dataset
+   * @param recordsWithValue Number of records that have at least one non-empty value
+   * @param emptyCount Number of empty or whitespace-only values
+   * @param totalValues Total number of values (same as count)
+   */
+  case class QualityStats(
+    totalRecords: Int,
+    recordsWithValue: Int,
+    emptyCount: Int,
+    totalValues: Int
+  ) {
+    def completeness: Double = if (totalRecords > 0) (recordsWithValue.toDouble / totalRecords) * 100 else 0.0
+    def avgPerRecord: Double = if (totalRecords > 0) totalValues.toDouble / totalRecords else 0.0
+    def emptyRate: Double = if (totalValues + emptyCount > 0) (emptyCount.toDouble / (totalValues + emptyCount)) * 100 else 0.0
+  }
+
+  /**
+   * Tracks field presence within a single record for completeness calculation.
+   */
+  class RecordTracker {
+    private var fieldsWithValue = Set.empty[String]
+
+    def markFieldPresent(path: String): Unit = {
+      fieldsWithValue += path
+    }
+
+    def getFieldsWithValue: Set[String] = fieldsWithValue
+
+    def reset(): Unit = {
+      fieldsWithValue = Set.empty
+    }
+  }
+
   def apply(source: Source, analysisType: AnalysisType,
             datasetContext: DatasetContext,
             progressReporter: ProgressReporter,
@@ -52,6 +87,15 @@ object TreeNode {
     val base = new TreeNode(actualTreeRoot, null, null, null)
     var node = base
     val events = new XMLEventReader(source)
+
+    // Quality statistics tracking
+    val recordTracker = new RecordTracker()
+    var recordRootPath: Option[String] = None
+    var totalRecords = 0
+    var currentDepth = 0
+    var recordRootDepth = -1
+    val recordsWithValueCount = mutable.Map.empty[String, Int]
+
     def getNamespace(pre: String, scope: NamespaceBinding) = {
       val uri = scope.getURI(pre)
       if (uri == null && pre != null) throw new Exception( s"""No namespace declared for "$pre" prefix!""")
@@ -66,11 +110,30 @@ object TreeNode {
         events.next() match {
 
           case EvElemStart(pre, label, attrs, scope) =>
+            currentDepth += 1
             node = node.kid(tag(pre, label), getNamespace(pre, scope) + label).start()
+
+            // Detect record root: first element at depth 2 (child of document root)
+            // For source: /pockets/pocket, for processed: /rdf:RDF/rdf:Description
+            if (currentDepth == 2 && recordRootPath.isEmpty) {
+              recordRootPath = Some(node.path)
+              recordRootDepth = currentDepth
+            }
+
+            // Track record start
+            if (recordRootPath.contains(node.path)) {
+              totalRecords += 1
+              recordTracker.reset()
+            }
+
             attrs.foreach { attr =>
               val uri = MetaData.getUniversalKey(attr, scope)
               val kid = node.kid(s"@${attr.prefixedKey}", uri)
               kid.start().value(attr.value.toString()).end()
+              // Mark attribute field as present if it has a value
+              if (attr.value.toString().trim.nonEmpty) {
+                recordTracker.markFieldPresent(kid.path)
+              }
             }
 
           case EvText(text) =>
@@ -79,8 +142,22 @@ object TreeNode {
           case EvEntityRef(entity) => node.value(translateEntity(entity))
 
           case EvElemEnd(pre, label) =>
+            // Mark field as present if it has a non-empty value
+            if (node.valueBuilder.toString().trim.nonEmpty) {
+              recordTracker.markFieldPresent(node.path)
+            }
+
             node.end()
+
+            // Track record end - update recordsWithValue counts
+            if (recordRootPath.contains(node.path)) {
+              recordTracker.getFieldsWithValue.foreach { fieldPath =>
+                recordsWithValueCount(fieldPath) = recordsWithValueCount.getOrElse(fieldPath, 0) + 1
+              }
+            }
+
             node = node.parent
+            currentDepth -= 1
 
           case EvComment(text) =>
             val _ = stupidParser(text, string => node.value(translateEntity(string)))
@@ -98,6 +175,10 @@ object TreeNode {
     }
     progressReporter.checkInterrupt()
     val root = base.kids.values.head
+
+    // Set quality statistics on all nodes
+    root.setQualityStats(totalRecords, recordsWithValueCount.toMap)
+
     base.finish()
     val pretty = Json.prettyPrint(Json.toJson(root))
     FileUtils.writeStringToFile(actualIndexFile, pretty, "UTF-8")
@@ -170,13 +251,29 @@ object TreeNode {
       JsArray(sample.values.map(value => JsString(value)))
     }
 
-    override def writes(node: TreeNode) = Json.obj(
-      "tag" -> node.tag,
-      "path" -> node.path,
-      "count" -> node.count,
-      "lengths" -> writes(node.lengths),
-      "kids" -> JsArray(node.kids.values.map(writes).toSeq)
+    def writes(stats: QualityStats): JsValue = Json.obj(
+      "totalRecords" -> stats.totalRecords,
+      "recordsWithValue" -> stats.recordsWithValue,
+      "emptyCount" -> stats.emptyCount,
+      "completeness" -> BigDecimal(stats.completeness).setScale(1, BigDecimal.RoundingMode.HALF_UP),
+      "avgPerRecord" -> BigDecimal(stats.avgPerRecord).setScale(2, BigDecimal.RoundingMode.HALF_UP),
+      "emptyRate" -> BigDecimal(stats.emptyRate).setScale(1, BigDecimal.RoundingMode.HALF_UP)
     )
+
+    override def writes(node: TreeNode) = {
+      val baseObj = Json.obj(
+        "tag" -> node.tag,
+        "path" -> node.path,
+        "count" -> node.count,
+        "lengths" -> writes(node.lengths),
+        "kids" -> JsArray(node.kids.values.map(writes).toSeq)
+      )
+      // Add quality stats if available
+      node.qualityStats match {
+        case Some(stats) => baseObj + ("quality" -> writes(stats))
+        case None => baseObj
+      }
+    }
   }
 
   case class ReadTreeNode(tag: String, path: String, count: Int, lengths: Seq[Seq[String]], kids: Seq[ReadTreeNode])
@@ -211,13 +308,17 @@ object TreeNode {
 
 
 class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String, val uri: String) {
+  import TreeNode.QualityStats
+
   val MAX_LIST = 10000
   var kids = Map.empty[String, TreeNode]
   var count = 0
+  var emptyCount = 0  // Track empty/whitespace-only values
   var lengths = new LengthHistogram()
   var valueBuilder = new StringBuilder
   var valueListSize = 0
   var valueList = List.empty[String]
+  var qualityStats: Option[QualityStats] = None
 
   def flush() = {
     val writer = appender(nodeRepo.values)
@@ -253,14 +354,34 @@ class TreeNode(val nodeRepo: NodeRepo, val parent: TreeNode, val tag: String, va
   }
 
   def end() = {
-    val value = crunchWhitespace(valueBuilder.toString(), None)
-    // todo add fix in here for linefeed replacing 
+    val rawValue = valueBuilder.toString()
+    val value = crunchWhitespace(rawValue, None)
+    // Track empty values (whitespace-only counts as empty)
+    if (rawValue.nonEmpty && value.isEmpty) {
+      emptyCount += 1
+    }
+    // todo add fix in here for linefeed replacing
     if (!value.isEmpty) {
       lengths.record(value)
       valueList = value :: valueList
       valueListSize += 1
       if (valueListSize >= MAX_LIST) flush()
     }
+  }
+
+  /**
+   * Set quality statistics for this node and all children.
+   * Called after parsing is complete.
+   */
+  def setQualityStats(totalRecords: Int, recordsWithValueCount: Map[String, Int]): Unit = {
+    val recordsWithValue = recordsWithValueCount.getOrElse(path, 0)
+    qualityStats = Some(QualityStats(
+      totalRecords = totalRecords,
+      recordsWithValue = recordsWithValue,
+      emptyCount = emptyCount,
+      totalValues = count
+    ))
+    kids.values.foreach(_.setQualityStats(totalRecords, recordsWithValueCount))
   }
 
   def finish(): Unit = {

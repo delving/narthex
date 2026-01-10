@@ -127,6 +127,9 @@
                     <li data-ng-class="{ active: activeView == 'sample' }">
                         <a href="" data-ng-click="fetchSample()">Samples</a>
                     </li>
+                    <li data-ng-class="{ active: activeView == 'quality' }" data-ng-show="selectedNode.quality">
+                        <a href="" data-ng-click="activeView = 'quality'">Quality</a>
+                    </li>
                 </ul>
                 <ul class="list-inline pull-right">
                     <li
@@ -179,7 +182,7 @@
                 data-scrollable
                 id="sample-list"
                 data-offset="200"
-                ng-show="sample"
+                ng-show="sample && activeView == 'sample'"
             >
                 <ul class="list-group">
                     <li
@@ -196,7 +199,7 @@
                 data-scrollable
                 id="histogram-list"
                 data-offset="210"
-                ng-show="histogram"
+                ng-show="histogram && activeView == 'histogram'"
             >
                 <ul class="list-group">
                     <li
@@ -237,6 +240,63 @@
                         >
                     </li>
                 </ul>
+            </div>
+
+            <!-- Quality Statistics Panel -->
+            <div
+                class="vertical-scroll"
+                data-scrollable
+                id="quality-stats"
+                data-offset="200"
+                ng-show="activeView == 'quality' && selectedNode.quality"
+            >
+                <div class="panel panel-default" style="margin: 10px;">
+                    <div class="panel-heading">
+                        <strong>Data Quality Statistics</strong>
+                    </div>
+                    <div class="panel-body">
+                        <table class="table table-condensed">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Completeness</strong></td>
+                                    <td>
+                                        <div class="progress" style="margin-bottom: 0; min-width: 150px;">
+                                            <div class="progress-bar"
+                                                 ng-class="{'progress-bar-success': selectedNode.quality.completeness >= 90, 'progress-bar-warning': selectedNode.quality.completeness >= 50 && selectedNode.quality.completeness < 90, 'progress-bar-danger': selectedNode.quality.completeness < 50}"
+                                                 role="progressbar"
+                                                 style="width: {{ selectedNode.quality.completeness }}%">
+                                                {{ selectedNode.quality.completeness }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Records with value</strong></td>
+                                    <td>{{ selectedNode.quality.recordsWithValue }} / {{ selectedNode.quality.totalRecords }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total values</strong></td>
+                                    <td>{{ selectedNode.count }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Avg per record</strong></td>
+                                    <td>{{ selectedNode.quality.avgPerRecord }}</td>
+                                </tr>
+                                <tr data-ng-show="selectedNode.quality.emptyCount > 0">
+                                    <td><strong>Empty values</strong></td>
+                                    <td>
+                                        <span class="text-warning">{{ selectedNode.quality.emptyCount }}</span>
+                                        <span class="text-muted">({{ selectedNode.quality.emptyRate }}%)</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="text-muted small">
+                            <p><strong>Completeness:</strong> Percentage of records that have at least one value for this field.</p>
+                            <p><strong>Avg per record:</strong> Average number of values per record (>1 indicates multi-value field).</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="widget-footer">
@@ -300,10 +360,13 @@
                 Unique Id
             </span>
 
-            <!--todo: find a way to show which fields are skosified-->
-            <!--<span data-ng-show="analyzedState">-->
-                <!--<div class="badge badge-warning">{{ node.tag }}</div>-->
-            <!--</span>-->
+            <!-- Completeness indicator -->
+            <span data-ng-if="node.quality && node.lengths.length > 0"
+                  class="badge"
+                  data-ng-class="{'badge-success': node.quality.completeness >= 90, 'badge-warning': node.quality.completeness >= 50 && node.quality.completeness < 90, 'badge-danger': node.quality.completeness < 50}"
+                  title="Completeness: {{ node.quality.completeness }}%">
+                {{ node.quality.completeness }}%
+            </span>
 
             <span class="badge badge-info">
                 {{ node.count }}
