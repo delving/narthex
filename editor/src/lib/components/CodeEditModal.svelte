@@ -4,18 +4,38 @@
 	import { sourcePathToGroovy, generateMappingLine } from '$lib/utils/codeGenerator';
 	import { onMount, onDestroy } from 'svelte';
 	import type * as Monaco from 'monaco-editor';
+	import {
+		getAllVariables,
+		getAllFunctionCategories,
+		type FunctionDoc,
+		type VariableDoc,
+		type CustomFunction,
+		type CustomVariable
+	} from '$lib/data/groovyReference';
 
 	interface Props {
 		isOpen: boolean;
 		mapping: Mapping | null;
 		currentRecordIndex: number;
 		customCode?: string;
+		customFunctions?: CustomFunction[];
+		customVariables?: CustomVariable[];
 		onClose: () => void;
 		onSave: (mappingId: string, code: string) => void;
 		onRecordChange: (index: number) => void;
 	}
 
-	let { isOpen, mapping, currentRecordIndex, customCode, onClose, onSave, onRecordChange }: Props = $props();
+	let {
+		isOpen,
+		mapping,
+		currentRecordIndex,
+		customCode,
+		customFunctions = [],
+		customVariables = [],
+		onClose,
+		onSave,
+		onRecordChange
+	}: Props = $props();
 
 	// Monaco editor state
 	let editorContainer: HTMLDivElement;
@@ -28,6 +48,75 @@
 
 	// Track if code has been modified in this session
 	let hasChanges = $state(false);
+
+	// Reference panel state
+	let referencePanelOpen = $state(false);
+	let referenceSearch = $state('');
+	let expandedCategories = $state<Set<string>>(new Set(['Variables', 'Text Methods']));
+	let selectedItem = $state<FunctionDoc | VariableDoc | null>(null);
+
+	// Get variables and functions based on current mapping
+	const variables = $derived(mapping ? getAllVariables(mapping.sourcePath, customVariables) : []);
+	const functionCategories = $derived(getAllFunctionCategories(customFunctions));
+
+	// Filter by search
+	const filteredVariables = $derived(
+		referenceSearch
+			? variables.filter(
+					(v) =>
+						v.name.toLowerCase().includes(referenceSearch.toLowerCase()) ||
+						v.description.toLowerCase().includes(referenceSearch.toLowerCase())
+				)
+			: variables
+	);
+
+	const filteredCategories = $derived(
+		referenceSearch
+			? functionCategories
+					.map((cat) => ({
+						...cat,
+						functions: cat.functions.filter(
+							(f) =>
+								f.name.toLowerCase().includes(referenceSearch.toLowerCase()) ||
+								f.description.toLowerCase().includes(referenceSearch.toLowerCase())
+						)
+					}))
+					.filter((cat) => cat.functions.length > 0)
+			: functionCategories
+	);
+
+	// Toggle category expansion
+	function toggleCategory(categoryName: string) {
+		const newSet = new Set(expandedCategories);
+		if (newSet.has(categoryName)) {
+			newSet.delete(categoryName);
+		} else {
+			newSet.add(categoryName);
+		}
+		expandedCategories = newSet;
+	}
+
+	// Insert text at cursor position in editor
+	function insertAtCursor(text: string) {
+		if (!editor) return;
+
+		const selection = editor.getSelection();
+		if (selection) {
+			const op = {
+				range: selection,
+				text: text,
+				forceMoveMarkers: true
+			};
+			editor.executeEdits('reference-insert', [op]);
+			editor.focus();
+		}
+	}
+
+	// Handle item click - insert and show docs
+	function handleItemClick(item: FunctionDoc | VariableDoc) {
+		selectedItem = item;
+		insertAtCursor(item.insertText);
+	}
 
 	// Initialize Monaco on mount
 	onMount(async () => {
@@ -298,7 +387,7 @@
 		aria-modal="true"
 		tabindex="-1"
 	>
-		<div class="modal">
+		<div class="modal" class:panel-open={referencePanelOpen}>
 			<!-- Header -->
 			<div class="modal-header">
 				<div class="header-left">
@@ -309,87 +398,229 @@
 						<span class="target">{mapping.targetName}</span>
 					</span>
 				</div>
-				<button class="close-btn" onclick={onClose} aria-label="Close">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M18 6L6 18M6 6l12 12" />
-					</svg>
-				</button>
+				<div class="header-right">
+					<button
+						class="reference-toggle"
+						class:active={referencePanelOpen}
+						onclick={() => (referencePanelOpen = !referencePanelOpen)}
+						title="Toggle function reference"
+					>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+						</svg>
+						Reference
+					</button>
+					<button class="close-btn" onclick={onClose} aria-label="Close">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M18 6L6 18M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
 			</div>
 
-			<!-- Content -->
-			<div class="modal-content">
-				<!-- Code editor section -->
-				<div class="code-section">
-					<div class="section-header">
-						<span class="section-title">Groovy Code</span>
-						<div class="section-actions">
-							{#if hasChanges}
-								<span class="modified-badge">Modified</span>
+			<!-- Content wrapper for main + reference panel -->
+			<div class="modal-body" class:panel-open={referencePanelOpen}>
+				<!-- Main Content -->
+				<div class="modal-content">
+					<!-- Code editor section -->
+					<div class="code-section">
+						<div class="section-header">
+							<span class="section-title">Groovy Code</span>
+							<div class="section-actions">
+								{#if hasChanges}
+									<span class="modified-badge">Modified</span>
+								{/if}
+								<button class="action-btn" onclick={handleReset}>Reset to Default</button>
+							</div>
+						</div>
+						<div class="code-editor" bind:this={editorContainer}></div>
+					</div>
+
+					<!-- Preview section -->
+					<div class="preview-section">
+						<!-- Record navigation -->
+						<div class="record-nav">
+							<button
+								class="nav-btn"
+								onclick={prevRecord}
+								disabled={currentRecordIndex === 0}
+								aria-label="Previous record"
+							>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M15 19l-7-7 7-7" />
+								</svg>
+							</button>
+							<span class="record-info">
+								Record <strong>{currentRecordIndex + 1}</strong> of <strong>{totalRecords}</strong>
+							</span>
+							<button
+								class="nav-btn"
+								onclick={nextRecord}
+								disabled={currentRecordIndex === totalRecords - 1}
+								aria-label="Next record"
+							>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M9 5l7 7-7 7" />
+								</svg>
+							</button>
+						</div>
+
+						<!-- Input/Output preview -->
+						<div class="value-preview">
+							<div class="value-panel">
+								<div class="value-header">
+									<span class="value-label">Input</span>
+									<span class="value-path">{sourcePathToGroovy(mapping.sourcePath)}</span>
+								</div>
+								<div class="value-content">
+									<pre>{getSourceValue() || '(empty)'}</pre>
+								</div>
+							</div>
+
+							<div class="arrow-divider">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M5 12h14M12 5l7 7-7 7" />
+								</svg>
+							</div>
+
+							<div class="value-panel">
+								<div class="value-header">
+									<span class="value-label">Output</span>
+									<span class="value-path">{mapping.targetName}</span>
+								</div>
+								<div class="value-content">
+									<pre>{getOutputValue() || '(empty)'}</pre>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Reference Panel (slide-out) -->
+				{#if referencePanelOpen}
+					<div class="reference-panel">
+						<div class="reference-header">
+							<span class="reference-title">Reference</span>
+							<button
+								class="reference-close"
+								onclick={() => (referencePanelOpen = false)}
+								aria-label="Close reference panel"
+							>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M18 6L6 18M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+
+						<!-- Search -->
+						<div class="reference-search">
+							<input
+								type="text"
+								placeholder="Search functions..."
+								bind:value={referenceSearch}
+								class="search-input"
+							/>
+						</div>
+
+						<!-- Reference list -->
+						<div class="reference-list">
+							<!-- Variables section -->
+							{#if filteredVariables.length > 0}
+								<div class="reference-category">
+									<button
+										class="category-header"
+										onclick={() => toggleCategory('Variables')}
+									>
+										<svg
+											class="expand-icon"
+											class:expanded={expandedCategories.has('Variables')}
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M9 5l7 7-7 7" />
+										</svg>
+										<span class="category-name">Variables</span>
+										<span class="category-count">{filteredVariables.length}</span>
+									</button>
+									{#if expandedCategories.has('Variables')}
+										<div class="category-items">
+											{#each filteredVariables as variable}
+												<button
+													class="reference-item"
+													class:selected={selectedItem === variable}
+													onclick={() => handleItemClick(variable)}
+													title={variable.description}
+												>
+													<span class="item-name">{variable.name}</span>
+													<span class="item-type">{variable.type}</span>
+												</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
 							{/if}
-							<button class="action-btn" onclick={handleReset}>Reset to Default</button>
+
+							<!-- Function categories -->
+							{#each filteredCategories as category}
+								<div class="reference-category">
+									<button
+										class="category-header"
+										onclick={() => toggleCategory(category.name)}
+									>
+										<svg
+											class="expand-icon"
+											class:expanded={expandedCategories.has(category.name)}
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M9 5l7 7-7 7" />
+										</svg>
+										<span class="category-name">{category.name}</span>
+										<span class="category-count">{category.functions.length}</span>
+									</button>
+									{#if expandedCategories.has(category.name)}
+										<div class="category-items">
+											{#each category.functions as fn}
+												<button
+													class="reference-item"
+													class:selected={selectedItem === fn}
+													onclick={() => handleItemClick(fn)}
+													title={fn.description}
+												>
+													<span class="item-name">{fn.name}</span>
+												</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/each}
 						</div>
+
+						<!-- Selected item documentation -->
+						{#if selectedItem}
+							<div class="reference-docs">
+								<div class="docs-header">
+									<span class="docs-name">
+										{'signature' in selectedItem ? selectedItem.signature : selectedItem.name}
+									</span>
+								</div>
+								<div class="docs-content">
+									<p class="docs-description">{selectedItem.description}</p>
+									{#if 'example' in selectedItem && selectedItem.example}
+										<div class="docs-example">
+											<span class="example-label">Example:</span>
+											<code>{selectedItem.example}</code>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
 					</div>
-					<div class="code-editor" bind:this={editorContainer}></div>
-				</div>
-
-				<!-- Preview section -->
-				<div class="preview-section">
-					<!-- Record navigation -->
-					<div class="record-nav">
-						<button
-							class="nav-btn"
-							onclick={prevRecord}
-							disabled={currentRecordIndex === 0}
-							aria-label="Previous record"
-						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M15 19l-7-7 7-7" />
-							</svg>
-						</button>
-						<span class="record-info">
-							Record <strong>{currentRecordIndex + 1}</strong> of <strong>{totalRecords}</strong>
-						</span>
-						<button
-							class="nav-btn"
-							onclick={nextRecord}
-							disabled={currentRecordIndex === totalRecords - 1}
-							aria-label="Next record"
-						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M9 5l7 7-7 7" />
-							</svg>
-						</button>
-					</div>
-
-					<!-- Input/Output preview -->
-					<div class="value-preview">
-						<div class="value-panel">
-							<div class="value-header">
-								<span class="value-label">Input</span>
-								<span class="value-path">{sourcePathToGroovy(mapping.sourcePath)}</span>
-							</div>
-							<div class="value-content">
-								<pre>{getSourceValue() || '(empty)'}</pre>
-							</div>
-						</div>
-
-						<div class="arrow-divider">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M5 12h14M12 5l7 7-7 7" />
-							</svg>
-						</div>
-
-						<div class="value-panel">
-							<div class="value-header">
-								<span class="value-label">Output</span>
-								<span class="value-path">{mapping.targetName}</span>
-							</div>
-							<div class="value-content">
-								<pre>{getOutputValue() || '(empty)'}</pre>
-							</div>
-						</div>
-					</div>
-				</div>
+				{/if}
 			</div>
 
 			<!-- Footer -->
@@ -425,6 +656,11 @@
 		flex-direction: column;
 		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 		border: 1px solid #374151;
+		transition: max-width 0.2s ease;
+	}
+
+	.modal.panel-open {
+		max-width: 1280px;
 	}
 
 	.modal-header {
@@ -721,5 +957,286 @@
 
 	.btn-primary:hover {
 		background: #2563eb;
+	}
+
+	/* Header right section */
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.reference-toggle {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		font-size: 12px;
+		background: #374151;
+		border: none;
+		border-radius: 6px;
+		color: #d1d5db;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.reference-toggle:hover {
+		background: #4b5563;
+	}
+
+	.reference-toggle.active {
+		background: #3b82f6;
+		color: white;
+	}
+
+	.reference-toggle svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	/* Modal body - wraps main content and reference panel */
+	.modal-body {
+		flex: 1;
+		display: flex;
+		min-height: 0;
+		overflow: hidden;
+		transition: all 0.2s ease;
+	}
+
+	.modal-body.panel-open .modal-content {
+		flex: 1;
+		min-width: 0;
+	}
+
+	/* Reference Panel */
+	.reference-panel {
+		width: 280px;
+		flex-shrink: 0;
+		display: flex;
+		flex-direction: column;
+		background: #111827;
+		border-left: 1px solid #374151;
+		animation: slideIn 0.2s ease;
+	}
+
+	@keyframes slideIn {
+		from {
+			opacity: 0;
+			transform: translateX(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(0);
+		}
+	}
+
+	.reference-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 12px 14px;
+		border-bottom: 1px solid #374151;
+		background: #1f2937;
+	}
+
+	.reference-title {
+		font-size: 12px;
+		font-weight: 600;
+		color: #f3f4f6;
+	}
+
+	.reference-close {
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border: none;
+		background: transparent;
+		color: #6b7280;
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.reference-close:hover {
+		background: #374151;
+		color: #f3f4f6;
+	}
+
+	.reference-close svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.reference-search {
+		padding: 10px 12px;
+		border-bottom: 1px solid #374151;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 8px 10px;
+		font-size: 12px;
+		background: #1f2937;
+		border: 1px solid #374151;
+		border-radius: 6px;
+		color: #e5e7eb;
+		outline: none;
+	}
+
+	.search-input:focus {
+		border-color: #3b82f6;
+	}
+
+	.search-input::placeholder {
+		color: #6b7280;
+	}
+
+	.reference-list {
+		flex: 1;
+		overflow-y: auto;
+		padding: 8px 0;
+	}
+
+	.reference-category {
+		margin-bottom: 4px;
+	}
+
+	.category-header {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 8px 12px;
+		border: none;
+		background: transparent;
+		color: #d1d5db;
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		cursor: pointer;
+		transition: background 0.1s;
+	}
+
+	.category-header:hover {
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.expand-icon {
+		width: 12px;
+		height: 12px;
+		flex-shrink: 0;
+		transition: transform 0.15s;
+		color: #6b7280;
+	}
+
+	.expand-icon.expanded {
+		transform: rotate(90deg);
+	}
+
+	.category-name {
+		flex: 1;
+		text-align: left;
+	}
+
+	.category-count {
+		font-size: 10px;
+		padding: 1px 5px;
+		border-radius: 8px;
+		background: #374151;
+		color: #9ca3af;
+	}
+
+	.category-items {
+		padding: 2px 0;
+	}
+
+	.reference-item {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 6px 12px 6px 30px;
+		border: none;
+		background: transparent;
+		color: #e5e7eb;
+		font-size: 12px;
+		font-family: ui-monospace, monospace;
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.1s;
+	}
+
+	.reference-item:hover {
+		background: rgba(59, 130, 246, 0.1);
+	}
+
+	.reference-item.selected {
+		background: rgba(59, 130, 246, 0.2);
+	}
+
+	.item-name {
+		color: #60a5fa;
+	}
+
+	.item-type {
+		font-size: 10px;
+		color: #6b7280;
+	}
+
+	/* Reference documentation panel */
+	.reference-docs {
+		flex-shrink: 0;
+		border-top: 1px solid #374151;
+		background: #1f2937;
+		max-height: 150px;
+		overflow-y: auto;
+	}
+
+	.docs-header {
+		padding: 10px 12px;
+		border-bottom: 1px solid #374151;
+		background: #111827;
+	}
+
+	.docs-name {
+		font-family: ui-monospace, monospace;
+		font-size: 12px;
+		color: #60a5fa;
+	}
+
+	.docs-content {
+		padding: 10px 12px;
+	}
+
+	.docs-description {
+		margin: 0 0 8px 0;
+		font-size: 12px;
+		color: #d1d5db;
+		line-height: 1.5;
+	}
+
+	.docs-example {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.example-label {
+		font-size: 10px;
+		font-weight: 500;
+		text-transform: uppercase;
+		color: #6b7280;
+	}
+
+	.docs-example code {
+		padding: 6px 8px;
+		font-family: ui-monospace, monospace;
+		font-size: 11px;
+		background: #111827;
+		border-radius: 4px;
+		color: #4ade80;
 	}
 </style>

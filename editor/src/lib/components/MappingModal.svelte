@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { TreeNode } from '$lib/types';
 	import { sampleSourceTree, sampleTargetTree } from '$lib/sampleData';
+	import MappingHelpPanel from './MappingHelpPanel.svelte';
 
 	interface Props {
 		isOpen: boolean;
@@ -18,15 +19,19 @@
 
 	// Search state
 	let searchQuery = $state('');
+	let searchInputRef: HTMLInputElement;
 
 	// Selected node in the modal
 	let selectedNode = $state<TreeNode | null>(null);
 
+	// Keyboard navigation - highlighted index in flattened list
+	let highlightedIndex = $state(-1);
+
 	// Expanded nodes in the modal tree (node ids)
 	let expandedNodes = $state<Set<string>>(new Set());
 
-	// Tab state: 'docs' or 'stats'
-	let activeTab = $state<'docs' | 'stats'>('docs');
+	// Tab state: 'docs', 'stats', or 'help'
+	let activeTab = $state<'docs' | 'stats' | 'help'>('docs');
 
 	// Stats loading state
 	let statsLoaded = $state(false);
@@ -37,6 +42,7 @@
 		if (isOpen) {
 			searchQuery = '';
 			selectedNode = null;
+			highlightedIndex = -1;
 			activeTab = 'docs';
 			statsLoaded = false;
 			statsLoading = false;
@@ -51,6 +57,11 @@
 				}
 			}
 			expandedNodes = initialExpanded;
+
+			// Focus search input after a tick
+			setTimeout(() => {
+				searchInputRef?.focus();
+			}, 50);
 		}
 	});
 
@@ -115,9 +126,33 @@
 
 	const filteredTree = $derived(filterNodes(targetTree, searchQuery));
 
+	// Flatten tree for keyboard navigation (only visible/expanded nodes)
+	function flattenTree(nodes: TreeNode[]): TreeNode[] {
+		const result: TreeNode[] = [];
+		for (const node of nodes) {
+			result.push(node);
+			if (node.children && isNodeExpanded(node.id)) {
+				result.push(...flattenTree(node.children));
+			}
+		}
+		return result;
+	}
+
+	const flattenedNodes = $derived(flattenTree(filteredTree));
+
+	// Reset highlight when search changes
+	$effect(() => {
+		// Access searchQuery to create dependency
+		searchQuery;
+		highlightedIndex = -1;
+	});
+
 	// Handle node selection
 	function handleNodeSelect(node: TreeNode) {
 		selectedNode = node;
+		// Update highlighted index to match selection
+		const idx = flattenedNodes.findIndex(n => n.id === node.id);
+		if (idx >= 0) highlightedIndex = idx;
 	}
 
 	// Handle create mapping
@@ -135,11 +170,58 @@
 		}
 	}
 
-	// Handle escape key
+	// Handle keyboard navigation
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			onClose();
+			return;
 		}
+
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			if (flattenedNodes.length > 0) {
+				highlightedIndex = Math.min(highlightedIndex + 1, flattenedNodes.length - 1);
+				selectedNode = flattenedNodes[highlightedIndex];
+				scrollToHighlighted();
+			}
+			return;
+		}
+
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			if (flattenedNodes.length > 0) {
+				highlightedIndex = Math.max(highlightedIndex - 1, 0);
+				selectedNode = flattenedNodes[highlightedIndex];
+				scrollToHighlighted();
+			}
+			return;
+		}
+
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			if (selectedNode) {
+				// If we have a selected node, create the mapping
+				handleCreateMapping();
+			} else if (highlightedIndex >= 0 && flattenedNodes[highlightedIndex]) {
+				// Select the highlighted node
+				selectedNode = flattenedNodes[highlightedIndex];
+			} else if (flattenedNodes.length === 1) {
+				// If only one result, select and create
+				selectedNode = flattenedNodes[0];
+				handleCreateMapping();
+			}
+			return;
+		}
+	}
+
+	// Scroll the highlighted item into view
+	function scrollToHighlighted() {
+		setTimeout(() => {
+			const highlighted = document.querySelector('.tree-node.highlighted');
+			if (highlighted) {
+				highlighted.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			}
+		}, 0);
 	}
 </script>
 
@@ -182,6 +264,7 @@
 					class="search-input"
 					placeholder="Search {targetTreeType} fields..."
 					bind:value={searchQuery}
+					bind:this={searchInputRef}
 				/>
 				{#if searchQuery}
 					<button class="clear-btn" onclick={() => searchQuery = ''} aria-label="Clear search">
@@ -226,10 +309,26 @@
 						>
 							Statistics
 						</button>
+						<button
+							class="tab"
+							class:active={activeTab === 'help'}
+							onclick={() => activeTab = 'help'}
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon">
+								<circle cx="12" cy="12" r="10" />
+								<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
+							</svg>
+							Help
+						</button>
 					</div>
 
 					<div class="tab-content">
-						{#if !selectedNode}
+						{#if activeTab === 'help'}
+							<MappingHelpPanel
+								fieldType={selectedNode?.isAttribute ? 'attribute' : 'text'}
+								compact={true}
+							/>
+						{:else if !selectedNode}
 							<div class="placeholder">
 								Select a field to view details
 							</div>
@@ -300,14 +399,21 @@
 
 			<!-- Footer -->
 			<div class="modal-footer">
-				<button class="btn btn-secondary" onclick={onClose}>Cancel</button>
-				<button
-					class="btn btn-primary"
-					onclick={handleCreateMapping}
-					disabled={!selectedNode}
-				>
-					Create Mapping
-				</button>
+				<div class="keyboard-hint">
+					<kbd>↑</kbd><kbd>↓</kbd> navigate
+					<kbd>Enter</kbd> {selectedNode ? 'create mapping' : 'select'}
+					<kbd>Esc</kbd> close
+				</div>
+				<div class="footer-actions">
+					<button class="btn btn-secondary" onclick={onClose}>Cancel</button>
+					<button
+						class="btn btn-primary"
+						onclick={handleCreateMapping}
+						disabled={!selectedNode}
+					>
+						Create Mapping
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -317,10 +423,13 @@
 {#snippet treeNode(node: TreeNode, depth: number)}
 	{@const hasChildren = node.children && node.children.length > 0}
 	{@const nodeExpanded = isNodeExpanded(node.id)}
+	{@const nodeIndex = flattenedNodes.findIndex(n => n.id === node.id)}
+	{@const isHighlighted = nodeIndex === highlightedIndex}
 	<div class="tree-node-wrapper">
 		<button
 			class="tree-node"
 			class:selected={selectedNode?.id === node.id}
+			class:highlighted={isHighlighted}
 			class:has-children={hasChildren}
 			style="padding-left: {depth * 16 + 8}px"
 			onclick={() => handleNodeSelect(node)}
@@ -570,8 +679,19 @@
 		background: #374151;
 	}
 
+	.tree-node.highlighted {
+		background: #374151;
+		outline: 1px solid #60a5fa;
+		outline-offset: -1px;
+	}
+
 	.tree-node.selected {
 		background: #1e3a5f;
+	}
+
+	.tree-node.selected.highlighted {
+		outline: 1px solid #93c5fd;
+		outline-offset: -1px;
 	}
 
 	.toggle {
@@ -671,6 +791,13 @@
 	.tab.active {
 		color: #3b82f6;
 		border-bottom-color: #3b82f6;
+	}
+
+	.tab-icon {
+		width: 14px;
+		height: 14px;
+		vertical-align: -2px;
+		margin-right: 4px;
 	}
 
 	.tab-content {
@@ -814,10 +941,33 @@
 	/* Footer */
 	.modal-footer {
 		display: flex;
-		justify-content: flex-end;
-		gap: 12px;
+		align-items: center;
+		justify-content: space-between;
 		padding: 16px 20px;
 		border-top: 1px solid #374151;
+	}
+
+	.keyboard-hint {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		color: #6b7280;
+	}
+
+	.keyboard-hint kbd {
+		display: inline-block;
+		padding: 2px 6px;
+		font-family: ui-monospace, monospace;
+		font-size: 10px;
+		background: #374151;
+		border-radius: 4px;
+		color: #d1d5db;
+	}
+
+	.footer-actions {
+		display: flex;
+		gap: 12px;
 	}
 
 	.btn {

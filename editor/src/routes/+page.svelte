@@ -14,6 +14,51 @@
 	// Import mappingsStore and code generator
 	import { mappingsStore, type Mapping } from '$lib/stores/mappingStore';
 	import { generateGroovyCode } from '$lib/utils/codeGenerator';
+	import type { CustomFunction, CustomVariable } from '$lib/data/groovyReference';
+
+	// Sample custom functions (would come from mapping/rec-def in real app)
+	const sampleCustomFunctions: CustomFunction[] = [
+		{
+			name: 'cleanTitle()',
+			signature: 'cleanTitle(text)',
+			description: 'Clean and normalize title text, removing extra whitespace and special characters',
+			example: 'cleanTitle(input.record.title.text())',
+			insertText: 'cleanTitle()',
+			category: 'Custom Functions'
+		},
+		{
+			name: 'formatDate()',
+			signature: 'formatDate(dateStr, inputFormat, outputFormat)',
+			description: 'Parse and reformat date strings between different formats',
+			example: 'formatDate("1920-05-15", "yyyy-MM-dd", "dd/MM/yyyy")',
+			insertText: 'formatDate(, "", "")',
+			category: 'Custom Functions'
+		},
+		{
+			name: 'lookupVocab()',
+			signature: 'lookupVocab(term, vocabularyName)',
+			description: 'Look up a term in a controlled vocabulary and return the canonical URI',
+			example: 'lookupVocab("painting", "aat")',
+			insertText: 'lookupVocab(, "")',
+			category: 'Custom Functions'
+		}
+	];
+
+	// Sample custom variables (would come from rec-def in real app)
+	const sampleCustomVariables: CustomVariable[] = [
+		{
+			name: 'provider',
+			type: 'String',
+			description: 'Data provider name from mapping facts',
+			insertText: 'provider'
+		},
+		{
+			name: 'baseUrl',
+			type: 'String',
+			description: 'Base URL for generating URIs',
+			insertText: 'baseUrl'
+		}
+	];
 
 	// Prevent default drag/drop behavior on document to enable custom drag/drop
 	onMount(() => {
@@ -403,6 +448,8 @@
 	mapping={codeEditMapping}
 	currentRecordIndex={currentRecordIndex}
 	customCode={codeEditMapping ? customMappingCode[codeEditMapping.id] : undefined}
+	customFunctions={sampleCustomFunctions}
+	customVariables={sampleCustomVariables}
 	onClose={handleCodeEditModalClose}
 	onSave={handleCodeEditSave}
 	onRecordChange={handleRecordChange}
