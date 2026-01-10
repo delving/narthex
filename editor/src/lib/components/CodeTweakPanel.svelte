@@ -127,6 +127,7 @@
 							class:selected={selectedMappingId === mapping.id}
 							class:customized={isCustomized(mapping)}
 							onclick={() => selectMapping(mapping.id)}
+							ondblclick={() => onEditClick?.(mapping)}
 						>
 							<span class="source-name">{mapping.sourceName}</span>
 							<span class="arrow">→</span>
