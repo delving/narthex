@@ -1892,7 +1892,7 @@ define(["angular"], function () {
     DatasetEntryCtrl.$inject = ["$rootScope", "$scope", "datasetListService", "$location", "$timeout", "$upload", "$routeParams", "modalAlert", "$http", "$modal"];
 
     /** Controls the sidebar and headers */
-    var IndexCtrl = function ($rootScope, $scope, $location) {
+    var IndexCtrl = function ($rootScope, $scope, $location, $http) {
 
         $scope.initialize = function (orgId, sipCreatorLink, enableIncrementalHarvest, supportedDatasetTypes, enableDefaultMappings, enableDatasetDiscovery) {
             //console.log("Initializing index");
@@ -1961,9 +1961,48 @@ define(["angular"], function () {
             $scope.toggleBar = !$scope.toggleBar;
         };
 
+        // Memory stats modal
+        $scope.memoryStats = null;
+        $scope.memoryStatsLoading = false;
+        $scope.memoryStatsVisible = false;
+
+        $scope.showMemoryStats = function() {
+            $scope.memoryStatsVisible = true;
+            $scope.memoryStatsLoading = true;
+            $scope.memoryStats = null;
+
+            $http.get('/narthex/app/memory-stats').then(
+                function(response) {
+                    $scope.memoryStats = response.data;
+                    $scope.memoryStatsLoading = false;
+                },
+                function(error) {
+                    $scope.memoryStatsLoading = false;
+                    console.error('Failed to load memory stats:', error);
+                }
+            );
+        };
+
+        $scope.closeMemoryStats = function() {
+            $scope.memoryStatsVisible = false;
+        };
+
+        $scope.resetMemoryStats = function() {
+            $http.post('/narthex/app/memory-stats/reset').then(function() {
+                $scope.showMemoryStats(); // Reload stats
+            });
+        };
+
+        $scope.forceGC = function() {
+            $http.post('/narthex/app/memory-stats/gc').then(function(response) {
+                $scope.lastGCFreed = response.data.freedMB;
+                $scope.showMemoryStats(); // Reload stats
+            });
+        };
+
     };
 
-    IndexCtrl.$inject = ["$rootScope", "$scope", "$location"];
+    IndexCtrl.$inject = ["$rootScope", "$scope", "$location", "$http"];
 
     /** Controls the SIP Creator Downloads page */
     var SipCreatorDownloadsCtrl = function ($scope, $http) {

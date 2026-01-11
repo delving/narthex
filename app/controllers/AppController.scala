@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
-import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, QualitySummaryService, Temporal, TrendTrackingService, ViolationRecordService}
+import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, MemoryMonitorService, QualitySummaryService, Temporal, TrendTrackingService, ViolationRecordService}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -62,7 +62,8 @@ class AppController @Inject() (
    orgContext: OrgContext,
    indexStatsService: IndexStatsService,
    qualitySummaryService: QualitySummaryService,
-   violationRecordService: ViolationRecordService
+   violationRecordService: ViolationRecordService,
+   memoryMonitorService: MemoryMonitorService
 )(implicit
    ec: ExecutionContext,
    ts: TripleStore
@@ -1132,6 +1133,22 @@ class AppController @Inject() (
       case None =>
         NotFound(Json.obj("problem" -> s"Cannot rollback: version $hash not found for dataset $spec"))
     }
+  }
+
+  // Memory monitoring endpoints
+  def memoryStats = Action {
+    import memoryMonitorService.MemoryStats._
+    Ok(Json.toJson(memoryMonitorService.getStats))
+  }
+
+  def resetMemoryStats = Action {
+    memoryMonitorService.resetStats()
+    Ok(Json.obj("success" -> true, "message" -> "Memory statistics reset"))
+  }
+
+  def forceGC = Action {
+    val freedMB = memoryMonitorService.forceGC()
+    Ok(Json.obj("success" -> true, "freedMB" -> freedMB))
   }
 
 }

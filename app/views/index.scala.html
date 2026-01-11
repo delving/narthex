@@ -83,9 +83,12 @@
                 </div>
 
                 <div class="sidebar-footer">
-                    <div class="col-xs-12">
-                        <a href="https://github.com/delving/narthex" target="_blank">
-                          v. @version / @commitSha
+                    <div class="col-xs-12" style="display: flex; justify-content: center; align-items: center; gap: 8px;">
+                        <a href="https://github.com/delving/narthex" target="_blank" title="@commitSha">
+                          v@version
+                        </a>
+                        <a href="" ng-click="showMemoryStats()" title="Memory Stats">
+                            <i class="fa fa-tachometer"></i>
                         </a>
                     </div>
                 </div>
@@ -134,6 +137,73 @@
                 </div>
                 <div class="modal-backdrop fade" ng-class="{'in': alertModal.visible}" ng-show="alertModal.visible"></div>
             </div>
+
+            <!-- Memory Stats Modal -->
+            <div class="modal fade" ng-class="{'in': memoryStatsVisible}" ng-show="memoryStatsVisible" tabindex="-1" role="dialog" style="display: block;" ng-style="{'display': memoryStatsVisible ? 'block' : 'none'}">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info">
+                            <button type="button" class="close" ng-click="closeMemoryStats()" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title">
+                                <i class="fa fa-tachometer"></i> Memory Statistics
+                            </h4>
+                        </div>
+                        <div class="modal-body">
+                            <div ng-if="memoryStatsLoading" class="text-center">
+                                <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                <p>Loading...</p>
+                            </div>
+                            <div ng-if="memoryStats && !memoryStatsLoading">
+                                <div class="row">
+                                    <div class="col-xs-6">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading"><strong>Current</strong></div>
+                                            <div class="panel-body">
+                                                <p><strong>Used:</strong> {{ memoryStats.currentHeapUsedMB }} MB</p>
+                                                <p><strong>Max:</strong> {{ memoryStats.currentHeapMaxMB }} MB</p>
+                                                <p><strong>Free:</strong> {{ memoryStats.currentHeapFreeMB }} MB</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-6">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading"><strong>Over Time</strong></div>
+                                            <div class="panel-body">
+                                                <p><strong>Min:</strong> {{ memoryStats.minHeapUsedMB }} MB</p>
+                                                <p><strong>Max:</strong> {{ memoryStats.maxHeapUsedMB }} MB</p>
+                                                <p><strong>Avg:</strong> {{ memoryStats.avgHeapUsedMB }} MB</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-muted small">
+                                    <i class="fa fa-clock-o"></i>
+                                    Monitoring for {{ memoryStats.monitoringDurationMinutes }} minutes
+                                    ({{ memoryStats.sampleCount }} samples)
+                                </p>
+                                <div ng-if="lastGCFreed" class="alert alert-success">
+                                    <i class="fa fa-recycle"></i> Last GC freed {{ lastGCFreed }} MB
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-warning" ng-click="forceGC()">
+                                <i class="fa fa-recycle"></i> Force GC
+                            </button>
+                            <button type="button" class="btn btn-default" ng-click="resetMemoryStats()">
+                                <i class="fa fa-refresh"></i> Reset Stats
+                            </button>
+                            <button type="button" class="btn btn-primary" ng-click="showMemoryStats()">
+                                <i class="fa fa-refresh"></i> Refresh
+                            </button>
+                            <button type="button" class="btn btn-default" ng-click="closeMemoryStats()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-backdrop fade" ng-class="{'in': memoryStatsVisible}" ng-show="memoryStatsVisible"></div>
 
         </div>
     </body>

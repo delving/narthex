@@ -36,6 +36,12 @@ POST        /narthex/app/cancel-queue/:spec                                  con
 GET         /narthex/app/index-stats                                         controllers.AppController.indexStats
 GET         /narthex/app/index-stats/wrong-count                             controllers.AppController.indexStatsWrongCount
 GET         /narthex/app/index-stats-with-trends                             controllers.AppController.indexStatsWithTrends
+# Memory monitoring
+GET         /narthex/app/memory-stats                                        controllers.AppController.memoryStats
++ nocsrf
+POST        /narthex/app/memory-stats/reset                                  controllers.AppController.resetMemoryStats
++ nocsrf
+POST        /narthex/app/memory-stats/gc                                     controllers.AppController.forceGC
 GET         /narthex/app/trends                                              controllers.AppController.getOrganizationTrends
 GET         /narthex/app/trends/:spec                                        controllers.AppController.getDatasetTrends(spec)
 + nocsrf
