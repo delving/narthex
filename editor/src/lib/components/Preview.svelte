@@ -1,29 +1,81 @@
 <script lang="ts">
 	import { PaneGroup, Pane, PaneResizer } from 'paneforge';
 	import { sampleRecords, transformRecord, transformRecordWithMappings, recordToXml } from '$lib/sampleData';
+	import { previewMappingByIndex, type PreviewMappingResponse } from '$lib/api/mappingEditor';
 	import type { SampleRecord, OutputRecord } from '$lib/types';
 	import type { Mapping } from '$lib/stores/mappingStore';
 
 	interface Props {
+		spec?: string; // Dataset spec - if provided, use server-side execution
 		groovyCode?: string;
 		mappings?: Mapping[];
 		currentRecordIndex?: number;
 		onRecordChange?: (index: number) => void;
 		showShortcutHint?: boolean;
+		totalRecordCount?: number; // Total records in dataset (for server mode)
+		onMaximize?: () => void; // Callback to open fullscreen modal
 	}
 
-	let { groovyCode, mappings = [], currentRecordIndex = 0, onRecordChange, showShortcutHint = false }: Props = $props();
+	let {
+		spec,
+		groovyCode,
+		mappings = [],
+		currentRecordIndex = 0,
+		onRecordChange,
+		showShortcutHint = false,
+		totalRecordCount,
+		onMaximize
+	}: Props = $props();
+
+	// Determine if we're using server-side execution
+	const useServerExecution = $derived(!!spec);
 
 	// Search state
 	let searchQuery = $state('');
 	let showSearch = $state(false);
 
-	// Check if a record matches the search query
+	// Server-side execution state
+	let serverLoading = $state(false);
+	let serverError = $state<string | null>(null);
+	let serverResult = $state<PreviewMappingResponse | null>(null);
+
+	// Use prop if provided, otherwise local state
+	let localIndex = $state(0);
+	const currentIndex = $derived(onRecordChange ? currentRecordIndex : localIndex);
+
+	// Total records depends on mode
+	const totalRecords = $derived(useServerExecution ? (totalRecordCount ?? 0) : sampleRecords.length);
+
+	// Load server preview when index changes (server mode only)
+	$effect(() => {
+		if (useServerExecution && spec) {
+			loadServerPreview(currentIndex);
+		}
+	});
+
+	async function loadServerPreview(index: number) {
+		serverLoading = true;
+		serverError = null;
+
+		try {
+			serverResult = await previewMappingByIndex(spec!, index);
+			if (!serverResult.success && serverResult.error) {
+				// Keep the result for input display, but show error
+				serverError = `${serverResult.errorType || 'Error'}: ${serverResult.error}`;
+			}
+		} catch (err) {
+			serverError = err instanceof Error ? err.message : 'Failed to load preview';
+			serverResult = null;
+		} finally {
+			serverLoading = false;
+		}
+	}
+
+	// Check if a record matches the search query (mock mode only)
 	function recordMatchesSearch(record: SampleRecord, query: string): boolean {
 		if (!query.trim()) return true;
 		const lowerQuery = query.toLowerCase();
 
-		// Search through all string values in the record
 		function searchValue(value: unknown): boolean {
 			if (typeof value === 'string') {
 				return value.toLowerCase().includes(lowerQuery);
@@ -36,23 +88,23 @@
 		return searchValue(record);
 	}
 
-	// Get indices of matching records
+	// Get indices of matching records (mock mode only)
 	const matchingIndices = $derived.by(() => {
+		if (useServerExecution) return [];
 		if (!searchQuery.trim()) {
 			return sampleRecords.map((_, i) => i);
 		}
 		return sampleRecords
-			.map((record, index) => recordMatchesSearch(record, searchQuery) ? index : -1)
+			.map((record, index) => (recordMatchesSearch(record, searchQuery) ? index : -1))
 			.filter((i) => i !== -1);
 	});
 
-	// Current position in filtered results (index within matchingIndices)
+	// Current position in filtered results (mock mode only)
 	let filteredPosition = $state(0);
 
-	// Jump to first matching record when search query changes
+	// Jump to first matching record when search query changes (mock mode)
 	$effect(() => {
-		if (searchQuery.trim() && matchingIndices.length > 0) {
-			// Jump to the first matching record
+		if (!useServerExecution && searchQuery.trim() && matchingIndices.length > 0) {
 			const firstMatchIndex = matchingIndices[0];
 			if (onRecordChange) {
 				onRecordChange(firstMatchIndex);
@@ -63,9 +115,9 @@
 		}
 	});
 
-	// Track which position in filtered results the current record is at
+	// Track position in filtered results (mock mode)
 	$effect(() => {
-		if (searchQuery.trim() && matchingIndices.length > 0) {
+		if (!useServerExecution && searchQuery.trim() && matchingIndices.length > 0) {
 			const currentIdx = onRecordChange ? currentRecordIndex : localIndex;
 			const pos = matchingIndices.indexOf(currentIdx);
 			if (pos !== -1) {
@@ -74,31 +126,42 @@
 		}
 	});
 
-	// Use prop if provided, otherwise local state
-	let localIndex = $state(0);
-	const currentIndex = $derived(onRecordChange ? currentRecordIndex : localIndex);
-
-	// Total records (filtered or all)
-	const totalRecords = sampleRecords.length;
 	const filteredCount = $derived(matchingIndices.length);
 
-	// Current record
-	const currentRecord = $derived(sampleRecords[currentIndex]);
+	// Mock mode: current record
+	const currentRecord = $derived(!useServerExecution ? sampleRecords[currentIndex] : null);
 
-	// Generated XML
-	const inputXml = $derived(recordToXml(currentRecord));
+	// Generated XML (mock mode)
+	const inputXml = $derived.by(() => {
+		if (useServerExecution) {
+			return serverResult?.inputXml || '';
+		}
+		return currentRecord ? recordToXml(currentRecord) : '';
+	});
 
-	// Transformed output - use mappings if available, otherwise fall back to default
-	const outputJson = $derived(
-		mappings.length > 0
-			? transformRecordWithMappings(currentRecord, mappings)
-			: transformRecord(currentRecord)
-	);
+	// Transformed output (mock mode uses local transform, server mode uses server response)
+	const outputXml = $derived.by(() => {
+		if (useServerExecution) {
+			return serverResult?.outputXml || '';
+		}
+		// Mock mode: generate JSON output (we could convert to XML but JSON is fine for preview)
+		return currentRecord
+			? JSON.stringify(
+					mappings.length > 0
+						? transformRecordWithMappings(currentRecord, mappings)
+						: transformRecord(currentRecord),
+					null,
+					2
+				)
+			: '';
+	});
 
-	// Navigation - when searching, navigate through filtered results
+	// Record ID for display
+	const recordId = $derived(useServerExecution ? serverResult?.recordId : null);
+
+	// Navigation
 	function prevRecord() {
-		if (searchQuery.trim() && matchingIndices.length > 0) {
-			// Navigate within filtered results
+		if (!useServerExecution && searchQuery.trim() && matchingIndices.length > 0) {
 			if (filteredPosition > 0) {
 				const newPos = filteredPosition - 1;
 				const newIndex = matchingIndices[newPos];
@@ -110,7 +173,6 @@
 				filteredPosition = newPos;
 			}
 		} else {
-			// Normal navigation
 			if (currentIndex > 0) {
 				if (onRecordChange) {
 					onRecordChange(currentIndex - 1);
@@ -122,8 +184,7 @@
 	}
 
 	function nextRecord() {
-		if (searchQuery.trim() && matchingIndices.length > 0) {
-			// Navigate within filtered results
+		if (!useServerExecution && searchQuery.trim() && matchingIndices.length > 0) {
 			if (filteredPosition < matchingIndices.length - 1) {
 				const newPos = filteredPosition + 1;
 				const newIndex = matchingIndices[newPos];
@@ -135,7 +196,6 @@
 				filteredPosition = newPos;
 			}
 		} else {
-			// Normal navigation
 			if (currentIndex < totalRecords - 1) {
 				if (onRecordChange) {
 					onRecordChange(currentIndex + 1);
@@ -148,16 +208,16 @@
 
 	// Check if can navigate
 	const canGoPrev = $derived.by(() => {
-		if (searchQuery.trim()) return filteredPosition > 0;
+		if (!useServerExecution && searchQuery.trim()) return filteredPosition > 0;
 		return currentIndex > 0;
 	});
 
 	const canGoNext = $derived.by(() => {
-		if (searchQuery.trim()) return filteredPosition < matchingIndices.length - 1;
+		if (!useServerExecution && searchQuery.trim())
+			return filteredPosition < matchingIndices.length - 1;
 		return currentIndex < totalRecords - 1;
 	});
 
-	// Toggle search visibility
 	function toggleSearch() {
 		showSearch = !showSearch;
 		if (!showSearch) {
@@ -165,7 +225,6 @@
 		}
 	}
 
-	// Clear search
 	function clearSearch() {
 		searchQuery = '';
 	}
@@ -190,17 +249,16 @@
 		let index = lowerText.indexOf(lowerQuery);
 
 		while (index !== -1) {
-			// Add text before match
 			if (index > lastIndex) {
 				result.push(text.slice(lastIndex, index));
 			}
-			// Add highlighted match
-			result.push(`<mark class="search-match">${text.slice(index, index + query.length)}</mark>`);
+			result.push(
+				`<mark class="search-match">${text.slice(index, index + query.length)}</mark>`
+			);
 			lastIndex = index + query.length;
 			index = lowerText.indexOf(lowerQuery, lastIndex);
 		}
 
-		// Add remaining text
 		if (lastIndex < text.length) {
 			result.push(text.slice(lastIndex));
 		}
@@ -208,15 +266,13 @@
 		return result.join('');
 	}
 
-	// Syntax highlight XML using token-based approach
+	// Syntax highlight XML
 	function highlightXml(xml: string, searchQuery: string = ''): string {
-		// Match XML structure: tags, attributes, text content
 		const result: string[] = [];
 		let i = 0;
 
 		while (i < xml.length) {
 			if (xml[i] === '<') {
-				// Find the end of the tag
 				const tagEnd = xml.indexOf('>', i);
 				if (tagEnd === -1) break;
 
@@ -224,11 +280,9 @@
 				const isClosing = tagContent.startsWith('/');
 				const isSelfClosing = tagContent.endsWith('/');
 
-				// Parse tag name and attributes
 				const tagStr = isClosing ? tagContent.slice(1) : tagContent;
 				const cleanTag = isSelfClosing ? tagStr.slice(0, -1).trim() : tagStr;
 
-				// Split into tag name and attributes
 				const spaceIdx = cleanTag.indexOf(' ');
 				let tagName: string;
 				let attrs = '';
@@ -240,18 +294,21 @@
 					tagName = cleanTag;
 				}
 
-				// Build highlighted tag
 				let highlighted = '&lt;';
 				if (isClosing) highlighted += '/';
 				highlighted += `<span class="xml-tag">${escapeHtml(tagName)}</span>`;
 
-				// Highlight attributes (and search matches in attribute values)
 				if (attrs) {
-					attrs = attrs.replace(/(\s+)([\w\-.:]+)(=)("([^"]*)")/g, (_, space, name, eq, fullValue, innerValue) => {
-						const escapedValue = escapeHtml(fullValue);
-						const highlightedValue = searchQuery ? highlightSearchMatches(escapedValue, searchQuery) : escapedValue;
-						return `${space}<span class="xml-attr">${escapeHtml(name)}</span>=<span class="xml-value">${highlightedValue}</span>`;
-					});
+					attrs = attrs.replace(
+						/(\s+)([\w\-.:]+)(=)("([^"]*)")/g,
+						(_, space, name, eq, fullValue, innerValue) => {
+							const escapedValue = escapeHtml(fullValue);
+							const highlightedValue = searchQuery
+								? highlightSearchMatches(escapedValue, searchQuery)
+								: escapedValue;
+							return `${space}<span class="xml-attr">${escapeHtml(name)}</span>=<span class="xml-value">${highlightedValue}</span>`;
+						}
+					);
 					highlighted += attrs;
 				}
 
@@ -261,13 +318,13 @@
 				result.push(highlighted);
 				i = tagEnd + 1;
 			} else {
-				// Text content - find next tag
 				const nextTag = xml.indexOf('<', i);
 				const textEnd = nextTag === -1 ? xml.length : nextTag;
 				const text = xml.slice(i, textEnd);
 				const escapedText = escapeHtml(text);
-				// Highlight search matches in text content
-				const highlightedText = searchQuery ? highlightSearchMatches(escapedText, searchQuery) : escapedText;
+				const highlightedText = searchQuery
+					? highlightSearchMatches(escapedText, searchQuery)
+					: escapedText;
 				result.push(highlightedText);
 				i = textEnd;
 			}
@@ -277,16 +334,17 @@
 	}
 
 	// Syntax highlight JSON
-	function highlightJson(obj: OutputRecord): string {
-		const json = JSON.stringify(obj, null, 2);
-		// Escape HTML first, then apply highlighting
-		const escaped = escapeHtml(json);
+	function highlightJson(jsonStr: string): string {
+		const escaped = escapeHtml(jsonStr);
 		return escaped
 			.replace(/&quot;([^&]+)&quot;:/g, '<span class="json-key">&quot;$1&quot;</span>:')
 			.replace(/: &quot;([^&]*)&quot;/g, ': <span class="json-string">&quot;$1&quot;</span>')
 			.replace(/: (\d+)/g, ': <span class="json-number">$1</span>')
 			.replace(/: (true|false|null)/g, ': <span class="json-bool">$1</span>');
 	}
+
+	// For server mode output, detect if it's XML or JSON and highlight appropriately
+	const isOutputXml = $derived(outputXml.trim().startsWith('<'));
 </script>
 
 <div class="preview-container">
@@ -294,27 +352,44 @@
 	<div class="preview-header">
 		<div class="header-left">
 			<span class="preview-title">Preview</span>
+			{#if useServerExecution}
+				<span class="mode-badge">Live</span>
+			{/if}
 			{#if showShortcutHint}
 				<kbd class="shortcut-hint">4</kbd>
 			{/if}
-			<button
-				class="search-toggle"
-				class:active={showSearch}
-				onclick={toggleSearch}
-				aria-label={showSearch ? 'Hide search' : 'Search records'}
-				title="Search records"
-			>
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="11" cy="11" r="8" />
-					<path d="M21 21l-4.35-4.35" />
-				</svg>
-			</button>
+			{#if !useServerExecution}
+				<button
+					class="search-toggle"
+					class:active={showSearch}
+					onclick={toggleSearch}
+					aria-label={showSearch ? 'Hide search' : 'Search records'}
+					title="Search records"
+				>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="11" cy="11" r="8" />
+						<path d="M21 21l-4.35-4.35" />
+					</svg>
+				</button>
+			{/if}
+			{#if onMaximize}
+				<button
+					class="maximize-btn"
+					onclick={onMaximize}
+					aria-label="Open fullscreen preview"
+					title="Open fullscreen preview"
+				>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+					</svg>
+				</button>
+			{/if}
 		</div>
 		<div class="record-nav">
 			<button
 				class="nav-btn"
 				onclick={prevRecord}
-				disabled={!canGoPrev}
+				disabled={!canGoPrev || serverLoading}
 				aria-label="Previous record"
 			>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -322,17 +397,24 @@
 				</svg>
 			</button>
 			<span class="record-info">
-				{#if searchQuery.trim()}
+				{#if serverLoading}
+					<span class="loading-indicator">Loading...</span>
+				{:else if searchQuery.trim() && !useServerExecution}
 					<strong>{filteredPosition + 1}</strong> of <strong>{filteredCount}</strong>
 					<span class="filter-note">(filtered)</span>
+				{:else if recordId}
+					<strong>{currentIndex + 1}</strong> of
+					<strong>{totalRecords.toLocaleString()}</strong>
+					<span class="record-id" title={recordId}>{recordId}</span>
 				{:else}
-					Record <strong>{currentIndex + 1}</strong> of <strong>{totalRecords.toLocaleString()}</strong>
+					Record <strong>{currentIndex + 1}</strong> of
+					<strong>{totalRecords.toLocaleString()}</strong>
 				{/if}
 			</span>
 			<button
 				class="nav-btn"
 				onclick={nextRecord}
-				disabled={!canGoNext}
+				disabled={!canGoNext || serverLoading}
 				aria-label="Next record"
 			>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -342,11 +424,17 @@
 		</div>
 	</div>
 
-	<!-- Search bar (shown when toggled) -->
-	{#if showSearch}
+	<!-- Search bar (mock mode only) -->
+	{#if showSearch && !useServerExecution}
 		<div class="search-bar">
 			<div class="search-input-wrapper">
-				<svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					class="search-icon"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<circle cx="11" cy="11" r="8" />
 					<path d="M21 21l-4.35-4.35" />
 				</svg>
@@ -355,7 +443,12 @@
 					class="search-input"
 					placeholder="Search by title, creator, object number..."
 					bind:value={searchQuery}
-					onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? prevRecord() : nextRecord(); } }}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') {
+							e.preventDefault();
+							e.shiftKey ? prevRecord() : nextRecord();
+						}
+					}}
 				/>
 				{#if searchQuery}
 					<button class="clear-btn" onclick={clearSearch} aria-label="Clear search">
@@ -367,9 +460,21 @@
 			</div>
 			{#if searchQuery.trim()}
 				<span class="search-results">
-					{filteredCount} {filteredCount === 1 ? 'match' : 'matches'}
+					{filteredCount}
+					{filteredCount === 1 ? 'match' : 'matches'}
 				</span>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Error banner -->
+	{#if serverError}
+		<div class="error-banner">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="10" />
+				<path d="M12 8v4M12 16h.01" />
+			</svg>
+			<span>{serverError}</span>
 		</div>
 	{/if}
 
@@ -384,22 +489,45 @@
 						<span class="pane-badge">Source</span>
 					</div>
 					<div class="pane-content">
-						<pre class="code-block xml">{@html highlightXml(inputXml, searchQuery)}</pre>
+						{#if serverLoading && !inputXml}
+							<div class="loading-placeholder">
+								<div class="spinner"></div>
+								<span>Loading record...</span>
+							</div>
+						{:else}
+							<pre class="code-block xml">{@html highlightXml(inputXml, searchQuery)}</pre>
+						{/if}
 					</div>
 				</div>
 			</Pane>
 
 			<PaneResizer class="pane-resizer" />
 
-			<!-- Output JSON-LD -->
+			<!-- Output -->
 			<Pane defaultSize={50}>
 				<div class="pane-wrapper">
 					<div class="pane-header">
-						<span class="pane-label">Output EDM/JSON-LD</span>
+						<span class="pane-label"
+							>Output {useServerExecution ? (isOutputXml ? 'RDF/XML' : 'JSON-LD') : 'EDM/JSON-LD'}</span
+						>
 						<span class="pane-badge target">Target</span>
 					</div>
 					<div class="pane-content">
-						<pre class="code-block json">{@html highlightJson(outputJson)}</pre>
+						{#if serverLoading && !outputXml}
+							<div class="loading-placeholder">
+								<div class="spinner"></div>
+								<span>Executing mapping...</span>
+							</div>
+						{:else if serverError && !outputXml}
+							<div class="error-placeholder">
+								<span>Mapping execution failed</span>
+								<span class="error-hint">Check the error message above</span>
+							</div>
+						{:else if isOutputXml}
+							<pre class="code-block xml">{@html highlightXml(outputXml, '')}</pre>
+						{:else}
+							<pre class="code-block json">{@html highlightJson(outputXml)}</pre>
+						{/if}
 					</div>
 				</div>
 			</Pane>
@@ -436,6 +564,16 @@
 		color: #f3f4f6;
 	}
 
+	.mode-badge {
+		font-size: 9px;
+		text-transform: uppercase;
+		padding: 2px 6px;
+		border-radius: 4px;
+		background: #166534;
+		color: #86efac;
+		font-weight: 600;
+	}
+
 	.shortcut-hint {
 		padding: 2px 6px;
 		font-size: 10px;
@@ -448,8 +586,13 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.7; }
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.7;
+		}
 	}
 
 	.search-toggle {
@@ -482,6 +625,31 @@
 		height: 14px;
 	}
 
+	.maximize-btn {
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border: none;
+		background: transparent;
+		color: #6b7280;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.maximize-btn:hover {
+		color: #3b82f6;
+		background: rgba(59, 130, 246, 0.1);
+	}
+
+	.maximize-btn svg {
+		width: 14px;
+		height: 14px;
+	}
+
 	.record-nav {
 		display: flex;
 		align-items: center;
@@ -492,6 +660,21 @@
 		font-size: 10px;
 		color: #6b7280;
 		margin-left: 2px;
+	}
+
+	.record-id {
+		font-size: 10px;
+		color: #6b7280;
+		margin-left: 4px;
+		max-width: 150px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.loading-indicator {
+		color: #6b7280;
+		font-style: italic;
 	}
 
 	/* Search bar */
@@ -571,6 +754,25 @@
 		white-space: nowrap;
 	}
 
+	/* Error banner */
+	.error-banner {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		background: rgba(239, 68, 68, 0.1);
+		border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+		color: #fca5a5;
+		font-size: 12px;
+	}
+
+	.error-banner svg {
+		width: 16px;
+		height: 16px;
+		flex-shrink: 0;
+		color: #ef4444;
+	}
+
 	.nav-btn {
 		width: 28px;
 		height: 28px;
@@ -603,6 +805,9 @@
 	.record-info {
 		font-size: 12px;
 		color: #9ca3af;
+		display: flex;
+		align-items: center;
+		gap: 4px;
 	}
 
 	.record-info strong {
@@ -664,6 +869,42 @@
 		color: #e5e7eb;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+
+	/* Loading state */
+	.loading-placeholder,
+	.error-placeholder {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		gap: 12px;
+		color: #6b7280;
+	}
+
+	.error-placeholder {
+		color: #fca5a5;
+	}
+
+	.error-hint {
+		font-size: 11px;
+		color: #6b7280;
+	}
+
+	.spinner {
+		width: 24px;
+		height: 24px;
+		border: 2px solid #374151;
+		border-top-color: #3b82f6;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* XML syntax highlighting */

@@ -57,6 +57,11 @@ import mapping.VocabInfo._
 import organization.OrgActor.DatasetMessage
 import web.Utils
 
+// sip-core imports for Groovy code generation
+import eu.delving.metadata.{CodeGenerator, EditPath, MappingResult, NodeMapping, Path}
+import eu.delving.groovy.{BulkMappingRunner, MetadataRecordFactory, XmlSerializer}
+import scala.jdk.CollectionConverters._
+
 @Singleton
 class AppController @Inject() (
    orgContext: OrgContext,
@@ -391,6 +396,289 @@ class AppController @Inject() (
   def listPrefixes = Action { request =>
     val prefixes = orgContext.sipFactory.prefixRepos.map(_.prefix)
     Ok(Json.toJson(prefixes))
+  }
+
+  /**
+   * Get Record Definition (rec-def) as JSON for the mapping editor.
+   * Parses the rec-def XML and converts it to a tree structure suitable for the UI.
+   */
+  def getRecDef(prefix: String) = Action { request =>
+    orgContext.sipFactory.prefixRepo(prefix) match {
+      case None =>
+        NotFound(Json.obj("error" -> s"Prefix '$prefix' not found"))
+      case Some(prefixRepo) =>
+        try {
+          val recDefXml = scala.xml.XML.loadFile(prefixRepo.recordDefinition)
+          val recDefJson = convertRecDefToJson(recDefXml, prefix, prefixRepo.schemaVersions)
+          Ok(recDefJson)
+        } catch {
+          case e: Exception =>
+            logger.error(s"Failed to parse rec-def for prefix $prefix: ${e.getMessage}", e)
+            InternalServerError(Json.obj("error" -> s"Failed to parse rec-def: ${e.getMessage}"))
+        }
+    }
+  }
+
+  /**
+   * Convert rec-def XML to JSON format for the mapping editor UI.
+   */
+  private def convertRecDefToJson(xml: scala.xml.Elem, prefix: String, schemaVersions: String): JsValue = {
+    // Extract namespaces
+    val namespaces = (xml \ "namespaces" \ "namespace").map { ns =>
+      Json.obj(
+        "prefix" -> (ns \ "@prefix").text,
+        "uri" -> (ns \ "@uri").text
+      )
+    }
+
+    // Extract custom functions
+    val functions = (xml \ "functions" \ "mapping-function").map { fn =>
+      val codeLines = (fn \ "groovy-code" \ "string").map(_.text)
+      val sampleInputs = (fn \ "sample-input" \ "string").map(_.text)
+      Json.obj(
+        "name" -> (fn \ "@name").text,
+        "code" -> codeLines.mkString("\n"),
+        "sampleInputs" -> sampleInputs
+      )
+    }
+
+    // Build documentation lookup from <docs> section
+    val docsLookup: Map[String, JsObject] = (xml \ "docs" \ "doc").flatMap { doc =>
+      val pathAttr = (doc \ "@path").text
+      val tagAttr = (doc \ "@tag").text
+      val lines = (doc \ "string").map(_.text).mkString(" ")
+      val paras = (doc \ "para").map { para =>
+        val name = (para \ "@name").text
+        val content = para.text.trim
+        Json.obj("name" -> name, "content" -> content)
+      }
+
+      val description: String = if (lines.nonEmpty) lines else paras.headOption.map(p => (p \ "content").as[String]).getOrElse("")
+      val docObj = Json.obj(
+        "description" -> description,
+        "paragraphs" -> paras
+      )
+
+      if (pathAttr.nonEmpty) Some(pathAttr -> docObj)
+      else if (tagAttr.nonEmpty) Some(tagAttr -> docObj)
+      else None
+    }.toMap
+
+    // Extract the root element and build the tree
+    val rootElem = xml \ "root"
+    val tree = if (rootElem.nonEmpty) {
+      // Get the root tag (e.g., "RDF") to use as base path for documentation lookup
+      val rootTag = (rootElem.head \ "@tag").text
+      val basePath = if (rootTag.nonEmpty) s"/$rootTag" else ""
+      convertElemToTreeNodes(rootElem.head, basePath, prefix, docsLookup)
+    } else {
+      // If no explicit root, look for elem-groups
+      val elemGroups = (xml \ "elem-groups" \ "elem-group").flatMap { group =>
+        (group \ "elem").map(e => convertElemToTreeNode(e, "", prefix, docsLookup))
+      }
+      Json.toJson(elemGroups)
+    }
+
+    Json.obj(
+      "prefix" -> prefix,
+      "version" -> schemaVersions.replace(s"${prefix}_", ""),
+      "namespaces" -> namespaces,
+      "functions" -> functions,
+      "tree" -> tree
+    )
+  }
+
+  /**
+   * Convert a root element containing multiple child elements to tree nodes.
+   */
+  private def convertElemToTreeNodes(rootNode: scala.xml.Node, parentPath: String, defaultPrefix: String, docsLookup: Map[String, JsObject]): JsArray = {
+    val children = (rootNode \ "elem").map { elem =>
+      convertElemToTreeNode(elem, parentPath, defaultPrefix, docsLookup)
+    }
+    JsArray(children.toSeq)
+  }
+
+  /**
+   * Convert a single elem XML node to a TreeNode JSON object.
+   */
+  private def convertElemToTreeNode(elem: scala.xml.Node, parentPath: String, defaultPrefix: String, docsLookup: Map[String, JsObject]): JsObject = {
+    val tag = (elem \ "@tag").text
+    val label = (elem \ "@label").headOption.map(_.text)
+    val required = (elem \ "@required").headOption.map(_.text == "true").getOrElse(false)
+    val singular = (elem \ "@singular").headOption.map(_.text == "true").getOrElse(false)
+    val hidden = (elem \ "@hidden").headOption.map(_.text == "true").getOrElse(false)
+    val unmappable = (elem \ "@unmappable").headOption.map(_.text == "true").getOrElse(false)
+
+    // Build the path
+    val currentPath = if (parentPath.isEmpty) s"/$tag" else s"$parentPath/$tag"
+
+    // Create a unique ID from the path
+    val id = currentPath.replace("/", "_").replace(":", "_").replaceFirst("^_", "")
+
+    // Get documentation if available
+    val doc = docsLookup.get(currentPath).orElse(docsLookup.get(tag))
+
+    // Process attributes defined via attrs attribute (e.g., attrs="rdf:resource,xml:lang")
+    val attrsString = (elem \ "@attrs").headOption.map(_.text).getOrElse("")
+    val attrNames = if (attrsString.nonEmpty) attrsString.split("[, ]+").toList else List.empty
+    val attrsFromRef = attrNames.map { attrName =>
+      val attrTag = if (attrName.startsWith("@")) attrName else s"@$attrName"
+      val attrPath = s"$currentPath/$attrTag"
+      val attrId = attrPath.replace("/", "_").replace(":", "_").replace("@", "").replaceFirst("^_", "")
+      Json.obj(
+        "id" -> attrId,
+        "name" -> attrTag,
+        "path" -> attrPath,
+        "isAttribute" -> true
+      )
+    }
+
+    // Process inline attributes
+    val inlineAttrs = (elem \ "attr").map { attr =>
+      val attrTag = "@" + (attr \ "@tag").text
+      val attrPath = s"$currentPath/$attrTag"
+      val attrId = attrPath.replace("/", "_").replace(":", "_").replace("@", "").replaceFirst("^_", "")
+      Json.obj(
+        "id" -> attrId,
+        "name" -> attrTag,
+        "path" -> attrPath,
+        "isAttribute" -> true
+      )
+    }
+
+    // Process child elements
+    val childElems = (elem \ "elem").map { childElem =>
+      convertElemToTreeNode(childElem, currentPath, defaultPrefix, docsLookup)
+    }
+
+    // Combine attributes and child elements
+    val allChildren = attrsFromRef ++ inlineAttrs ++ childElems
+
+    // Build the result object
+    var result = Json.obj(
+      "id" -> id,
+      "name" -> tag,
+      "path" -> currentPath,
+      "isAttribute" -> false
+    )
+
+    if (label.isDefined) result = result + ("label" -> JsString(label.get))
+    if (required) result = result + ("required" -> JsBoolean(true))
+    if (!singular) result = result + ("repeatable" -> JsBoolean(true))
+    if (hidden) result = result + ("hidden" -> JsBoolean(true))
+    if (unmappable) result = result + ("unmappable" -> JsBoolean(true))
+    if (doc.isDefined) result = result + ("documentation" -> doc.get)
+    if (allChildren.nonEmpty) result = result + ("children" -> Json.toJson(allChildren))
+
+    result
+  }
+
+  /**
+   * Get mappings for a dataset as JSON for the mapping editor.
+   * Parses the mapping XML and returns structured data.
+   */
+  def getMappingsJson(spec: String) = Action { request =>
+    import scala.io.Source
+
+    val datasetContext = orgContext.datasetContext(spec)
+    val repo = datasetContext.datasetMappingRepo
+
+    // Try to get mapping from repo first, then fallback to SIP file
+    val mappingXmlOpt: Option[String] = repo.getXml("current").orElse {
+      datasetContext.sipRepo.latestSipOpt.flatMap { sip =>
+        sip.sipMappingOpt.flatMap { sipMapping =>
+          val mappingFileName = s"mapping_${sipMapping.prefix}.xml"
+          sip.entries.get(mappingFileName).map { entry =>
+            val inputStream = sip.zipFile.getInputStream(entry)
+            try {
+              Source.fromInputStream(inputStream, "UTF-8").mkString
+            } finally {
+              inputStream.close()
+            }
+          }
+        }
+      }
+    }
+
+    mappingXmlOpt match {
+      case None =>
+        NotFound(Json.obj("error" -> s"No mapping found for dataset $spec"))
+      case Some(xmlString) =>
+        try {
+          val xml = scala.xml.XML.loadString(xmlString)
+          val mappingsJson = convertMappingToJson(xml)
+          Ok(mappingsJson)
+        } catch {
+          case e: Exception =>
+            logger.error(s"Failed to parse mapping XML for dataset $spec: ${e.getMessage}", e)
+            InternalServerError(Json.obj("error" -> s"Failed to parse mapping: ${e.getMessage}"))
+        }
+    }
+  }
+
+  /**
+   * Convert mapping XML to JSON format for the mapping editor UI.
+   */
+  private def convertMappingToJson(xml: scala.xml.Elem): JsValue = {
+    val prefix = (xml \ "@prefix").text
+    val schemaVersion = (xml \ "@schemaVersion").text
+    val locked = (xml \ "@locked").text == "true"
+
+    // Extract facts
+    val facts = (xml \ "facts" \ "entry").map { entry =>
+      val key = (entry \ "@key").text
+      val value = entry.text
+      key -> value
+    }.toMap
+
+    // Extract custom functions
+    val functions = (xml \ "functions" \ "mapping-function").map { fn =>
+      val name = (fn \ "@name").text
+      val codeLines = (fn \ "groovy-code" \ "string").map(_.text)
+      Json.obj(
+        "name" -> name,
+        "code" -> codeLines.mkString("\n")
+      )
+    }
+
+    // Extract node mappings
+    val nodeMappings = (xml \ "node-mappings" \ "node-mapping").map { nm =>
+      val inputPath = (nm \ "@inputPath").text
+      val outputPath = (nm \ "@outputPath").text
+      val operator = (nm \ "@operator").headOption.map(_.text)
+
+      // Get groovy code if present
+      val groovyCodeLines = (nm \ "groovy-code" \ "string").map(_.text)
+      val groovyCode = if (groovyCodeLines.nonEmpty) Some(groovyCodeLines.mkString("\n")) else None
+
+      // Get documentation if present
+      val docLines = (nm \ "documentation" \ "string").map(_.text)
+      val documentation = if (docLines.nonEmpty) Some(docLines.mkString("\n")) else None
+
+      // Get siblings if present
+      val siblings = (nm \ "siblings" \ "path").map(_.text).toList
+
+      var mapping = Json.obj(
+        "inputPath" -> inputPath,
+        "outputPath" -> outputPath
+      )
+
+      if (operator.isDefined) mapping = mapping + ("operator" -> JsString(operator.get))
+      if (groovyCode.isDefined) mapping = mapping + ("groovyCode" -> JsString(groovyCode.get))
+      if (documentation.isDefined) mapping = mapping + ("documentation" -> JsString(documentation.get))
+      if (siblings.nonEmpty) mapping = mapping + ("siblings" -> Json.toJson(siblings))
+
+      mapping
+    }
+
+    Json.obj(
+      "prefix" -> prefix,
+      "schemaVersion" -> schemaVersion,
+      "locked" -> locked,
+      "facts" -> Json.toJson(facts),
+      "functions" -> functions,
+      "mappings" -> nodeMappings
+    )
   }
 
   def datasetInfo(spec: String) = Action { request =>
@@ -1135,6 +1423,651 @@ class AppController @Inject() (
     }
   }
 
+  // ====== Mapping Editor Save Endpoints =====
+
+  /**
+   * Save mapping from the web-based mapping editor.
+   * Accepts JSON format and converts it to mapping XML.
+   */
+  def saveMappingFromEditor(spec: String) = Action(parse.json) { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val repo = datasetContext.datasetMappingRepo
+
+    try {
+      // Extract fields from JSON
+      val prefix = (request.body \ "prefix").as[String]
+      val schemaVersion = (request.body \ "schemaVersion").asOpt[String].getOrElse("1.0")
+      val locked = (request.body \ "locked").asOpt[Boolean].getOrElse(false)
+      val description = (request.body \ "description").asOpt[String]
+
+      // Convert JSON to XML
+      val mappingXml = convertJsonToMappingXml(request.body)
+
+      // Save to repository
+      val version = repo.saveFromEditor(mappingXml, prefix, description)
+
+      // Switch to manual mapping source since we're editing directly
+      DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
+        dsInfo.setMappingSource("manual", None, None)
+      }
+
+      Ok(Json.obj(
+        "success" -> true,
+        "version" -> Json.obj(
+          "hash" -> version.hash,
+          "timestamp" -> version.timestamp.toString,
+          "source" -> version.source,
+          "description" -> version.description
+        ),
+        "xml" -> mappingXml
+      ))
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to save mapping from editor for $spec: ${e.getMessage}", e)
+        InternalServerError(Json.obj(
+          "success" -> false,
+          "error" -> e.getMessage
+        ))
+    }
+  }
+
+  /**
+   * Convert JSON mapping data back to XML format.
+   * This is the reverse of convertMappingToJson.
+   */
+  private def convertJsonToMappingXml(json: JsValue): String = {
+    val prefix = (json \ "prefix").as[String]
+    val schemaVersion = (json \ "schemaVersion").asOpt[String].getOrElse("1.0")
+    val locked = (json \ "locked").asOpt[Boolean].getOrElse(false)
+
+    // Build facts section
+    val facts = (json \ "facts").asOpt[Map[String, String]].getOrElse(Map.empty)
+    val factsXml = if (facts.nonEmpty) {
+      val entries = facts.map { case (key, value) =>
+        s"""    <entry><string>$key</string><string>${escapeXml(value)}</string></entry>"""
+      }.mkString("\n")
+      s"""  <facts>\n$entries\n  </facts>"""
+    } else {
+      "  <facts/>"
+    }
+
+    // Build functions section
+    val functions = (json \ "functions").asOpt[Seq[JsValue]].getOrElse(Seq.empty)
+    val functionsXml = if (functions.nonEmpty) {
+      val funcs = functions.map { fn =>
+        val name = (fn \ "name").as[String]
+        val code = (fn \ "code").asOpt[String].getOrElse("")
+        val codeLines = code.split("\n").map(line => s"        <string>${escapeXml(line)}</string>").mkString("\n")
+        s"""    <mapping-function name="$name">
+      <groovy-code>
+$codeLines
+      </groovy-code>
+    </mapping-function>"""
+      }.mkString("\n")
+      s"""  <functions>\n$funcs\n  </functions>"""
+    } else {
+      "  <functions/>"
+    }
+
+    // Build node-mappings section
+    val mappings = (json \ "mappings").asOpt[Seq[JsValue]].getOrElse(Seq.empty)
+    val nodeMappingsXml = if (mappings.nonEmpty) {
+      val nodes = mappings.map { nm =>
+        val inputPath = (nm \ "inputPath").as[String]
+        val outputPath = (nm \ "outputPath").as[String]
+        val operator = (nm \ "operator").asOpt[String]
+        val groovyCode = (nm \ "groovyCode").asOpt[String]
+        val documentation = (nm \ "documentation").asOpt[String]
+        val siblings = (nm \ "siblings").asOpt[Seq[String]].getOrElse(Seq.empty)
+
+        // Build operator attribute
+        val operatorAttr = operator.map(op => s""" operator="$op"""").getOrElse("")
+
+        // Check if we need child elements
+        val hasChildren = groovyCode.isDefined || documentation.isDefined || siblings.nonEmpty
+
+        if (!hasChildren) {
+          s"""    <node-mapping inputPath="$inputPath" outputPath="$outputPath"$operatorAttr/>"""
+        } else {
+          val childElements = new StringBuilder()
+
+          // Add siblings if present
+          if (siblings.nonEmpty) {
+            childElements.append("      <siblings>\n")
+            siblings.foreach { path =>
+              childElements.append(s"        <path>$path</path>\n")
+            }
+            childElements.append("      </siblings>\n")
+          }
+
+          // Add documentation if present
+          documentation.foreach { doc =>
+            val docLines = doc.split("\n").map(line => s"        <string>${escapeXml(line)}</string>").mkString("\n")
+            childElements.append(s"      <documentation>\n$docLines\n      </documentation>\n")
+          }
+
+          // Add groovy code if present
+          groovyCode.foreach { code =>
+            val codeLines = code.split("\n").map(line => s"        <string>${escapeXml(line)}</string>").mkString("\n")
+            childElements.append(s"      <groovy-code>\n$codeLines\n      </groovy-code>\n")
+          }
+
+          s"""    <node-mapping inputPath="$inputPath" outputPath="$outputPath"$operatorAttr>
+${childElements.toString.stripSuffix("\n")}
+    </node-mapping>"""
+        }
+      }.mkString("\n")
+      s"""  <node-mappings>\n$nodes\n  </node-mappings>"""
+    } else {
+      "  <node-mappings/>"
+    }
+
+    // Build complete XML
+    s"""<?xml version='1.0' encoding='UTF-8'?>
+<rec-mapping prefix="$prefix" schemaVersion="$schemaVersion" locked="$locked">
+$factsXml
+$functionsXml
+  <dyn-opts/>
+$nodeMappingsXml
+</rec-mapping>
+"""
+  }
+
+  /**
+   * Escape special XML characters in text content.
+   */
+  private def escapeXml(text: String): String = {
+    text
+      .replace("&", "&amp;")
+      .replace("<", "&lt;")
+      .replace(">", "&gt;")
+      .replace("\"", "&quot;")
+      .replace("'", "&apos;")
+  }
+
+  // ====== Mapping Editor Preview Endpoints =====
+
+  /**
+   * Get sample records for the mapping editor preview.
+   * Returns records as XML strings suitable for preview display.
+   */
+  def previewSampleRecords(spec: String, count: Int) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    datasetContext.sourceRepoOpt match {
+      case None =>
+        NotFound(Json.obj("error" -> "No source repository found for dataset"))
+      case Some(sourceRepo) =>
+        val idFilter = datasetContext.dsInfo.getIdFilter
+        val samplePockets = sourceRepo.getSampleRecords(count, idFilter)
+
+        val records = samplePockets.zipWithIndex.map { case (pocket, index) =>
+          Json.obj(
+            "index" -> index,
+            "id" -> pocket.id,
+            "xml" -> pocket.text
+          )
+        }
+
+        Ok(Json.obj(
+          "spec" -> spec,
+          "totalRecords" -> samplePockets.size,
+          "records" -> Json.toJson(records)
+        ))
+    }
+  }
+
+  /**
+   * Execute mapping on a sample record and return the transformed output.
+   * Used for live preview in the mapping editor.
+   */
+  def previewMappingExecution(spec: String, recordIndex: Int) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    // Check for source repository
+    val sourceRepoOpt = datasetContext.sourceRepoOpt
+    if (sourceRepoOpt.isEmpty) {
+      NotFound(Json.obj("error" -> "No source repository found for dataset"))
+    } else {
+      // Check for SIP mapper
+      val sipMapperOpt = datasetContext.sipMapperOpt
+      if (sipMapperOpt.isEmpty) {
+        NotFound(Json.obj("error" -> "No mapping found for dataset. Please ensure a mapping file exists."))
+      } else {
+        val sourceRepo = sourceRepoOpt.get
+        val sipMapper = sipMapperOpt.get
+        val idFilter = datasetContext.dsInfo.getIdFilter
+
+        // Get sample records (cache this for efficiency in real usage)
+        val samplePockets = sourceRepo.getSampleRecords(recordIndex + 1, idFilter)
+
+        if (recordIndex >= samplePockets.size) {
+          NotFound(Json.obj("error" -> s"Record index $recordIndex not found. Only ${samplePockets.size} records available."))
+        } else {
+          val pocket = samplePockets(recordIndex)
+
+          // Execute mapping
+          sipMapper.executeMapping(pocket) match {
+            case Success(outputPocket) =>
+              Ok(Json.obj(
+                "success" -> true,
+                "spec" -> spec,
+                "recordIndex" -> recordIndex,
+                "recordId" -> pocket.id,
+                "inputXml" -> pocket.text,
+                "outputXml" -> outputPocket.text,
+                "mappingPrefix" -> sipMapper.prefix
+              ))
+            case Failure(ex) =>
+              Ok(Json.obj(
+                "success" -> false,
+                "spec" -> spec,
+                "recordIndex" -> recordIndex,
+                "recordId" -> pocket.id,
+                "inputXml" -> pocket.text,
+                "error" -> ex.getMessage,
+                "errorType" -> ex.getClass.getSimpleName,
+                "mappingPrefix" -> sipMapper.prefix
+              ))
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Get a specific record by ID and execute mapping on it.
+   * Useful for searching/jumping to specific records in the preview.
+   */
+  def previewMappingById(spec: String, recordId: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    datasetContext.sourceRepoOpt match {
+      case None =>
+        NotFound(Json.obj("error" -> "No source repository found for dataset"))
+      case Some(sourceRepo) =>
+        datasetContext.sipMapperOpt match {
+          case None =>
+            NotFound(Json.obj("error" -> "No mapping found for dataset"))
+          case Some(sipMapper) =>
+            val idFilter = datasetContext.dsInfo.getIdFilter
+
+            sourceRepo.getRecordById(recordId, idFilter) match {
+              case None =>
+                NotFound(Json.obj("error" -> s"Record with ID '$recordId' not found"))
+              case Some(pocket) =>
+                sipMapper.executeMapping(pocket) match {
+                  case Success(outputPocket) =>
+                    Ok(Json.obj(
+                      "success" -> true,
+                      "spec" -> spec,
+                      "recordId" -> pocket.id,
+                      "inputXml" -> pocket.text,
+                      "outputXml" -> outputPocket.text,
+                      "mappingPrefix" -> sipMapper.prefix
+                    ))
+                  case Failure(ex) =>
+                    Ok(Json.obj(
+                      "success" -> false,
+                      "spec" -> spec,
+                      "recordId" -> pocket.id,
+                      "inputXml" -> pocket.text,
+                      "error" -> ex.getMessage,
+                      "errorType" -> ex.getClass.getSimpleName,
+                      "mappingPrefix" -> sipMapper.prefix
+                    ))
+                }
+            }
+        }
+    }
+  }
+
+  /**
+   * Search through all records for content matching the query.
+   * Returns a list of matching record IDs with snippets.
+   */
+  def searchRecordsByContent(spec: String, query: String, limit: Int) = Action { request =>
+    if (query.trim.isEmpty) {
+      BadRequest(Json.obj("error" -> "Search query cannot be empty"))
+    } else {
+      val datasetContext = orgContext.datasetContext(spec)
+
+      datasetContext.sourceRepoOpt match {
+        case None =>
+          NotFound(Json.obj("error" -> "No source repository found for dataset"))
+        case Some(sourceRepo) =>
+          val idFilter = datasetContext.dsInfo.getIdFilter
+          val matchingRecords = sourceRepo.searchRecordsByContent(query, limit, idFilter)
+
+          val results = matchingRecords.map { pocket =>
+            // Create a snippet around the first match
+            val lowerText = pocket.text.toLowerCase
+            val lowerQuery = query.toLowerCase
+            val matchIndex = lowerText.indexOf(lowerQuery)
+            val snippetStart = Math.max(0, matchIndex - 50)
+            val snippetEnd = Math.min(pocket.text.length, matchIndex + query.length + 50)
+            val snippet = (if (snippetStart > 0) "..." else "") +
+              pocket.text.substring(snippetStart, snippetEnd) +
+              (if (snippetEnd < pocket.text.length) "..." else "")
+
+            Json.obj(
+              "id" -> pocket.id,
+              "snippet" -> snippet,
+              "matchIndex" -> matchIndex
+            )
+          }
+
+          Ok(Json.obj(
+            "spec" -> spec,
+            "query" -> query,
+            "totalMatches" -> results.size,
+            "limit" -> limit,
+            "results" -> Json.toJson(results)
+          ))
+      }
+    }
+  }
+
+  // ====== Groovy Code Generation Endpoints =====
+
+  /**
+   * Generate full Groovy mapping code from the server.
+   * Uses sip-core's CodeGenerator to produce the complete mapping code.
+   *
+   * Request body (optional):
+   * {
+   *   "mappings": [
+   *     { "outputPath": "/rdf:RDF/...", "groovyCode": "custom code here" }
+   *   ]
+   * }
+   *
+   * Returns:
+   * {
+   *   "success": true,
+   *   "code": "// full groovy code...",
+   *   "prefix": "edm"
+   * }
+   */
+  def generateGroovyCode(spec: String) = Action(parse.json) { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    datasetContext.sipRepo.latestSipOpt.flatMap(_.sipMappingOpt) match {
+      case None =>
+        NotFound(Json.obj("error" -> "No mapping found for dataset. Please ensure a SIP file exists with a valid mapping."))
+      case Some(sipMapping) =>
+        try {
+          // Check for custom groovy code overrides in the request
+          val customCodes = (request.body \ "mappings").asOpt[JsArray].map { mappings =>
+            mappings.value.flatMap { mapping =>
+              val outputPath = (mapping \ "outputPath").asOpt[String]
+              val groovyCode = (mapping \ "groovyCode").asOpt[String]
+              (outputPath, groovyCode) match {
+                case (Some(path), Some(code)) => Some(path -> code)
+                case _ => None
+              }
+            }.toMap
+          }.getOrElse(Map.empty)
+
+          // Apply custom codes to the recMapping's node mappings
+          val recMapping = sipMapping.recMapping
+          if (customCodes.nonEmpty) {
+            // Create a map of output path -> custom code for lookup during generation
+            // The CodeGenerator can use EditPath for this, but for full code generation
+            // we need to modify the node mappings' groovyCode directly (temporarily)
+            for ((pathStr, code) <- customCodes) {
+              val path = Path.create(pathStr)
+              val nodeMapping = recMapping.getRecDefTree.getRecDefNode(path)
+              if (nodeMapping != null && nodeMapping.getNodeMappings != null) {
+                nodeMapping.getNodeMappings.values().asScala.foreach { nm =>
+                  nm.groovyCode = eu.delving.metadata.StringUtil.stringToLines(code)
+                }
+              }
+            }
+          }
+
+          val codeGenerator = new CodeGenerator(recMapping).withTrace(false)
+          val code = codeGenerator.toRecordMappingCode()
+
+          Ok(Json.obj(
+            "success" -> true,
+            "code" -> code,
+            "prefix" -> sipMapping.prefix,
+            "spec" -> spec
+          ))
+        } catch {
+          case ex: Exception =>
+            logger.error(s"Failed to generate Groovy code for $spec", ex)
+            InternalServerError(Json.obj(
+              "error" -> s"Failed to generate code: ${ex.getMessage}",
+              "errorType" -> ex.getClass.getSimpleName
+            ))
+        }
+    }
+  }
+
+  /**
+   * Generate Groovy code for a single mapping.
+   * Uses sip-core's CodeGenerator with EditPath to generate code for just one node mapping.
+   *
+   * Request body:
+   * {
+   *   "mapping": {
+   *     "inputPath": "/record/title",
+   *     "outputPath": "/rdf:RDF/edm:ProvidedCHO/dc:title",
+   *     "groovyCode": "optional custom code"
+   *   }
+   * }
+   *
+   * Returns:
+   * {
+   *   "success": true,
+   *   "code": "// node mapping code...",
+   *   "isGenerated": true/false
+   * }
+   */
+  def generateMappingCode(spec: String) = Action(parse.json) { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+
+    // Extract mapping info from request
+    val mappingOpt = (request.body \ "mapping").asOpt[JsObject]
+    if (mappingOpt.isEmpty) {
+      BadRequest(Json.obj("error" -> "Missing 'mapping' object in request body"))
+    } else {
+      val mapping = mappingOpt.get
+      val outputPath = (mapping \ "outputPath").asOpt[String]
+      val groovyCode = (mapping \ "groovyCode").asOpt[String]
+
+      if (outputPath.isEmpty) {
+        BadRequest(Json.obj("error" -> "Missing 'outputPath' in mapping"))
+      } else {
+        datasetContext.sipRepo.latestSipOpt.flatMap(_.sipMappingOpt) match {
+          case None =>
+            NotFound(Json.obj("error" -> "No mapping found for dataset"))
+          case Some(sipMapping) =>
+            try {
+              val recMapping = sipMapping.recMapping
+              val path = Path.create(outputPath.get)
+
+              // Find the node mapping at this path
+              val recDefNode = recMapping.getRecDefTree.getRecDefNode(path)
+              if (recDefNode == null || recDefNode.getNodeMappings.isEmpty) {
+                // No mapping exists at this path - return generated skeleton
+                Ok(Json.obj(
+                  "success" -> true,
+                  "code" -> s"// No mapping defined for ${outputPath.get}",
+                  "isGenerated" -> true,
+                  "hasMapping" -> false
+                ))
+              } else {
+                // Get the first node mapping (usually there's only one per output path)
+                val nodeMapping = recDefNode.getNodeMappings.values().asScala.head
+
+                // Create EditPath to generate code for just this mapping
+                val editedCode = groovyCode.orNull
+                val editPath = new EditPath(nodeMapping, editedCode)
+
+                val codeGenerator = new CodeGenerator(recMapping)
+                  .withEditPath(editPath)
+                  .withTrace(false)
+
+                val code = codeGenerator.toNodeMappingCode()
+                val isGenerated = groovyCode.isEmpty && (nodeMapping.groovyCode == null || nodeMapping.groovyCode.isEmpty)
+
+                Ok(Json.obj(
+                  "success" -> true,
+                  "code" -> code,
+                  "isGenerated" -> isGenerated,
+                  "hasMapping" -> true,
+                  "inputPath" -> (if (nodeMapping.inputPath != null) nodeMapping.inputPath.toString else JsNull),
+                  "outputPath" -> outputPath.get
+                ))
+              }
+            } catch {
+              case ex: Exception =>
+                logger.error(s"Failed to generate mapping code for $spec at ${outputPath.get}", ex)
+                InternalServerError(Json.obj(
+                  "error" -> s"Failed to generate code: ${ex.getMessage}",
+                  "errorType" -> ex.getClass.getSimpleName
+                ))
+            }
+        }
+      }
+    }
+  }
+
+  /**
+   * Preview mapping code execution.
+   * Executes the provided Groovy code against a sample record and returns the result.
+   *
+   * Request body:
+   * {
+   *   "mapping": {
+   *     "inputPath": "/record/title",
+   *     "outputPath": "/rdf:RDF/edm:ProvidedCHO/dc:title",
+   *     "groovyCode": "optional custom code"
+   *   },
+   *   "recordIndex": 0
+   * }
+   *
+   * Returns:
+   * {
+   *   "success": true,
+   *   "inputValue": "...",
+   *   "outputValue": "...",
+   *   "inputXml": "...",
+   *   "outputXml": "..."
+   * }
+   */
+  def previewMappingCode(spec: String) = Action(parse.json) { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val recordIndex = (request.body \ "recordIndex").asOpt[Int].getOrElse(0)
+    val mappingOpt = (request.body \ "mapping").asOpt[JsObject]
+
+    datasetContext.sourceRepoOpt match {
+      case None =>
+        NotFound(Json.obj("error" -> "No source repository found for dataset"))
+      case Some(sourceRepo) =>
+        datasetContext.sipRepo.latestSipOpt.flatMap(_.sipMappingOpt) match {
+          case None =>
+            NotFound(Json.obj("error" -> "No mapping found for dataset"))
+          case Some(sipMapping) =>
+            try {
+              val idFilter = datasetContext.dsInfo.getIdFilter
+              val samplePockets = sourceRepo.getSampleRecords(recordIndex + 1, idFilter)
+
+              if (recordIndex >= samplePockets.size) {
+                NotFound(Json.obj("error" -> s"Record index $recordIndex not found"))
+              } else {
+                val pocket = samplePockets(recordIndex)
+                val recMapping = sipMapping.recMapping
+
+                // If custom mapping code is provided, use it
+                val codeToExecute = mappingOpt.flatMap { mapping =>
+                  val outputPath = (mapping \ "outputPath").asOpt[String]
+                  val groovyCode = (mapping \ "groovyCode").asOpt[String]
+
+                  (outputPath, groovyCode) match {
+                    case (Some(pathStr), Some(code)) if code.nonEmpty =>
+                      // Apply the custom code and regenerate
+                      val path = Path.create(pathStr)
+                      val recDefNode = recMapping.getRecDefTree.getRecDefNode(path)
+                      if (recDefNode != null && !recDefNode.getNodeMappings.isEmpty) {
+                        val nodeMapping = recDefNode.getNodeMappings.values().asScala.head
+                        val editPath = new EditPath(nodeMapping, code)
+                        val codeGenerator = new CodeGenerator(recMapping)
+                          .withEditPath(editPath)
+                          .withTrace(false)
+                        // For preview, we need the full record mapping code, not just node code
+                        Some(codeGenerator.toRecordMappingCode())
+                      } else {
+                        None
+                      }
+                    case _ => None
+                  }
+                }.getOrElse {
+                  // Use the default generated code
+                  new CodeGenerator(recMapping).withTrace(false).toRecordMappingCode()
+                }
+
+                // Execute the mapping
+                val runner = new BulkMappingRunner(recMapping, codeToExecute)
+                val namespaces = sipMapping.recDefTree.getRecDef.namespaces.asScala.map(ns => ns.prefix -> ns.uri).toMap
+                val factory = new MetadataRecordFactory(namespaces.asJava)
+                val serializer = new XmlSerializer
+
+                try {
+                  val metadataRecord = factory.metadataRecordFrom(pocket.getText)
+                  val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord), recMapping.getRecDefTree)
+                  val outputXml = serializer.toXml(result.root(), true)
+
+                  // Extract input/output values if mapping info provided
+                  val inputPath = mappingOpt.flatMap(m => (m \ "inputPath").asOpt[String])
+                  val outputPath = mappingOpt.flatMap(m => (m \ "outputPath").asOpt[String])
+                  val groovyCode = mappingOpt.flatMap(m => (m \ "groovyCode").asOpt[String])
+
+                  // Extract variable bindings from the Groovy code
+                  val variableBindings: Map[String, String] = groovyCode.map { code =>
+                    extractVariableBindings(code, metadataRecord.getRootNode)
+                  }.getOrElse(Map.empty)
+
+                  Ok(Json.obj(
+                    "success" -> true,
+                    "spec" -> spec,
+                    "recordIndex" -> recordIndex,
+                    "recordId" -> pocket.id,
+                    "inputXml" -> pocket.text,
+                    "outputXml" -> outputXml,
+                    "mappingPrefix" -> sipMapping.prefix,
+                    "inputPath" -> (inputPath match { case Some(p) => JsString(p) case None => JsNull }),
+                    "outputPath" -> (outputPath match { case Some(p) => JsString(p) case None => JsNull }),
+                    "variableBindings" -> Json.toJson(variableBindings)
+                  ))
+                } catch {
+                  case ex: Exception =>
+                    Ok(Json.obj(
+                      "success" -> false,
+                      "spec" -> spec,
+                      "recordIndex" -> recordIndex,
+                      "recordId" -> pocket.id,
+                      "inputXml" -> pocket.text,
+                      "error" -> ex.getMessage,
+                      "errorType" -> ex.getClass.getSimpleName,
+                      "mappingPrefix" -> sipMapping.prefix
+                    ))
+                }
+              }
+            } catch {
+              case ex: Exception =>
+                logger.error(s"Failed to preview mapping code for $spec", ex)
+                InternalServerError(Json.obj(
+                  "error" -> s"Failed to execute preview: ${ex.getMessage}",
+                  "errorType" -> ex.getClass.getSimpleName
+                ))
+            }
+        }
+    }
+  }
+
   // Memory monitoring endpoints
   def memoryStats = Action {
     import memoryMonitorService.MemoryStats._
@@ -1149,6 +2082,76 @@ class AppController @Inject() (
   def forceGC = Action {
     val freedMB = memoryMonitorService.forceGC()
     Ok(Json.obj("success" -> true, "freedMB" -> freedMB))
+  }
+
+  /**
+   * Extract variable bindings from Groovy code by parsing variable references
+   * and looking up their values in the source record.
+   *
+   * Variables in Groovy code follow the pattern _varName (e.g., _title, _dc_creator, _image)
+   * These map back to XML tags (title, dc:creator, image)
+   */
+  private def extractVariableBindings(groovyCode: String, rootNode: eu.delving.groovy.GroovyNode): Map[String, String] = {
+    // Regex to find variable references like _title, _dc_creator, _image, etc.
+    // Matches underscore followed by word characters, but not special vars like _input, _facts, _absent_, _optLookup
+    val variablePattern = """_([a-zA-Z][a-zA-Z0-9_]*)""".r
+    val specialVars = Set("input", "facts", "absent_", "optLookup", "uniqueIdentifier", "M1", "M2", "M3", "M4", "M5")
+
+    // Find all unique variable names
+    val variableNames = variablePattern.findAllMatchIn(groovyCode).map(_.group(1)).toSet
+      .filterNot(v => specialVars.contains(v) || v.startsWith("M"))
+
+    // Convert variable names back to tag names and look up values
+    variableNames.flatMap { varName =>
+      // Convert underscore back to colon for namespace prefixes (e.g., dc_title -> dc:title)
+      val tagName = if (varName.contains("_")) {
+        // Check if it looks like a namespace prefix (e.g., dc_title, edm_type)
+        val parts = varName.split("_", 2)
+        if (parts.length == 2 && parts(0).length <= 4) {
+          // Likely a namespace prefix
+          s"${parts(0)}:${parts(1)}"
+        } else {
+          varName
+        }
+      } else {
+        varName
+      }
+
+      // Try to find the value in the source record
+      try {
+        val values = rootNode.getValueNodes(tagName).asScala.toSeq
+        if (values.nonEmpty) {
+          // Get the text values, joining multiple if present
+          val textValues = values.flatMap { obj =>
+            val node = obj.asInstanceOf[eu.delving.groovy.GroovyNode]
+            Option(node.text()).filter(_.trim.nonEmpty)
+          }
+          if (textValues.nonEmpty) {
+            Some(s"_$varName" -> textValues.mkString("; "))
+          } else {
+            Some(s"_$varName" -> "(empty)")
+          }
+        } else {
+          // Try without namespace
+          val simpleValues = rootNode.getValueNodes(varName).asScala.toSeq
+          if (simpleValues.nonEmpty) {
+            val textValues = simpleValues.flatMap { obj =>
+              val node = obj.asInstanceOf[eu.delving.groovy.GroovyNode]
+              Option(node.text()).filter(_.trim.nonEmpty)
+            }
+            if (textValues.nonEmpty) {
+              Some(s"_$varName" -> textValues.mkString("; "))
+            } else {
+              Some(s"_$varName" -> "(empty)")
+            }
+          } else {
+            Some(s"_$varName" -> "(not found)")
+          }
+        }
+      } catch {
+        case _: Exception => Some(s"_$varName" -> "(error)")
+      }
+    }.toMap
   }
 
 }

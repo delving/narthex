@@ -7,15 +7,18 @@
 		isOpen: boolean;
 		sourceNode: TreeNode | null;
 		sourceTreeType: 'source' | 'target';
+		sourceTree?: TreeNode[];  // The actual source tree (from API or sample)
+		targetTreeData?: TreeNode[];  // The actual target tree (from API or sample)
 		onClose: () => void;
 		onCreateMapping: (sourceNode: TreeNode, targetNode: TreeNode) => void;
 	}
 
-	let { isOpen, sourceNode, sourceTreeType, onClose, onCreateMapping }: Props = $props();
+	let { isOpen, sourceNode, sourceTreeType, sourceTree = sampleSourceTree, targetTreeData = sampleTargetTree, onClose, onCreateMapping }: Props = $props();
 
 	// The tree we're selecting from (opposite of sourceTreeType)
 	const targetTreeType = $derived(sourceTreeType === 'source' ? 'target' : 'source');
-	const targetTree = $derived(sourceTreeType === 'source' ? sampleTargetTree : sampleSourceTree);
+	// Use the passed-in trees, falling back to sample data
+	const targetTree = $derived(sourceTreeType === 'source' ? targetTreeData : sourceTree);
 
 	// Search state
 	let searchQuery = $state('');

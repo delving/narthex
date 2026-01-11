@@ -47,6 +47,11 @@ export interface Mapping {
 	targetId: string;
 	targetName: string;
 	label?: string;
+	groovyCode?: string;
+	operator?: string;
+	documentation?: string;
+	siblings?: string[];
+	isOrphan?: boolean; // True if source path doesn't exist in source tree
 }
 
 // Mappings store
@@ -137,5 +142,25 @@ export function getMappedFrom(nodeId: string) {
 		return $mappings
 			.filter((m) => m.targetId === nodeId)
 			.map((m) => ({ field: m.sourceName, label: m.label }));
+	});
+}
+
+// Derived store: get all orphaned mappings (source path not in tree)
+export const orphanMappings = derived(mappingsStore, ($mappings) =>
+	$mappings.filter((m) => m.isOrphan === true)
+);
+
+// Derived store: check if a specific path is an orphan
+export function isOrphanPath(sourcePath: string) {
+	return derived(mappingsStore, ($mappings) =>
+		$mappings.some((m) => m.sourcePath === sourcePath && m.isOrphan === true)
+	);
+}
+
+// Helper function to get all unique orphan source paths
+export function getOrphanPaths() {
+	return derived(mappingsStore, ($mappings) => {
+		const orphans = $mappings.filter((m) => m.isOrphan === true);
+		return [...new Set(orphans.map((m) => m.sourcePath))];
 	});
 }

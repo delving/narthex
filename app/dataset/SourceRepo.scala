@@ -479,6 +479,45 @@ class SourceRepo(home: File, orgContext: OrgContext) {
   }
 
   /**
+   * Search for records containing the given text in their content.
+   * Returns a list of matching records up to the specified limit.
+   *
+   * @param query The text to search for (case-insensitive)
+   * @param limit Maximum number of results to return
+   * @param idFilter The ID filter to apply
+   * @return List of matching Pocket records with their content
+   */
+  def searchRecordsByContent(query: String, limit: Int, idFilter: IdFilter): List[Pocket] = {
+    val records = scala.collection.mutable.ListBuffer[Pocket]()
+    val lowerQuery = query.toLowerCase
+    var collected = 0
+
+    val parser = new PocketParser(sourceFacts, idFilter, orgContext)
+    val deletedIds = deletedIdSet
+
+    val zipFiles = listZipFiles
+    val iterator = zipFiles.iterator
+
+    while (iterator.hasNext && collected < limit) {
+      val zipFile = iterator.next()
+      val idSet = avoidSet(zipFile) ++ deletedIds
+      val (source, _) = sourceFromFile(zipFile)
+      try {
+        parser.parse(source, idSet, { pocket =>
+          if (collected < limit && pocket.text.toLowerCase.contains(lowerQuery)) {
+            records += pocket
+            collected += 1
+          }
+        }, ProgressReporter())
+      } finally {
+        source.close()
+      }
+    }
+
+    records.toList
+  }
+
+  /**
    * Get source statistics.
    * Returns total record count, zip file count, and source facts.
    */

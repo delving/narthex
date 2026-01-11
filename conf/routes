@@ -108,6 +108,9 @@ GET         /narthex/app/sheets-list                                         con
 GET         /narthex/app/sheet/:spec                                         controllers.AppController.sheet(spec)
 GET         /narthex/app/categories/gather-counts                            controllers.AppController.gatherCategoryCounts
 
+# Rec-Def (Record Definition) for mapping editor
+GET         /narthex/app/rec-def/:prefix                                     controllers.AppController.getRecDef(prefix)
+
 # Default Mappings - Named Mappings Structure (prefix/name/versions)
 GET         /narthex/app/default-mappings                                    controllers.AppController.listDefaultMappings
 GET         /narthex/app/default-mappings/:prefix                            controllers.AppController.listMappingsForPrefix(prefix)
@@ -127,10 +130,27 @@ DELETE      /narthex/app/default-mappings/:prefix/:name/versions/:hash       con
 # Dataset Mapping Source
 GET         /narthex/app/dataset/:spec/mapping-versions                      controllers.AppController.listDatasetMappingVersions(spec)
 GET         /narthex/app/dataset/:spec/mapping-xml/:version                  controllers.AppController.getDatasetMappingXml(spec, version)
+GET         /narthex/app/dataset/:spec/mappings-json                         controllers.AppController.getMappingsJson(spec)
+
+# Mapping Editor Preview
+GET         /narthex/app/dataset/:spec/preview-samples/:count                controllers.AppController.previewSampleRecords(spec, count: Int)
+GET         /narthex/app/dataset/:spec/preview-mapping/:index                controllers.AppController.previewMappingExecution(spec, index: Int)
+GET         /narthex/app/dataset/:spec/preview-mapping-by-id/:recordId       controllers.AppController.previewMappingById(spec, recordId)
+GET         /narthex/app/dataset/:spec/search-records                       controllers.AppController.searchRecordsByContent(spec, query: String, limit: Int ?= 50)
 + nocsrf
 POST        /narthex/app/dataset/:spec/set-mapping-source                    controllers.AppController.setDatasetMappingSource(spec)
 + nocsrf
 POST        /narthex/app/dataset/:spec/rollback-mapping/:hash                controllers.AppController.rollbackDatasetMapping(spec, hash)
++ nocsrf
+POST        /narthex/app/dataset/:spec/save-mapping                          controllers.AppController.saveMappingFromEditor(spec)
+
+# Groovy Code Generation for Mapping Editor
++ nocsrf
+POST        /narthex/app/dataset/:spec/generate-groovy                       controllers.AppController.generateGroovyCode(spec)
++ nocsrf
+POST        /narthex/app/dataset/:spec/generate-mapping-code                 controllers.AppController.generateMappingCode(spec)
++ nocsrf
+POST        /narthex/app/dataset/:spec/preview-mapping-code                  controllers.AppController.previewMappingCode(spec)
 
 # Dataset Discovery - OAI-PMH Sources
 GET         /narthex/app/discovery/sources                                   controllers.DiscoveryController.listSources

@@ -11,6 +11,7 @@
 		mappingId?: string;
 		targetId?: string;
 		sourceId?: string;
+		fullPath?: string; // Full path for tooltip (e.g., /edm:RDF/ore:Aggregation/@rdf:resource)
 	}
 
 	interface Props {
@@ -27,6 +28,9 @@
 		highlightedId?: string | null;
 		expandedNodes?: Set<string>;
 		onToggleExpand?: (nodeId: string) => void;
+		// Compact mode props (for target tree)
+		compactMode?: boolean;
+		isDragging?: boolean;
 	}
 
 	let {
@@ -41,7 +45,9 @@
 		forceExpand = false,
 		highlightedId = null,
 		expandedNodes,
-		onToggleExpand
+		onToggleExpand,
+		compactMode = false,
+		isDragging = false
 	}: Props = $props();
 
 	// Auto-expand first 2 levels, or force expand when searching
@@ -57,6 +63,17 @@
 
 	const hasChildren = $derived(node.children && node.children.length > 0);
 
+	// Compact mode: count attribute children for indicator
+	const attributeChildren = $derived(
+		node.children?.filter(c => c.isAttribute) || []
+	);
+	const nonAttributeChildren = $derived(
+		node.children?.filter(c => !c.isAttribute) || []
+	);
+	const hasHiddenAttributes = $derived(
+		compactMode && !expanded && attributeChildren.length > 0
+	);
+
 	// Check if this node matches the search query
 	const matchesSearch = $derived(
 		searchQuery && node.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -64,9 +81,8 @@
 	const isSelected = $derived(selectedId === node.id);
 	const paddingLeft = $derived(depth * 16 + 8);
 
-	// Track mappings from store with version counter for reactivity
-	let storeMappings: import('$lib/stores/mappingStore').Mapping[] = [];
-	let mappingsVersion = $state(0);
+	// Track mappings from store - use $state for proper reactivity in Svelte 5
+	let storeMappings = $state<import('$lib/stores/mappingStore').Mapping[]>([]);
 	let currentDragState = $state<import('$lib/stores/mappingStore').DragState>({
 		isDragging: false,
 		sourceType: null,
@@ -77,7 +93,6 @@
 	onMount(() => {
 		const unsubMappings = mappingsStore.subscribe(mappings => {
 			storeMappings = mappings;
-			mappingsVersion++; // Force reactivity by updating a tracked state
 		});
 		const unsubDrag = dragStore.subscribe(state => {
 			currentDragState = state;
@@ -91,9 +106,6 @@
 
 	// Combine static mappings with dynamic ones from store
 	const allMappedTo = $derived.by((): DisplayMapping[] => {
-		// Reference mappingsVersion to track store changes
-		const _v = mappingsVersion;
-
 		const staticMappings: DisplayMapping[] = (node.mappedTo || []).map(m => ({
 			...m,
 			removable: false
@@ -107,7 +119,8 @@
 				label: m.label,
 				removable: true,
 				mappingId: m.id,
-				targetId: m.targetId
+				targetId: m.targetId,
+				fullPath: m.targetPath // Include full target path for tooltip
 			}));
 
 		// Merge, avoiding duplicates by field name
@@ -122,9 +135,6 @@
 	});
 
 	const allMappedFrom = $derived.by((): DisplayMapping[] => {
-		// Reference mappingsVersion to track store changes
-		const _v = mappingsVersion;
-
 		const staticMappings: DisplayMapping[] = (node.mappedFrom || []).map(m => ({
 			...m,
 			removable: false
@@ -138,7 +148,8 @@
 				label: m.label,
 				removable: true,
 				mappingId: m.id,
-				sourceId: m.sourceId
+				sourceId: m.sourceId,
+				fullPath: m.sourcePath // Include full source path for tooltip
 			}));
 
 		const merged = [...staticMappings];
@@ -152,6 +163,60 @@
 	});
 
 	const hasMappings = $derived(allMappedTo.length > 0 || allMappedFrom.length > 0);
+
+	// Check if field has values (completeness > 0) or is always empty
+	const hasNoValues = $derived(
+		node.quality && node.quality.completeness === 0
+	);
+	const hasLowCompleteness = $derived(
+		node.quality && node.quality.completeness > 0 && node.quality.completeness < 50
+	);
+
+	// Helper: check if all children are orphans (recursive)
+	function hasOnlyOrphanChildren(n: TreeNode): boolean {
+		if (!n.children || n.children.length === 0) return true;
+		return n.children.every(child => child.isOrphan && hasOnlyOrphanChildren(child));
+	}
+
+	// Orphan styling should only apply when:
+	// 1. Node is marked as orphan AND
+	// 2. Either has no children OR all children are also orphans
+	const showOrphanStyle = $derived(
+		node.isOrphan && hasOnlyOrphanChildren(node)
+	);
+
+	// Generate tooltip text for nodes
+	const nodeTooltip = $derived.by(() => {
+		const parts: string[] = [];
+
+		parts.push(`Tree path: ${node.path}`);
+
+		if (node.mappingPath && node.mappingPath !== node.path) {
+			parts.push(`Mapping path: ${node.mappingPath}`);
+		}
+
+		if (node.isOrphan) {
+			parts.push('⚠ This path exists in the mapping but not in the source data');
+		}
+
+		if (node.isConstant) {
+			parts.push('Drag to target field to map a constant value');
+		}
+
+		if (node.isFact && node.factValue) {
+			parts.push(`Fact value: ${node.factValue}`);
+		}
+
+		if (node.quality) {
+			parts.push(`Completeness: ${node.quality.completeness.toFixed(1)}%`);
+		}
+
+		if (node.count !== undefined) {
+			parts.push(`Count: ${node.count.toLocaleString()}`);
+		}
+
+		return parts.join('\n');
+	});
 
 	// Remove a mapping
 	function removeMapping(mapping: DisplayMapping, e: MouseEvent) {
@@ -285,6 +350,10 @@
 
 		if (canAcceptDrop && !isDragOver) {
 			isDragOver = true;
+			// Auto-expand on drag over in compact mode (so user can drop on children)
+			if (compactMode && hasChildren && !expanded && onToggleExpand) {
+				onToggleExpand(node.id);
+			}
 		}
 	}
 
@@ -322,11 +391,14 @@
 		class="tree-node"
 		class:selected={isSelected}
 		class:mapped={hasMappings}
+		class:orphan={showOrphanStyle}
+		class:orphan-mapped={node.isOrphan && hasMappings}
 		class:dragging={isBeingDragged}
 		class:drag-over={isDragOver && canAcceptDrop}
 		class:can-drop={canAcceptDrop && currentDragState.isDragging}
 		class:keyboard-highlight={isKeyboardHighlighted}
 		style="padding-left: {paddingLeft}px"
+		title={nodeTooltip}
 		onclick={select}
 		onkeydown={handleKeydown}
 		role="treeitem"
@@ -334,6 +406,7 @@
 		aria-expanded={hasChildren ? expanded : undefined}
 		aria-selected={isSelected}
 		data-node-id={node.id}
+		data-node-path={node.path}
 		data-tree-type={treeType}
 		draggable="true"
 		ondragstart={handleDragStart}
@@ -392,14 +465,29 @@
 		{/if}
 
 		<!-- Node icon -->
-		{#if node.isAttribute}
+		{#if node.isConstant}
+			<span class="node-icon constant" title="Drag to target field to enter a constant value">"</span>
+		{:else if node.isFacts}
+			<span class="node-icon facts" title="Mapping facts - expand to see values">≡</span>
+		{:else if node.isFact}
+			<span class="node-icon fact" title="Drag to target field to use this fact value">$</span>
+		{:else if node.isOrphan}
+			<span class="node-icon orphan" title="Orphaned field - no longer in source data">⚠</span>
+		{:else if node.isAttribute}
 			<span class="node-icon attribute">@</span>
 		{:else}
 			<span class="node-icon element">&lt;&gt;</span>
 		{/if}
 
-		<!-- Node name -->
-		<span class="node-name" class:highlight={matchesSearch}>
+		<!-- Node name - orphan names stay red even when mapped to indicate no output possible -->
+		<span
+			class="node-name"
+			class:highlight={matchesSearch}
+			class:no-values={hasNoValues}
+			class:low-completeness={hasLowCompleteness}
+			class:orphan={node.isOrphan}
+			class:qualified-variant={node.isQualifiedVariant}
+		>
 			{#if searchQuery && matchesSearch}
 				{@const lowerName = node.name.toLowerCase()}
 				{@const lowerQuery = searchQuery.toLowerCase()}
@@ -410,15 +498,78 @@
 			{/if}
 		</span>
 
-		<!-- Mapping badges -->
+		<!-- Qualifier label for qualified variants -->
+		{#if node.qualifier}
+			<span class="qualifier-label" title={`Qualified variant: ${node.qualifier}`}>
+				[{node.qualifier}]
+			</span>
+		{/if}
+
+		<!-- Fact value (for fact nodes) -->
+		{#if node.isFact && node.factValue}
+			<span class="fact-value" title={node.factValue}>: {node.factValue}</span>
+		{/if}
+
+		<!-- Attribute count badge (compact mode) -->
+		{#if hasHiddenAttributes}
+			<span class="attr-count-badge" title={`${attributeChildren.length} attribute${attributeChildren.length === 1 ? '' : 's'}: ${attributeChildren.map(a => a.name).join(', ')}`}>
+				@{attributeChildren.length}
+			</span>
+		{/if}
+
+		<!-- Empty field indicator -->
+		{#if hasNoValues}
+			<span class="empty-indicator" title="This field never has values">
+				<svg viewBox="0 0 20 20" fill="currentColor">
+					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/>
+				</svg>
+			</span>
+		{/if}
+
+		<!-- Mapping badges - show first + count, expand on hover -->
+		<!-- If source is orphan, badges are red to indicate no output will be produced -->
 		{#if allMappedTo.length > 0}
-			<span class="mapping-badges to">
-				{#each allMappedTo as mapping}
+			{@const firstMapping = allMappedTo[0]}
+			{@const extraCount = allMappedTo.length - 1}
+			{@const allMappingsTooltip = allMappedTo.map(m => `→ ${m.fullPath || m.field}${m.label ? ` (${m.label})` : ''}`).join('\n')}
+			<span class="mapping-badges to" class:has-more={extraCount > 0} class:orphan-source={node.isOrphan} title={extraCount > 0 ? allMappingsTooltip : undefined}>
+				<!-- First badge always visible -->
+				<span
+					class="mapping-badge to"
+					class:clickable={firstMapping.removable && onMappingClick}
+					class:removable={firstMapping.removable}
+					title={firstMapping.fullPath || `Maps to ${firstMapping.field}`}
+					onclick={(e) => handleMappingClick(firstMapping, e)}
+					onkeydown={(e) => { if (e.key === 'Enter') handleMappingClick(firstMapping, e as unknown as MouseEvent); }}
+					role={firstMapping.removable ? 'button' : undefined}
+					tabindex={firstMapping.removable ? 0 : undefined}
+				>
+					<span class="arrow">→</span>
+					<span class="field">{firstMapping.field}</span>
+					{#if firstMapping.label}
+						<span class="label">{firstMapping.label}</span>
+					{/if}
+					{#if firstMapping.removable}
+						<button
+							type="button"
+							class="remove-btn"
+							title="Remove mapping"
+							onclick={(e) => removeMapping(firstMapping, e)}
+							aria-label="Remove mapping"
+						>×</button>
+					{/if}
+				</span>
+				<!-- Show +N for additional mappings -->
+				{#if extraCount > 0}
+					<span class="mapping-count">+{extraCount}</span>
+				{/if}
+				<!-- Expanded badges shown on hover -->
+				{#each allMappedTo.slice(1) as mapping}
 					<span
-						class="mapping-badge to"
+						class="mapping-badge to extra"
 						class:clickable={mapping.removable && onMappingClick}
 						class:removable={mapping.removable}
-						title={mapping.removable ? `Click to edit in Tweak panel` : `Maps to ${mapping.field}`}
+						title={mapping.fullPath || `Maps to ${mapping.field}`}
 						onclick={(e) => handleMappingClick(mapping, e)}
 						onkeydown={(e) => { if (e.key === 'Enter') handleMappingClick(mapping, e as unknown as MouseEvent); }}
 						role={mapping.removable ? 'button' : undefined}
@@ -444,13 +595,47 @@
 		{/if}
 
 		{#if allMappedFrom.length > 0}
-			<span class="mapping-badges from">
-				{#each allMappedFrom as mapping}
+			{@const firstFromMapping = allMappedFrom[0]}
+			{@const extraFromCount = allMappedFrom.length - 1}
+			{@const allMappingsFromTooltip = allMappedFrom.map(m => `← ${m.fullPath || m.field}${m.label ? ` (${m.label})` : ''}`).join('\n')}
+			<span class="mapping-badges from" class:has-more={extraFromCount > 0} title={extraFromCount > 0 ? allMappingsFromTooltip : undefined}>
+				<!-- First badge always visible -->
+				<span
+					class="mapping-badge from"
+					class:clickable={firstFromMapping.removable && onMappingClick}
+					class:removable={firstFromMapping.removable}
+					title={firstFromMapping.fullPath || `Mapped from ${firstFromMapping.field}`}
+					onclick={(e) => handleMappingClick(firstFromMapping, e)}
+					onkeydown={(e) => { if (e.key === 'Enter') handleMappingClick(firstFromMapping, e as unknown as MouseEvent); }}
+					role={firstFromMapping.removable ? 'button' : undefined}
+					tabindex={firstFromMapping.removable ? 0 : undefined}
+				>
+					<span class="arrow">←</span>
+					<span class="field">{firstFromMapping.field}</span>
+					{#if firstFromMapping.label}
+						<span class="label">{firstFromMapping.label}</span>
+					{/if}
+					{#if firstFromMapping.removable}
+						<button
+							type="button"
+							class="remove-btn"
+							title="Remove mapping"
+							onclick={(e) => removeMapping(firstFromMapping, e)}
+							aria-label="Remove mapping"
+						>×</button>
+					{/if}
+				</span>
+				<!-- Show +N for additional mappings -->
+				{#if extraFromCount > 0}
+					<span class="mapping-count">+{extraFromCount}</span>
+				{/if}
+				<!-- Expanded badges shown on hover -->
+				{#each allMappedFrom.slice(1) as mapping}
 					<span
-						class="mapping-badge from"
+						class="mapping-badge from extra"
 						class:clickable={mapping.removable && onMappingClick}
 						class:removable={mapping.removable}
-						title={mapping.removable ? `Click to edit in Tweak panel` : `Mapped from ${mapping.field}`}
+						title={mapping.fullPath || `Mapped from ${mapping.field}`}
 						onclick={(e) => handleMappingClick(mapping, e)}
 						onkeydown={(e) => { if (e.key === 'Enter') handleMappingClick(mapping, e as unknown as MouseEvent); }}
 						role={mapping.removable ? 'button' : undefined}
@@ -505,6 +690,8 @@
 					{highlightedId}
 					{expandedNodes}
 					{onToggleExpand}
+					{compactMode}
+					{isDragging}
 				/>
 			{/each}
 		</div>
@@ -559,6 +746,21 @@
 
 	.tree-node.mapped .node-name {
 		color: #4ade80;
+	}
+
+	/* Orphan nodes with mappings - keep text red to show no output possible */
+	.tree-node.orphan-mapped .node-name {
+		color: #ef4444;
+	}
+
+	/* Orphan nodes - fields that no longer exist in source data */
+	.tree-node.orphan {
+		background-color: rgba(239, 68, 68, 0.08);
+		border-left: 2px solid #ef4444;
+	}
+
+	.tree-node.orphan:hover {
+		background-color: rgba(239, 68, 68, 0.15);
 	}
 
 	/* Drag states */
@@ -684,6 +886,76 @@
 		background: rgba(244, 114, 182, 0.1);
 	}
 
+	.node-icon.orphan {
+		color: #ef4444;
+		background: rgba(239, 68, 68, 0.15);
+		font-size: 11px;
+	}
+
+	.node-icon.constant {
+		color: #a78bfa;
+		background: rgba(167, 139, 250, 0.15);
+		font-weight: bold;
+		font-family: serif;
+	}
+
+	.node-icon.facts {
+		color: #fbbf24;
+		background: rgba(251, 191, 36, 0.15);
+	}
+
+	.node-icon.fact {
+		color: #34d399;
+		background: rgba(52, 211, 153, 0.15);
+		font-weight: bold;
+	}
+
+	.fact-value {
+		color: #9ca3af;
+		font-size: 12px;
+		font-style: italic;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 200px;
+		pointer-events: none;
+	}
+
+	/* Compact mode: collapsed attribute count indicator */
+	.attr-count-badge {
+		display: inline-flex;
+		align-items: center;
+		font-size: 9px;
+		font-weight: 500;
+		padding: 1px 5px;
+		border-radius: 8px;
+		background: rgba(244, 114, 182, 0.15);
+		color: #f472b6;
+		white-space: nowrap;
+		flex-shrink: 0;
+		cursor: help;
+	}
+
+	/* Qualifier label for qualified variants */
+	.qualifier-label {
+		display: inline-flex;
+		align-items: center;
+		font-size: 11px;
+		font-weight: 500;
+		padding: 0 4px;
+		margin-left: 4px;
+		border-radius: 4px;
+		background: rgba(147, 51, 234, 0.2);
+		color: #c084fc;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	/* Qualified variant node styling */
+	.node-name.qualified-variant {
+		color: #c084fc;
+	}
+
 	.node-name {
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -696,6 +968,43 @@
 		font-weight: 500;
 	}
 
+	.node-name.no-values {
+		color: #6b7280;
+		font-style: italic;
+	}
+
+	.node-name.low-completeness {
+		color: #fbbf24;
+	}
+
+	/* Orphan nodes - source paths that no longer exist in the data */
+	/* Base orphan styling (when no valid children) */
+	.tree-node.orphan {
+		background-color: rgba(239, 68, 68, 0.08);
+		border-left: 2px solid #ef4444;
+	}
+
+	/* Orphan nodes that are also mapped - red text to show no output possible */
+	.tree-node.orphan-mapped {
+		color: #ef4444;
+	}
+
+	.tree-node.orphan-mapped .count-badge {
+		background: rgba(239, 68, 68, 0.15);
+		color: #ef4444;
+	}
+
+	.tree-node.orphan-mapped .node-icon {
+		color: #ef4444;
+	}
+
+	.node-name.orphan {
+		color: #ef4444;
+		font-style: italic;
+		text-decoration: line-through;
+		text-decoration-color: #ef4444;
+	}
+
 	.node-name mark {
 		background: rgba(250, 204, 21, 0.4);
 		color: inherit;
@@ -703,10 +1012,76 @@
 		border-radius: 2px;
 	}
 
+	.empty-indicator {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 14px;
+		color: #6b7280;
+		flex-shrink: 0;
+	}
+
+	.empty-indicator svg {
+		width: 12px;
+		height: 12px;
+	}
+
 	.mapping-badges {
 		display: flex;
+		flex-wrap: nowrap;
 		gap: 3px;
-		flex-shrink: 0;
+		flex-shrink: 1;
+		min-width: 0;
+		align-items: center;
+	}
+
+	/* Hide extra badges by default */
+	.mapping-badge.extra {
+		display: none;
+	}
+
+	/* Show extra badges on hover and allow wrapping */
+	.mapping-badges.has-more:hover {
+		flex-wrap: wrap;
+	}
+
+	.mapping-badges.has-more:hover .mapping-badge.extra {
+		display: inline-flex;
+	}
+
+	/* Hide the +N count on hover */
+	.mapping-badges.has-more:hover .mapping-count {
+		display: none;
+	}
+
+	/* +N count badge */
+	.mapping-count {
+		display: inline-flex;
+		align-items: center;
+		padding: 2px 5px;
+		font-size: 9px;
+		font-weight: 600;
+		color: #9ca3af;
+		background: #374151;
+		border-radius: 8px;
+		white-space: nowrap;
+	}
+
+	/* Orphan source badges - red to indicate no output will be produced */
+	.mapping-badges.orphan-source .mapping-badge.to {
+		background: rgba(239, 68, 68, 0.15);
+		border-color: rgba(239, 68, 68, 0.3);
+		color: #ef4444;
+	}
+
+	.mapping-badges.orphan-source .mapping-badge.to .arrow {
+		color: #ef4444;
+	}
+
+	.mapping-badges.orphan-source .mapping-count {
+		background: rgba(239, 68, 68, 0.2);
+		color: #ef4444;
 	}
 
 	.mapping-badge {

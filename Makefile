@@ -1,5 +1,5 @@
 # Makefile for Narthex
-.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org
+.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org editor-build editor-dev
 
 NAME:=narthex
 VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
@@ -68,7 +68,18 @@ package:
 compile:
 	sbt compile
 
-dist:
+# Build the Svelte mapping editor
+editor-build:
+	@echo "=== Building Svelte Mapping Editor ==="
+	cd editor && npm install && npm run build
+	@echo "=== Editor built to public/editor/ ==="
+
+# Run the Svelte editor in dev mode
+editor-dev:
+	cd editor && npm run dev
+
+dist: editor-build
+	@echo "=== Building Narthex distribution ==="
 	sbt clean dist
 
 run:
@@ -129,7 +140,7 @@ fpm-build-fuseki-rpm:
 #   3. Extract it
 #   4. Update the 'current' symlink
 #   5. Restart the narthex service
-deploy:
+deploy: editor-build
 	@if [ -z "$(SSH_HOST)" ]; then echo "Error: SSH_HOST is required. Usage: make deploy SSH_HOST=root@server.example.com ORG_ID=myorg"; exit 1; fi
 	@if [ -z "$(ORG_ID)" ]; then echo "Error: ORG_ID is required. Usage: make deploy SSH_HOST=root@server.example.com ORG_ID=myorg"; exit 1; fi
 	@echo "=== Deploying Narthex $(VERSION) to $(SSH_HOST) for org $(ORG_ID) ==="
@@ -156,7 +167,7 @@ deploy:
 	@echo "=== Deployment complete: Narthex $(VERSION) is now running ==="
 
 # Deploy without restart (useful for preparing update, then restart manually)
-deploy-no-restart:
+deploy-no-restart: editor-build
 	@if [ -z "$(SSH_HOST)" ]; then echo "Error: SSH_HOST is required."; exit 1; fi
 	@if [ -z "$(ORG_ID)" ]; then echo "Error: ORG_ID is required."; exit 1; fi
 	@echo "=== Deploying Narthex $(VERSION) to $(SSH_HOST) (no restart) ==="

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { TreeNode } from '$lib/types';
 	import TreeNodeComponent from './TreeNode.svelte';
+	import { dragStore } from '$lib/stores/mappingStore';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		nodes: TreeNode[];
@@ -9,9 +11,20 @@
 		onSelect?: (node: TreeNode) => void;
 		onMappingClick?: (mappingId: string) => void;
 		onAddClick?: (node: TreeNode, treeType: 'source' | 'target') => void;
+		compactMode?: boolean; // Compact display - collapse more by default, show attr counts
 	}
 
-	let { nodes, selectedId = null, treeType, onSelect, onMappingClick, onAddClick }: Props = $props();
+	let { nodes, selectedId = null, treeType, onSelect, onMappingClick, onAddClick, compactMode = false }: Props = $props();
+
+	// Track drag state for auto-expand
+	let isDragging = $state(false);
+
+	onMount(() => {
+		const unsubDrag = dragStore.subscribe(state => {
+			isDragging = state.isDragging;
+		});
+		return unsubDrag;
+	});
 
 	// Search state
 	let searchQuery = $state('');
@@ -25,17 +38,41 @@
 	// Expanded nodes tracking (managed at tree level for keyboard nav)
 	let expandedNodes = $state<Set<string>>(new Set());
 
-	// Initialize expanded nodes (first 2 levels)
+	// Recursively collect all node IDs from a tree
+	function collectAllNodeIds(nodeList: TreeNode[], set: Set<string>): void {
+		for (const node of nodeList) {
+			set.add(node.id);
+			if (node.children) {
+				collectAllNodeIds(node.children, set);
+			}
+		}
+	}
+
+	// Collect node IDs up to a certain depth (for compact mode)
+	function collectNodeIdsToDepth(nodeList: TreeNode[], set: Set<string>, maxDepth: number, currentDepth: number = 0): void {
+		if (currentDepth >= maxDepth) return;
+		for (const node of nodeList) {
+			// In compact mode, skip expanding attribute-only groups at deeper levels
+			const hasNonAttributeChildren = node.children?.some(c => !c.isAttribute);
+			if (currentDepth < maxDepth - 1 || hasNonAttributeChildren) {
+				set.add(node.id);
+			}
+			if (node.children) {
+				collectNodeIdsToDepth(node.children, set, maxDepth, currentDepth + 1);
+			}
+		}
+	}
+
+	// Initialize expanded nodes
+	// - Source tree: all nodes expanded by default
+	// - Target tree (compact mode): only first 2 levels expanded
 	$effect(() => {
-		if (expandedNodes.size === 0) {
+		if (expandedNodes.size === 0 && nodes.length > 0) {
 			const initial = new Set<string>();
-			for (const node of nodes) {
-				initial.add(node.id);
-				if (node.children) {
-					for (const child of node.children) {
-						initial.add(child.id);
-					}
-				}
+			if (compactMode) {
+				collectNodeIdsToDepth(nodes, initial, 2);
+			} else {
+				collectAllNodeIds(nodes, initial);
 			}
 			expandedNodes = initial;
 		}
@@ -364,6 +401,8 @@
 				highlightedId={highlightedNode?.id}
 				expandedNodes={expandedNodes}
 				onToggleExpand={toggleNodeExpansion}
+				{compactMode}
+				{isDragging}
 			/>
 		{/each}
 		{#if searchQuery && filteredNodes.length === 0}

@@ -34,7 +34,7 @@ object DatasetMappingRepo {
     timestamp: DateTime,
     hash: String,
     filename: String,
-    source: String,  // "sip_upload" | "rollback" | "default_copy"
+    source: String,  // "sip_upload" | "rollback" | "default_copy" | "editor"
     sourceDefault: Option[String],  // e.g., "edm:abc12345" if copied from default
     description: Option[String]
   )
@@ -136,6 +136,13 @@ class DatasetMappingRepo(datasetDir: File) {
   def saveFromDefault(xmlContent: String, prefix: String, defaultVersion: String, description: Option[String] = None): DatasetMappingVersion = {
     val sourceDefault = s"$prefix:$defaultVersion"
     saveVersion(xmlContent, prefix, "default_copy", Some(sourceDefault), description.orElse(Some(s"Copied from default mapping $prefix version $defaultVersion")))
+  }
+
+  /**
+   * Save a new mapping version from the web-based mapping editor
+   */
+  def saveFromEditor(xmlContent: String, prefix: String, description: Option[String] = None): DatasetMappingVersion = {
+    saveVersion(xmlContent, prefix, "editor", None, description.orElse(Some("Saved from mapping editor")))
   }
 
   /**
