@@ -801,7 +801,14 @@ class DsInfo(
     val withSynced = updateSyncedFalseQ(graphName, uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
     val futureUpdate = ts.up.sparqlUpdate(sparql)
-    Await.ready(futureUpdate, patience)
+    try {
+      Await.result(futureUpdate, patience)
+    } catch {
+      case e: Exception =>
+        val propNames = propVals.map(_._1.name).mkString(", ")
+        logger.error(s"Failed to update properties [$propNames] for $spec: ${e.getMessage}", e)
+        throw e
+    }
     // Invalidate cached model so next read gets fresh data with updated properties
     cachedModel = None
   }
@@ -1294,13 +1301,33 @@ class DsInfo(
    * @param source Active records that made it to source.xml (acquired - deleted)
    * @param method How the source was acquired: "harvest" or "upload"
    */
-  def setAcquisitionCounts(acquired: Int, deleted: Int, source: Int, method: String) =
+  def setAcquisitionCounts(acquired: Int, deleted: Int, source: Int, method: String): Unit = {
+    logger.info(s"[$spec] Setting acquisition counts: acquired=$acquired, deleted=$deleted, source=$source, method=$method")
+
     setSingularLiteralProps(
       acquiredRecordCount -> acquired.toString,
       deletedRecordCount -> deleted.toString,
       sourceRecordCount -> source.toString,
       acquisitionMethod -> method
     )
+
+    // Verify the update succeeded by reading back the values
+    val savedAcquired = getLiteralProp(acquiredRecordCount)
+    val savedSource = getLiteralProp(sourceRecordCount)
+    val savedDeleted = getLiteralProp(deletedRecordCount)
+
+    if (savedAcquired != Some(acquired.toString)) {
+      logger.error(s"[$spec] Failed to save acquiredRecordCount: expected $acquired, got $savedAcquired")
+    }
+    if (savedSource != Some(source.toString)) {
+      logger.error(s"[$spec] Failed to save sourceRecordCount: expected $source, got $savedSource")
+    }
+    if (savedDeleted != Some(deleted.toString)) {
+      logger.error(s"[$spec] Failed to save deletedRecordCount: expected $deleted, got $savedDeleted")
+    }
+
+    logger.debug(s"[$spec] Acquisition counts verified: acquired=$savedAcquired, deleted=$savedDeleted, source=$savedSource")
+  }
 
   def setHarvestInfo(harvestTypeEnum: HarvestType,
                      url: String,
