@@ -1,5 +1,6 @@
 package web
 
+import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import javax.inject.Inject
@@ -17,6 +18,9 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
 
   def previewHarvestUrl(dataUrl: String): Action[AnyContent] = Action.async { request =>
 
+    // Decode the URL in case it was URL-encoded (e.g., from preview buttons)
+    val decodedDataUrl = URLDecoder.decode(dataUrl, StandardCharsets.UTF_8.name())
+
     val queryParams: Map[String, Seq[String]] = request.queryString
 
     // Extract optional spec parameter for credential lookup
@@ -31,10 +35,15 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
       values.map(value => s"$key=$value").mkString("&")
     }.mkString("&")
 
+    // Build final URL - if decoded URL already has query params, append with &
     val url = if (queryString.nonEmpty) {
-      s"$dataUrl?$queryString"
+      if (decodedDataUrl.contains("?")) {
+        s"$decodedDataUrl&$queryString"
+      } else {
+        s"$decodedDataUrl?$queryString"
+      }
     } else {
-      s"$dataUrl"
+      decodedDataUrl
     }
 
     // Look up credentials if spec is provided

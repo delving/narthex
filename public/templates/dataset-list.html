@@ -1394,11 +1394,11 @@
                     <i class="fa fa-binoculars"></i>
                     <span>Sample</span>
                 </button>
-                <a href="/narthex/preview/{{ pmhPreviewBase }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ pmhPreviewEncoded }}" data-ng-show="dataset.edit.harvestType == 'pmh'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
-                <a href="/narthex/preview/{{ adlibPreviewBase }}&__spec={{ dataset.datasetSpec }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
+                <a href="/narthex/preview/{{ adlibPreviewEncoded }}?__spec={{ dataset.datasetSpec }}" data-ng-show="dataset.edit.harvestType == 'adlib'" target="_blank" type="button" class="btn btn-default" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-binoculars"></i>
                     <span>Preview</span>
                 </a>
@@ -1476,7 +1476,7 @@
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
             </button>
-            <a href="/narthex/preview/{{ pmhPreviewBase }}&from={{trimMillis(dataset.edit.harvestPreviousTime)}}Z" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
+            <a ng-href="{{ getIncrementalPreviewUrl() }}" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
                 <i class="fa fa-binoculars"></i>
                 <span>Preview</span>
             </a>

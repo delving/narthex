@@ -1182,28 +1182,46 @@ define(["angular"], function () {
         $scope.sparqlPath = baseUrl + "/snorql/?query=SELECT+%3Fs+%3Fp+%3Fo+%3Fg+WHERE+%7B%0D%0A++graph+%3Fg+%7B%0D%0A++++%3Fs1+%3Chttp%3A%2F%2Fcreativecommons.org%2Fns%23attributionName%3E+%22" + $scope.dataset.datasetSpec + "%22%0D%0A++%7D%0D%0A+++GRAPH+%3Fg+%7B%0D%0A++++++%3Fs+%3Fp+%3Fo+.%0D%0A+++%7D%0D%0A%7D%0D%0ALIMIT+50&format=browse";
 
         // Build preview URLs for harvest testing
+        // URLs are encoded so that ? and & in the target URL become part of the path
+        // rather than being interpreted as query parameters for the Narthex preview route
         function buildPreviewUrls() {
             if($scope.dataset.harvestURL && $scope.dataset.harvestType == 'pmh') {
+                var pmhUrl;
                 if ($scope.dataset.harvestRecord) {
-                    $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=GetRecord&metadataPrefix=" + $scope.dataset.harvestPrefix;
-                    $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&identifier=" + $scope.dataset.harvestRecord;
+                    pmhUrl = $scope.dataset.harvestURL.replace('?', '') + "?verb=GetRecord&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                    pmhUrl = pmhUrl + "&identifier=" + $scope.dataset.harvestRecord;
                 } else if ($scope.dataset.harvestDataset) {
-                    $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
-                    $scope.pmhPreviewBase = $scope.pmhPreviewBase + "&set=" + $scope.dataset.harvestDataset;
+                    pmhUrl = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                    pmhUrl = pmhUrl + "&set=" + $scope.dataset.harvestDataset;
                 } else {
-                    $scope.pmhPreviewBase = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
+                    pmhUrl = $scope.dataset.harvestURL.replace('?', '') + "?verb=ListRecords&metadataPrefix=" + $scope.dataset.harvestPrefix;
                 }
+                // Store both raw and encoded versions
+                $scope.pmhPreviewBase = pmhUrl;
+                $scope.pmhPreviewEncoded = encodeURIComponent(pmhUrl);
             }
             if ($scope.dataset.harvestType == 'adlib' && $scope.dataset.harvestURL) {
-                $scope.adlibPreviewBase = $scope.dataset.harvestURL.replace('?', '')
+                var adlibUrl = $scope.dataset.harvestURL.replace('?', '');
                 if ($scope.dataset.harvestDataset) {
-                    $scope.adlibPreviewBase = $scope.adlibPreviewBase + "?database=" +$scope.dataset.harvestDataset;
+                    adlibUrl = adlibUrl + "?database=" + $scope.dataset.harvestDataset;
                 }
                 var connector = $scope.dataset.harvestDataset ? "&" : "?";
                 var searchValue = $scope.dataset.harvestSearch ? $scope.dataset.harvestSearch : "all";
-                $scope.adlibPreviewBase = $scope.adlibPreviewBase + connector + "search=" + searchValue ;
+                adlibUrl = adlibUrl + connector + "search=" + searchValue;
+                // Store both raw and encoded versions
+                $scope.adlibPreviewBase = adlibUrl;
+                $scope.adlibPreviewEncoded = encodeURIComponent(adlibUrl);
             }
         }
+
+        // Build encoded preview URL with optional 'from' parameter for incremental harvest
+        $scope.getIncrementalPreviewUrl = function() {
+            if (!$scope.pmhPreviewBase) return '';
+            var fromDate = $scope.trimMillis($scope.dataset.edit.harvestPreviousTime);
+            if (!fromDate) return '/narthex/preview/' + encodeURIComponent($scope.pmhPreviewBase);
+            var fullUrl = $scope.pmhPreviewBase + '&from=' + fromDate + 'Z';
+            return '/narthex/preview/' + encodeURIComponent(fullUrl);
+        };
 
         // Build preview URLs initially
         buildPreviewUrls();
