@@ -192,15 +192,16 @@
 	}
 
 	/**
-	 * Normalize a mapping path by stripping namespace prefix from root element.
-	 * Mapping files add prefix to root (e.g., /edm:RDF), rec-def doesn't (e.g., /RDF).
-	 * This works generically for any record definition, not just EDM.
-	 * - /edm:RDF/edm:ProvidedCHO/dc:title -> /RDF/edm:ProvidedCHO/dc:title
-	 * - /abc:Root/foo/bar -> /Root/foo/bar
+	 * Normalize a mapping path to match rec-def format.
+	 * Mapping files use a custom prefix on RDF root (e.g., /edm:RDF),
+	 * but rec-def uses the standard /rdf:RDF.
+	 * - /edm:RDF/edm:ProvidedCHO/dc:title -> /rdf:RDF/edm:ProvidedCHO/dc:title
+	 * - /abc:RDF/foo/bar -> /rdf:RDF/foo/bar
 	 */
 	function normalizeMappingPath(path: string): string {
-		// Strip namespace prefix from root element: /prefix:Element -> /Element
-		return path.replace(/^\/[a-zA-Z0-9_-]+:/, '/');
+		// Replace custom prefix on RDF root with standard rdf: prefix
+		// /prefix:RDF/... -> /rdf:RDF/...
+		return path.replace(/^\/[a-zA-Z0-9_-]+:RDF/, '/rdf:RDF');
 	}
 
 	/**
@@ -268,10 +269,10 @@
 	function indexQualifiedPaths(nodes: TreeNode[], map: Map<string, TreeNode>): void {
 		for (const node of nodes) {
 			if (node.isQualifiedVariant && node.path) {
-				// The node.path is already the qualified path (e.g., /RDF/edm:Agent[person])
+				// The node.path is already the qualified path in rec-def format (e.g., /rdf:RDF/edm:Agent[person])
 				map.set(node.path, node);
-				// Also index with the mapping prefix format
-				const mappingPath = node.path.replace(/^\/RDF/, '/edm:RDF');
+				// Also index with the mapping prefix format (e.g., /edm:RDF/edm:Agent[person])
+				const mappingPath = node.path.replace(/^\/rdf:RDF/, '/edm:RDF');
 				map.set(mappingPath, node);
 			}
 			if (node.children) {
@@ -331,7 +332,7 @@
 				const variantNode: TreeNode = {
 					...JSON.parse(JSON.stringify(baseNode)),
 					id: `${baseNode.id}_${qualifierInfo.qualifier}`,
-					path: normalizeMappingPath(qualifiedPath), // Use normalized path (e.g., /RDF/edm:Agent[person])
+					path: normalizeMappingPath(qualifiedPath), // Use normalized path (e.g., /rdf:RDF/edm:Agent[person])
 					qualifier: qualifierInfo.qualifier,
 					isQualifiedVariant: true,
 					basePath: basePath,
