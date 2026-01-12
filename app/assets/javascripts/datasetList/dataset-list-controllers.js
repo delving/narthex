@@ -1008,11 +1008,7 @@ define(["angular"], function () {
             console.log("Showing confirm modal");
             modalAlert.confirm("Fast Save Confirmation", confirmMessage, function() {
                 console.log("Confirm callback executed");
-                // On confirm - execute fast save
-                modalAlert.info("Fast Save Started",
-                    "Running: " + stepsList + "\n\n" +
-                    "Monitor progress in the activity log.");
-
+                // On confirm - execute fast save (no modal, just start silently)
                 datasetListService.command(dataset.datasetSpec, "start fast save from " + state)
                     .then(function(reply) {
                         console.log("Fast save started: " + stepsList);
