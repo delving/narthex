@@ -1715,6 +1715,11 @@ define(["angular"], function () {
             });
         }
 
+        // Expose refresh function to scope for refresh button
+        $scope.refreshMappingVersions = function() {
+            loadDatasetMappingVersions();
+        };
+
         // Load versions for selected default mapping
         $scope.loadDefaultMappingVersions = function() {
             if (!$scope.mapping.selectedDefault) {

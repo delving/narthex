@@ -220,9 +220,22 @@ class DatasetMappingRepo(datasetDir: File) {
 
     val timestamp = DateTime.now()
     val hash = computeHash(xmlContent)
+
+    // Update metadata
+    val spec = datasetDir.getName
+    val existingInfo = getInfo.getOrElse(
+      DatasetMappingInfo(spec = spec, prefix = prefix, versions = List.empty, currentVersion = None)
+    )
+
+    // Check if this hash already exists - if so, don't create a new version
+    if (existingInfo.versions.exists(_.hash == hash)) {
+      logger.info(s"Mapping with hash $hash already exists for dataset $spec, skipping save")
+      return existingInfo.versions.find(_.hash == hash).get
+    }
+
     val filename = generateFilename(timestamp, hash)
 
-    // Write the XML file
+    // Write the XML file (only if hash is new)
     val versionFile = new File(mappingsDir, filename)
     FileUtils.writeStringToFile(versionFile, xmlContent, "UTF-8")
 
@@ -234,18 +247,6 @@ class DatasetMappingRepo(datasetDir: File) {
       sourceDefault = sourceDefault,
       description = description
     )
-
-    // Update metadata
-    val spec = datasetDir.getName
-    val existingInfo = getInfo.getOrElse(
-      DatasetMappingInfo(spec = spec, prefix = prefix, versions = List.empty, currentVersion = None)
-    )
-
-    // Check if this hash already exists
-    if (existingInfo.versions.exists(_.hash == hash)) {
-      logger.info(s"Mapping with hash $hash already exists for dataset $spec")
-      return existingInfo.versions.find(_.hash == hash).get
-    }
 
     val updatedInfo = existingInfo.copy(
       prefix = prefix,  // Update prefix in case it changed

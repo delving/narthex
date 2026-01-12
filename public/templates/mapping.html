@@ -84,7 +84,12 @@
         <!-- Dataset Mapping Version History -->
         <div ng-if="datasetMappingVersions && datasetMappingVersions.length > 0">
             <hr>
-            <h5><i class="fa fa-history"></i> Dataset Mapping History</h5>
+            <h5>
+                <i class="fa fa-history"></i> Dataset Mapping History
+                <button class="btn btn-xs btn-default" ng-click="refreshMappingVersions()" title="Refresh mapping history">
+                    <i class="fa fa-refresh"></i>
+                </button>
+            </h5>
             <table class="table table-condensed table-striped">
                 <thead>
                     <tr>
@@ -110,6 +115,9 @@
                             </span>
                             <span ng-if="version.source === 'rollback'">
                                 <i class="fa fa-undo"></i> Rollback
+                            </span>
+                            <span ng-if="version.source === 'editor'">
+                                <i class="fa fa-pencil"></i> Web Editor
                             </span>
                         </td>
                         <td>

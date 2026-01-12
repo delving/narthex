@@ -1140,12 +1140,21 @@
 			const mappingsWithCode = saveData.mappings.filter(m => m.groovyCode);
 			console.log('Mappings with groovyCode:', mappingsWithCode.length, mappingsWithCode.map(m => ({ path: m.outputPath, code: m.groovyCode?.substring(0, 50) })));
 
+			const saveTime = Date.now();
 			const result = await saveMapping(datasetSpec, saveData);
 
 			if (result.success) {
-				saveSuccess = `Mapping saved successfully! Version: ${result.version?.hash?.substring(0, 8) || 'new'}`;
-				// Clear edited code store after successful save
-				editedCodeStore.clearAll();
+				// Check if this is a new version or existing (no changes)
+				const versionTime = result.version?.timestamp ? new Date(result.version.timestamp).getTime() : 0;
+				const isNewVersion = versionTime > saveTime - 5000; // Version created within last 5 seconds
+
+				if (isNewVersion) {
+					saveSuccess = `Mapping saved successfully! Version: ${result.version?.hash?.substring(0, 8) || 'new'}`;
+					// Clear edited code store after successful save
+					editedCodeStore.clearAll();
+				} else {
+					saveSuccess = `No changes detected. Current version: ${result.version?.hash?.substring(0, 8) || 'unknown'}`;
+				}
 				// Clear success message after 5 seconds
 				setTimeout(() => {
 					saveSuccess = null;
