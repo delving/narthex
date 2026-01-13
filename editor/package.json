@@ -9,7 +9,9 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.0",
@@ -21,15 +23,16 @@
 		"svelte-check": "^4.3.4",
 		"tailwindcss": "^4.0.0",
 		"typescript": "^5.9.3",
-		"vite": "^7.2.6"
+		"vite": "^7.2.6",
+		"vitest": "^4.0.17"
 	},
 	"dependencies": {
 		"@monaco-editor/loader": "^1.4.0",
+		"@tanstack/svelte-virtual": "^3.13.18",
 		"bits-ui": "^1.0.0",
 		"clsx": "^2.1.1",
 		"monaco-editor": "^0.52.0",
 		"paneforge": "^1.0.2",
-		"@tanstack/svelte-virtual": "^3.13.18",
 		"tailwind-merge": "^2.5.0",
 		"tailwind-variants": "^0.3.0"
 	}

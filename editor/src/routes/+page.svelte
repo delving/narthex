@@ -49,6 +49,11 @@
 		functions: Array<{ name: string; code: string }>;
 	} | null>(null);
 	let orphanPaths = $state<Set<string>>(new Set());
+	let targetOrphanPaths = $state<Set<string>>(new Set());
+
+	// Missing paths modal state
+	let missingPathsModalOpen = $state(false);
+	let missingPathsModalType = $state<'source' | 'target'>('source');
 
 	// Save state
 	let isSaving = $state(false);
@@ -193,15 +198,25 @@
 
 	/**
 	 * Normalize a mapping path to match rec-def format.
-	 * Mapping files use a custom prefix on RDF root (e.g., /edm:RDF),
-	 * but rec-def uses the standard /rdf:RDF.
-	 * - /edm:RDF/edm:ProvidedCHO/dc:title -> /rdf:RDF/edm:ProvidedCHO/dc:title
-	 * - /abc:RDF/foo/bar -> /rdf:RDF/foo/bar
+	 * Mapping files use a custom prefix on the root element (e.g., /edm:RDF, /abc:Root),
+	 * but rec-def uses unprefixed root (e.g., /RDF, /Root).
+	 * Only strips the prefix from the FIRST element (root).
+	 * - /edm:RDF/edm:ProvidedCHO/dc:title -> /RDF/edm:ProvidedCHO/dc:title
+	 * - /abc:Root/foo/bar -> /Root/foo/bar
 	 */
 	function normalizeMappingPath(path: string): string {
-		// Replace custom prefix on RDF root with standard rdf: prefix
-		// /prefix:RDF/... -> /rdf:RDF/...
-		return path.replace(/^\/[a-zA-Z0-9_-]+:RDF/, '/rdf:RDF');
+		// Strip namespace prefix from root element only: /prefix:Element -> /Element
+		// The regex matches: leading slash, then prefix with colon, at the start only
+		return path.replace(/^\/[a-zA-Z0-9_-]+:/, '/');
+	}
+
+	/**
+	 * Check if a path is just the root element (e.g., /edm:RDF, /RDF).
+	 * Root-only paths have no children and shouldn't be shown as "missing".
+	 */
+	function isRootElementPath(path: string): boolean {
+		// Matches /prefix:Element or /Element with no further segments
+		return /^\/[a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)?$/.test(path);
 	}
 
 	/**
@@ -269,11 +284,10 @@
 	function indexQualifiedPaths(nodes: TreeNode[], map: Map<string, TreeNode>): void {
 		for (const node of nodes) {
 			if (node.isQualifiedVariant && node.path) {
-				// The node.path is already the qualified path in rec-def format (e.g., /rdf:RDF/edm:Agent[person])
+				// The node.path is in rec-def format (e.g., /RDF/edm:Agent[person])
 				map.set(node.path, node);
-				// Also index with the mapping prefix format (e.g., /edm:RDF/edm:Agent[person])
-				const mappingPath = node.path.replace(/^\/rdf:RDF/, '/edm:RDF');
-				map.set(mappingPath, node);
+				// Note: We don't need to index with mapping prefix format because
+				// findTargetNode normalizes mapping paths before lookup
 			}
 			if (node.children) {
 				indexQualifiedPaths(node.children, map);
@@ -332,7 +346,7 @@
 				const variantNode: TreeNode = {
 					...JSON.parse(JSON.stringify(baseNode)),
 					id: `${baseNode.id}_${qualifierInfo.qualifier}`,
-					path: normalizeMappingPath(qualifiedPath), // Use normalized path (e.g., /rdf:RDF/edm:Agent[person])
+					path: normalizeMappingPath(qualifiedPath), // Use normalized path (e.g., /RDF/edm:Agent[person])
 					qualifier: qualifierInfo.qualifier,
 					isQualifiedVariant: true,
 					basePath: basePath,
@@ -656,8 +670,8 @@
 					newOrphanPaths.add(m.sourcePath);
 				}
 
-				// Debug: track target paths not found in rec-def
-				if (!targetNode) {
+				// Track target paths not found in rec-def (exclude root element like /edm:RDF)
+				if (!targetNode && !isRootElementPath(m.targetPath)) {
 					targetNotFound.push(m.targetPath);
 				}
 
@@ -683,8 +697,9 @@
 				};
 			});
 
-			// Update orphan paths state
+			// Update orphan paths state (source and target)
 			orphanPaths = newOrphanPaths;
+			targetOrphanPaths = new Set(targetNotFound);
 
 			// If there are orphan paths, insert them into the tree at their correct positions
 			if (newOrphanPaths.size > 0) {
@@ -715,14 +730,7 @@
 			// Set all mappings at once
 			mappingsStore.set(storeCompatibleMappings);
 
-			console.log(`Loaded ${storeCompatibleMappings.length} mappings, ${newOrphanPaths.size} source orphans`);
-
-			// Debug: log target paths not found in rec-def
-			if (targetNotFound.length > 0) {
-				console.warn(`Target paths not found in rec-def (${targetNotFound.length}):`, targetNotFound);
-			} else {
-				console.log('All target paths matched in rec-def');
-			}
+			console.log(`Loaded ${storeCompatibleMappings.length} mappings, ${newOrphanPaths.size} source orphans, ${targetNotFound.length} target orphans`);
 		} catch (err) {
 			mappingsError = err instanceof Error ? err.message : 'Failed to load mappings';
 			console.error('Failed to load mappings:', err);
@@ -1593,7 +1601,21 @@
 				<Pane defaultSize={35} minSize={25}>
 					<div class="h-full flex flex-col bg-gray-900 border-r border-gray-700" bind:this={sourcePaneRef}>
 						<div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-							<span class="text-sm font-medium">Source Structure</span>
+							<span class="text-sm font-medium flex items-center gap-2">
+								Source Structure
+								{#if orphanPaths.size > 0}
+									<button
+										class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-amber-900/50 text-amber-300 rounded hover:bg-amber-800/50 transition-colors"
+										onclick={() => { missingPathsModalType = 'source'; missingPathsModalOpen = true; }}
+										title="Click to view orphan source paths"
+									>
+										<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+										</svg>
+										{orphanPaths.size} orphans
+									</button>
+								{/if}
+							</span>
 							<span class="text-xs text-gray-500 flex items-center gap-1">
 								{#if ctrlHeld}
 									<kbd class="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded font-bold animate-pulse">1</kbd>
@@ -1658,7 +1680,21 @@
 					<Pane defaultSize={35} minSize={20}>
 						<div class="h-full flex flex-col bg-gray-900 border-r border-gray-700" bind:this={sourcePaneRef}>
 							<div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-								<span class="text-sm font-medium">Source Structure</span>
+								<span class="text-sm font-medium flex items-center gap-2">
+									Source Structure
+									{#if orphanPaths.size > 0}
+										<button
+											class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-amber-900/50 text-amber-300 rounded hover:bg-amber-800/50 transition-colors"
+											onclick={() => { missingPathsModalType = 'source'; missingPathsModalOpen = true; }}
+											title="Click to view orphan source paths"
+										>
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+											</svg>
+											{orphanPaths.size} orphans
+										</button>
+									{/if}
+								</span>
 								<span class="text-xs text-gray-500 flex items-center gap-1">
 									{#if ctrlHeld}
 										<kbd class="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded font-bold animate-pulse">1</kbd>
@@ -1724,7 +1760,21 @@
 					<Pane defaultSize={35} minSize={20}>
 						<div class="h-full flex flex-col bg-gray-900 border-l border-gray-700" bind:this={targetPaneRef}>
 							<div class="px-3 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-								<span class="text-sm font-medium">Target Schema</span>
+								<span class="text-sm font-medium flex items-center gap-2">
+									Target Schema
+									{#if targetOrphanPaths.size > 0}
+										<button
+											class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-amber-900/50 text-amber-300 rounded hover:bg-amber-800/50 transition-colors"
+											onclick={() => { missingPathsModalType = 'target'; missingPathsModalOpen = true; }}
+											title="Click to view missing target paths"
+										>
+											<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+											</svg>
+											{targetOrphanPaths.size} missing
+										</button>
+									{/if}
+								</span>
 								<span class="text-xs text-gray-500 flex items-center gap-1">
 									{#if ctrlHeld}
 										<kbd class="px-1.5 py-0.5 text-[10px] bg-blue-600 text-white rounded font-bold animate-pulse">2</kbd>
@@ -1951,6 +2001,82 @@
 					onclick={submitConstantMapping}
 				>
 					Add Constant
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Missing Paths Modal -->
+{#if missingPathsModalOpen}
+	<div
+		class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+		onclick={() => missingPathsModalOpen = false}
+		onkeydown={(e) => e.key === 'Escape' && (missingPathsModalOpen = false)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div
+			class="bg-gray-800 rounded-lg shadow-xl p-4 w-[600px] max-h-[80vh] flex flex-col"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+			role="document"
+		>
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-medium flex items-center gap-2">
+					<svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+					</svg>
+					{#if missingPathsModalType === 'source'}
+						Orphan Source Paths ({orphanPaths.size})
+					{:else}
+						Missing Target Paths ({targetOrphanPaths.size})
+					{/if}
+				</h3>
+				<button
+					class="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700"
+					onclick={() => missingPathsModalOpen = false}
+					title="Close modal"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+					</svg>
+				</button>
+			</div>
+
+			<p class="text-sm text-gray-400 mb-4">
+				{#if missingPathsModalType === 'source'}
+					These source paths are referenced in mappings but don't exist in the current source structure.
+					They may be from a different record or the source data has changed.
+				{:else}
+					These target paths are referenced in mappings but don't exist in the current rec-def schema.
+					The schema may need to be updated, or these are legacy mappings.
+				{/if}
+			</p>
+
+			<div class="flex-1 overflow-auto bg-gray-900 rounded border border-gray-700 p-2 font-mono text-sm">
+				{#if missingPathsModalType === 'source'}
+					{#each [...orphanPaths].sort() as path}
+						<div class="py-1 px-2 hover:bg-gray-800 rounded text-orange-300 break-all">
+							{path}
+						</div>
+					{/each}
+				{:else}
+					{#each [...targetOrphanPaths].sort() as path}
+						<div class="py-1 px-2 hover:bg-gray-800 rounded text-amber-300 break-all">
+							{path}
+						</div>
+					{/each}
+				{/if}
+			</div>
+
+			<div class="flex justify-end mt-4">
+				<button
+					type="button"
+					class="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded"
+					onclick={() => missingPathsModalOpen = false}
+				>
+					Close
 				</button>
 			</div>
 		</div>
