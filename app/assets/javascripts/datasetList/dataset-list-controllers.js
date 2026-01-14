@@ -123,6 +123,10 @@ define(["angular"], function () {
                             // Dataset exists in list - update it
                             var existingDataset = $scope.datasets[datasetIndex];
 
+                            // Track previous operation to detect harvest completion
+                            var previousOperation = existingDataset.currentOperation;
+                            var previousAcquiredCount = existingDataset.acquiredRecordCount || existingDataset.datasetRecordCount;
+
                             // If it's a lightweight dataset, merge the update
                             if (existingDataset.isLight && !existingDataset.fullDataLoaded) {
                                 // Update lightweight fields
@@ -178,6 +182,39 @@ define(["angular"], function () {
 
                             // Update state counters
                             $scope.updateDatasetStateCounter();
+
+                            // Check for zero-record harvest completion
+                            // Detect: harvest operation just ended and state is RAW (not SOURCED)
+                            // If harvest completed with records, state would be SOURCED, not RAW
+                            var wasHarvesting = previousOperation && previousOperation.indexOf('HARVEST') !== -1;
+                            var operationEnded = !existingDataset.currentOperation;
+                            var isRawState = existingDataset.stateRaw && !existingDataset.stateSourced;
+
+                            // Debug logging
+                            if (wasHarvesting) {
+                                console.log("Harvest completed for " + existingDataset.datasetSpec +
+                                    ", operationEnded=" + operationEnded +
+                                    ", isRawState=" + isRawState +
+                                    ", stateRaw=" + existingDataset.stateRaw +
+                                    ", stateSourced=" + existingDataset.stateSourced +
+                                    ", acquiredRecordCount=" + existingDataset.acquiredRecordCount);
+                            }
+
+                            if (wasHarvesting && operationEnded && isRawState) {
+                                console.log("Detected zero-record harvest completion for " + existingDataset.datasetSpec);
+                                modalAlert.confirm(
+                                    "Sample Harvest: 0 Records",
+                                    "The endpoint returned 0 records. This may indicate:\n\n" +
+                                    "• Incorrect harvest URL\n" +
+                                    "• Empty source\n" +
+                                    "• Authentication required\n\n" +
+                                    "Do you want to reset the record counts to 0?",
+                                    function() {
+                                        // User clicked "Yes" - reset counts via API call
+                                        datasetListService.command(existingDataset.datasetSpec, "reset counts");
+                                    }
+                                );
+                            }
                         } else {
                             // Dataset not in current list (might be filtered out)
                             console.debug("Dataset " + message.datasetSpec + " not in current view");
@@ -1135,8 +1172,9 @@ define(["angular"], function () {
                 }
                 else {
                     console.log($scope.dataset);
-                    // Preserve progress from current dataset when receiving state updates
+                    // Preserve progress and previous operation from current dataset when receiving state updates
                     var existingProgress = $scope.dataset.progress;
+                    var previousOperation = $scope.dataset.currentOperation;
                     $scope.dataset = $scope.decorateDataset(message);
                     // Restore progress if dataset is still active (has current operation)
                     if (existingProgress && $scope.dataset.currentOperation) {
@@ -1145,6 +1183,37 @@ define(["angular"], function () {
                     $scope.updateDatasetList(message);
                     $scope.updateDatasetStateCounter();
                     $scope.datasetBusy = false;
+
+                    // Check for zero-record harvest completion (same logic as collapsed handler)
+                    var wasHarvesting = previousOperation && previousOperation.indexOf('HARVEST') !== -1;
+                    var operationEnded = !$scope.dataset.currentOperation;
+                    var isRawState = $scope.dataset.stateRaw && !$scope.dataset.stateSourced;
+
+                    // Debug logging
+                    if (wasHarvesting) {
+                        console.log("(Expanded) Harvest completed for " + $scope.dataset.datasetSpec +
+                            ", operationEnded=" + operationEnded +
+                            ", isRawState=" + isRawState +
+                            ", stateRaw=" + $scope.dataset.stateRaw +
+                            ", stateSourced=" + $scope.dataset.stateSourced +
+                            ", acquiredRecordCount=" + $scope.dataset.acquiredRecordCount);
+                    }
+
+                    if (wasHarvesting && operationEnded && isRawState) {
+                        console.log("(Expanded) Detected zero-record harvest completion for " + $scope.dataset.datasetSpec);
+                        modalAlert.confirm(
+                            "Sample Harvest: 0 Records",
+                            "The endpoint returned 0 records. This may indicate:\n\n" +
+                            "• Incorrect harvest URL\n" +
+                            "• Empty source\n" +
+                            "• Authentication required\n\n" +
+                            "Do you want to reset the record counts to 0?",
+                            function() {
+                                // User clicked "Yes" - reset counts via API call
+                                datasetListService.command($scope.dataset.datasetSpec, "reset counts");
+                            }
+                        );
+                    }
                 }
             });
         });

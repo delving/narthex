@@ -544,6 +544,17 @@ class DatasetActor(val datasetContext: DatasetContext,
             broadcastIdleState()
             "reset to dormant"
 
+          case "reset counts" =>
+            // Reset all record counts to 0 (used when sample harvest returns 0 records)
+            log.info(s"Resetting record counts for ${dsInfo.spec}")
+            dsInfo.setRecordCount(0)
+            dsInfo.setAcquisitionCounts(0, 0, 0, "harvest")
+            dsInfo.removeState(SOURCED)
+            dsInfo.removeState(MAPPABLE)
+            dsInfo.setState(RAW)
+            broadcastIdleState()
+            "counts reset"
+
           // todo: category counting?
 
           case _ =>
