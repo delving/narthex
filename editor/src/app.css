@@ -8,6 +8,26 @@
   --color-accent: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
+}
+
+/* Dark theme (default) */
+:root, .dark {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-tertiary: #374151;
+  --bg-hover: #374151;
+  --bg-selected: #1e3a5f;
+
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+
+  --border-primary: #374151;
+  --border-secondary: #4b5563;
+
+  --scrollbar-track: #1f2937;
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-thumb-hover: #6b7280;
 
   /* Panel colors */
   --color-panel-bg: #1f2937;
@@ -22,11 +42,51 @@
   /* Connection line colors */
   --color-connection: #60a5fa;
   --color-connection-active: #3b82f6;
+
+  color-scheme: dark;
 }
 
-/* Base styles */
+/* Light theme */
+.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --bg-hover: #e5e7eb;
+  --bg-selected: #dbeafe;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+
+  --scrollbar-track: #f3f4f6;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+
+  /* Panel colors */
+  --color-panel-bg: #f9fafb;
+  --color-panel-border: #e5e7eb;
+  --color-panel-header: #ffffff;
+
+  /* Tree colors */
+  --color-tree-bg: #ffffff;
+  --color-tree-selected: #dbeafe;
+  --color-tree-hover: #f3f4f6;
+
+  /* Connection line colors */
+  --color-connection: #3b82f6;
+  --color-connection-active: #2563eb;
+
+  color-scheme: light;
+}
+
+/* Base styles using CSS variables */
 html, body {
-  @apply h-full bg-gray-900 text-gray-100;
+  @apply h-full;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Scrollbar styling */
@@ -36,42 +96,62 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-800;
+  background-color: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600 rounded;
+  background-color: var(--scrollbar-thumb);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 /* Panel resize handle */
 [data-panel-group-direction="horizontal"] > [data-panel-resize-handle-id] {
-  @apply w-1 bg-gray-700 hover:bg-blue-500 transition-colors;
+  @apply w-1 transition-colors;
+  background-color: var(--border-primary);
+}
+
+[data-panel-group-direction="horizontal"] > [data-panel-resize-handle-id]:hover {
+  @apply bg-blue-500;
 }
 
 [data-panel-group-direction="vertical"] > [data-panel-resize-handle-id] {
-  @apply h-1 bg-gray-700 hover:bg-blue-500 transition-colors;
+  @apply h-1 transition-colors;
+  background-color: var(--border-primary);
+}
+
+[data-panel-group-direction="vertical"] > [data-panel-resize-handle-id]:hover {
+  @apply bg-blue-500;
 }
 
 /* Tree node styles */
 .tree-node {
-  @apply flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-gray-800 rounded;
+  @apply flex items-center gap-1 px-2 py-1 cursor-pointer rounded;
+}
+
+.tree-node:hover {
+  background-color: var(--bg-hover);
 }
 
 .tree-node.selected {
-  @apply bg-blue-900/50;
+  background-color: var(--bg-selected);
 }
 
 .tree-node.mapped {
+  @apply text-green-500;
+}
+
+.dark .tree-node.mapped {
   @apply text-green-400;
 }
 
 /* Connection point indicator */
 .connection-point {
-  @apply w-3 h-3 rounded-full border-2 border-gray-500 cursor-pointer;
+  @apply w-3 h-3 rounded-full border-2 cursor-pointer;
+  border-color: var(--text-muted);
 }
 
 .connection-point:hover {
@@ -80,4 +160,122 @@ html, body {
 
 .connection-point.connected {
   @apply border-green-400 bg-green-400;
+}
+
+/* Theme-aware utility classes */
+.bg-theme-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-theme-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.bg-theme-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+.text-theme-primary {
+  color: var(--text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--text-secondary);
+}
+
+.text-theme-muted {
+  color: var(--text-muted);
+}
+
+.border-theme-primary {
+  border-color: var(--border-primary);
+}
+
+.border-theme-secondary {
+  border-color: var(--border-secondary);
+}
+
+/* Override Tailwind dark colors with theme-aware versions */
+.dark .bg-gray-900 {
+  background-color: var(--bg-primary);
+}
+
+.light .bg-gray-900 {
+  background-color: var(--bg-primary);
+}
+
+.dark .bg-gray-800 {
+  background-color: var(--bg-secondary);
+}
+
+.light .bg-gray-800 {
+  background-color: var(--bg-secondary);
+}
+
+.dark .bg-gray-700 {
+  background-color: var(--bg-tertiary);
+}
+
+.light .bg-gray-700 {
+  background-color: var(--bg-tertiary);
+}
+
+.dark .border-gray-700 {
+  border-color: var(--border-primary);
+}
+
+.light .border-gray-700 {
+  border-color: var(--border-primary);
+}
+
+.dark .border-gray-600 {
+  border-color: var(--border-secondary);
+}
+
+.light .border-gray-600 {
+  border-color: var(--border-secondary);
+}
+
+.dark .text-gray-100 {
+  color: var(--text-primary);
+}
+
+.light .text-gray-100 {
+  color: var(--text-primary);
+}
+
+.dark .text-gray-400 {
+  color: var(--text-secondary);
+}
+
+.light .text-gray-400 {
+  color: var(--text-secondary);
+}
+
+.dark .text-gray-500 {
+  color: var(--text-muted);
+}
+
+.light .text-gray-500 {
+  color: var(--text-muted);
+}
+
+/* Hover states for light mode */
+.light .hover\:bg-gray-800:hover {
+  background-color: var(--bg-hover);
+}
+
+.light .hover\:bg-gray-700:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* Input fields */
+.light input, .light textarea, .light select {
+  background-color: var(--bg-primary);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+}
+
+.light input:focus, .light textarea:focus, .light select:focus {
+  border-color: var(--color-primary);
 }

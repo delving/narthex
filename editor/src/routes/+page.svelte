@@ -18,6 +18,8 @@
 	import { editedCodeStore, hasUnsavedEdits, modifiedCount } from '$lib/stores/editedCodeStore';
 	import DatasetPicker from '$lib/components/DatasetPicker.svelte';
 	import StatisticsPanel from '$lib/components/StatisticsPanel.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import { themeStore } from '$lib/stores/theme';
 
 	// Editor mode: 'mapping' for normal mapping view, 'stats' for full statistics view
 	let editorMode = $state<'mapping' | 'stats'>('mapping');
@@ -1548,6 +1550,7 @@
 			<kbd class="px-1.5 py-0.5 text-[10px] bg-gray-700 rounded border border-gray-600">?</kbd>
 			<span>Shortcuts</span>
 		</button>
+		<ThemeToggle />
 		<button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">
 			Revert
 		</button>
