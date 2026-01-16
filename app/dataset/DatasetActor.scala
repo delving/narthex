@@ -856,6 +856,8 @@ class DatasetActor(val datasetContext: DatasetContext,
       strategy match {
         case Sample =>
           // Sample harvests bypass semaphore, no release needed
+          // Note: We always set RAW state even with noRecordsMatch so frontend can detect the harvest completed
+          // The frontend will show a modal when stateRaw is set but acquiredRecordCount is 0
           dsInfo.setState(RAW)
         case FromScratch =>
           if (noRecordsMatch) {

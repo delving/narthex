@@ -623,6 +623,12 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
             case page: PMHHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
               finish(strategy, None)
+            case NoRecordsMatch(message, _) =>
+              log.info(s"Sample harvest returned no records: $message")
+              finish(strategy, Some("noRecordsMatch"))
+            case error: HarvestError =>
+              log.error(s"Sample harvest error: ${error.error}")
+              context.parent ! WorkFailure(error.error)
           }
         case _ =>
           progressOpt = Some(ProgressReporter(HARVESTING, context.parent))
