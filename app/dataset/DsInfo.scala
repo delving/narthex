@@ -1508,6 +1508,15 @@ class DsInfo(
       // logger.info(s"localID: $localId")
 	  return (toString, localId)
     }
+    // Handle URN format: urn:{orgId}_{spec}_{localId}/graph
+    if (id.startsWith("urn:")) {
+      val UrnIdExtractor = "urn:([^_]+)_(.*)_([^_]+)/graph".r
+      id match {
+        case UrnIdExtractor(_, spec, localId) => return (spec, localId)
+        case _ => throw new RuntimeException(s"Unable to extract spec/localId from URN graph name: $id")
+      }
+    }
+    // Handle URL format: http(s)://.../{spec}/{localId}/graph
 	val SpecIdExtractor =
 	  "http[s]{0,1}://.*?/([^/]+)/([^/]+)/graph".r
 	val SpecIdExtractor(spec, localId) = id

@@ -69,7 +69,16 @@ object SipRepo {
   case class AvailableSip(file: File) {
     val n = file.getName
     if (!n.endsWith(SIP_EXTENSION)) throw new RuntimeException(s"Strange file name $file")
-    val datasetName = n.substring(0, n.indexOf("__"))
+    // Handle both formats: {spec}__{timestamp}.sip.zip and {spec}.sip.zip
+    val datasetName = {
+      val doubleUnderscoreIdx = n.indexOf("__")
+      if (doubleUnderscoreIdx > 0) {
+        n.substring(0, doubleUnderscoreIdx)
+      } else {
+        // No timestamp in filename, extract spec from {spec}.sip.zip
+        n.substring(0, n.length - SIP_EXTENSION.length)
+      }
+    }
     val dateTime = new DateTime(file.lastModified())
   }
 
@@ -171,17 +180,25 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
   def readMap(propertyFileName: String): Map[String, String] = {
     entries.get(propertyFileName).map { entry =>
       val inputStream = zipFile.getInputStream(entry)
-      val source = Source.fromInputStream(inputStream, "UTF-8")
-      try {
-        val propertyMap = source.getLines().flatMap { line =>
-          val equals = line.indexOf("=")
-          if (equals < 0) None else Some(line.substring(0, equals).trim -> line.substring(equals + 1).trim)
-        }.toMap
-        propertyMap
-      } finally {
-        source.close()
-        inputStream.close()
-      }
+      val lines = Try(Source.fromInputStream(inputStream, "UTF-8").getLines().toList)
+        .getOrElse(Nil) // Default to empty list if there's an error reading lines
+
+      val propertyMap = lines
+        .filter(_.contains("=")) // Skip lines without "="
+        .flatMap { line =>
+          try {
+            val parts = line.split("=", 2) // Split on the first "=" only
+            if (parts.length == 2) Some(parts(0).trim -> parts(1).trim) else None
+          } catch {
+            case _: Throwable =>
+              logger.warn(s"Skipping line due to parse error in $propertyFileName: $line")
+              None
+          }
+        }
+        .toMap
+
+      inputStream.close()
+      propertyMap
     } getOrElse (throw new RuntimeException(s"No entry for $propertyFileName of $dsInfoSpec"))
   }
 
@@ -362,45 +379,17 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
       root.removeAttribute("xsi:schemaLocation")
       val cn = root.getChildNodes
       val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-      val (rootNode, graphName) = prefix match {
-        case "edm" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Aggregation").getOrElse(throw new RuntimeException(s"No ore:aggregation found!"))
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case "naa" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "RecordAggregation").getOrElse(kids.head)
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case "nao" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Recordaggregatie").getOrElse(kids.head)
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case "nant" =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.find(node => node.getLocalName == "Recordaggregatie").getOrElse(kids.head)
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-        case _ =>
-          val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-          kids.foreach(rdfWrapper.appendChild)
-          val aggregation = kids.head
-          val about = aggregation.getAttributes.getNamedItemNS(RDF_URI, RDF_ABOUT_ATTRIBUTE)
-          val aggregationUri = about.getTextContent
-          (rdfWrapper, StringHandling.createGraphName(aggregationUri))
-      }
+      // Create RDF wrapper and append children
+      val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
+      kids.foreach(rdfWrapper.appendChild)
+      // Use URN-based graph name for compatibility with SIP-Creator
+      val graphName = StringHandling.createHubGraphName(
+        sipMapping.sip.orgId.getOrElse("unknownOrg"),
+        sipMapping.spec,
+        pocket.id
+      )
       // deliver the pocket
-      val xml = serializer.toXml(rootNode, true).replaceFirst("<[?].*[?]>\n", "")
+      val xml = serializer.toXml(rdfWrapper, true).replaceFirst("<[?].*[?]>\n", "")
       Pocket(graphName, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI))
     }
   }
