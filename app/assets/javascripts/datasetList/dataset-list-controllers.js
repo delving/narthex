@@ -191,16 +191,7 @@ define(["angular"], function () {
                             var noRecordsAcquired = !existingDataset.acquiredRecordCount || existingDataset.acquiredRecordCount === 0;
                             var notSourced = !existingDataset.stateSourced;
 
-                            // Debug logging
-                            if (stateRawJustSet) {
-                                console.log("[WS-COLLAPSED] Zero-record check for " + existingDataset.datasetSpec +
-                                    ", stateRawJustSet=" + stateRawJustSet +
-                                    ", noRecordsAcquired=" + noRecordsAcquired +
-                                    ", notSourced=" + notSourced);
-                            }
-
                             if (stateRawJustSet && noRecordsAcquired && notSourced) {
-                                console.log("Detected zero-record harvest completion for " + existingDataset.datasetSpec);
                                 modalAlert.confirm(
                                     "Sample Harvest: 0 Records",
                                     "The endpoint returned 0 records. This may indicate:\n\n" +
@@ -218,7 +209,6 @@ define(["angular"], function () {
                             // Check for harvest error (entered retry mode)
                             var justEnteredRetry = !previousHarvestInRetry && existingDataset.harvestInRetry;
                             if (justEnteredRetry && existingDataset.harvestRetryMessage) {
-                                console.log("[WS-COLLAPSED] Harvest error for " + existingDataset.datasetSpec + ": " + existingDataset.harvestRetryMessage);
                                 modalAlert.alert(
                                     "Harvest Error",
                                     "The harvest failed with error:\n\n" + existingDataset.harvestRetryMessage +
@@ -1167,12 +1157,8 @@ define(["angular"], function () {
 
             $scope.datasetBusy = false;
 
-            // DEBUG: Log every WebSocket message for expanded dataset
-            console.log("[WS-EXPANDED] Received message for " + $scope.dataset.datasetSpec + ":", JSON.stringify(message, null, 2));
-
             $scope.$apply(function () {
                 if (message.progressState) {
-                    console.log("[WS-EXPANDED] Progress message: state=" + message.progressState + ", type=" + message.progressType);
                     $scope.dataset.progress = addProgressMessage({
                         state: message.progressState,
                         type: message.progressType,
@@ -1185,30 +1171,23 @@ define(["angular"], function () {
                     $scope.datasetBusy = true;
                 }
                 else {
-                    console.log("[WS-EXPANDED] State update message");
                     // Preserve progress and previous operation from current dataset when receiving state updates
                     var existingProgress = $scope.dataset.progress;
-                    var previousOperation = $scope.dataset.currentOperation;
                     var previousStateRaw = $scope.dataset.stateRaw;
                     var previousStateSourced = $scope.dataset.stateSourced;
                     var previousHarvestInRetry = $scope.dataset.harvestInRetry;
-
-                    console.log("[WS-EXPANDED] BEFORE update - previousOperation:", previousOperation,
-                        "stateRaw:", previousStateRaw, "stateSourced:", previousStateSourced,
-                        "harvestInRetry:", previousHarvestInRetry);
 
                     // Merge message into existing dataset (like collapsed handler does)
                     // This preserves existing state fields that aren't in the message
                     angular.extend($scope.dataset, message);
                     $scope.decorateDataset($scope.dataset);
 
-                    console.log("[WS-EXPANDED] AFTER update - currentOperation:", $scope.dataset.currentOperation,
-                        "stateRaw:", $scope.dataset.stateRaw, "stateSourced:", $scope.dataset.stateSourced,
-                        "acquiredRecordCount:", $scope.dataset.acquiredRecordCount);
-
                     // Restore progress if dataset is still active (has current operation)
                     if (existingProgress && $scope.dataset.currentOperation) {
                         $scope.dataset.progress = existingProgress;
+                    } else {
+                        // Clear progress when operation completes (no currentOperation)
+                        delete $scope.dataset.progress;
                     }
                     // Use the merged/decorated dataset, not raw message
                     $scope.updateDatasetList($scope.dataset);
@@ -1221,11 +1200,7 @@ define(["angular"], function () {
                     var noRecordsAcquired = !$scope.dataset.acquiredRecordCount || $scope.dataset.acquiredRecordCount === 0;
                     var notSourced = !$scope.dataset.stateSourced;
 
-                    console.log("[WS-EXPANDED] Zero-record check: stateRawJustSet=" + stateRawJustSet +
-                        ", noRecordsAcquired=" + noRecordsAcquired + ", notSourced=" + notSourced);
-
                     if (stateRawJustSet && noRecordsAcquired && notSourced) {
-                        console.log("[WS-EXPANDED] *** TRIGGERING MODAL *** Zero-record harvest detected for " + $scope.dataset.datasetSpec);
                         modalAlert.confirm(
                             "Sample Harvest: 0 Records",
                             "The endpoint returned 0 records. This may indicate:\n\n" +
@@ -1243,7 +1218,6 @@ define(["angular"], function () {
                     // Check for harvest error (entered retry mode)
                     var justEnteredRetry = !previousHarvestInRetry && $scope.dataset.harvestInRetry;
                     if (justEnteredRetry && $scope.dataset.harvestRetryMessage) {
-                        console.log("[WS-EXPANDED] Harvest error for " + $scope.dataset.datasetSpec + ": " + $scope.dataset.harvestRetryMessage);
                         modalAlert.alert(
                             "Harvest Error",
                             "The harvest failed with error:\n\n" + $scope.dataset.harvestRetryMessage +

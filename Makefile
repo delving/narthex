@@ -1,5 +1,5 @@
 # Makefile for Narthex
-.PHONY: compile dist run package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org editor-build editor-dev
+.PHONY: compile dist run run-nk package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org editor-build editor-dev
 
 NAME:=narthex
 VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
@@ -82,8 +82,20 @@ dist: editor-build
 	@echo "=== Building Narthex distribution ==="
 	sbt clean dist
 
+# Java 21 module access for XStream reflection
+JAVA21_OPENS:=-J--add-opens=java.base/java.util=ALL-UNNAMED \
+	-J--add-opens=java.base/java.lang=ALL-UNNAMED \
+	-J--add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+	-J--add-opens=java.base/java.text=ALL-UNNAMED \
+	-J--add-opens=java.desktop/java.awt.font=ALL-UNNAMED
+
 run:
-	sbt run
+	sbt $(JAVA21_OPENS) run
+
+# Run with NK pipeline config (for debugging NK-specific issues)
+NK_CONFIG_DIR:=$(HOME)/_para/01_projects/nk_pipeline/NarthexFiles
+run-nk:
+	sbt $(JAVA21_OPENS) -Dconfig.file=$(NK_CONFIG_DIR)/narthex.conf -Dlogger.file=$(NK_CONFIG_DIR)/logger.xml run
 
 fpm-rpm:
 	make dist
