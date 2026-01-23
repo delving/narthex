@@ -11,6 +11,7 @@ eclipse
 /lib
 log
 logs
+narthex.log
 modules
 precompiled
 project/project
