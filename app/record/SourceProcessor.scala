@@ -37,7 +37,7 @@ import services.FileHandling._
 import services.ProgressReporter.ProgressState._
 import services.Temporal._
 import services.{FileHandling, ProgressReporter}
-import mapping.DefaultMappingRepo
+import mapping.{DatasetMappingRepo, DefaultMappingRepo}
 import play.api.libs.json.{JsValue, Json, Writes}
 
 
@@ -108,8 +108,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
           val pocketCount =
             sourceRepo.generatePockets(pocketOutput, idFilter, progressReporter)
 
-          // Get effective mapping XML if dataset uses default mapping
+          // Get effective mapping XML based on mapping source configuration
           val effectiveMappingXml: Option[String] = if (dsInfo.usesDefaultMapping) {
+            // Default mapping mode: load from DefaultMappingRepo
             (for {
               prefix <- dsInfo.getDefaultMappingPrefix
               name <- dsInfo.getDefaultMappingName
@@ -124,7 +125,12 @@ class SourceProcessor(val datasetContext: DatasetContext,
               None
             }
           } else {
-            None
+            // Manual mode: check DatasetMappingRepo for saved mapping (e.g., from SIP upload)
+            // This provides a fallback if the SIP's sipMappingOpt can't parse the mapping
+            datasetContext.datasetMappingRepo.getXml("current").map { xml =>
+              log.info(s"Using mapping from DatasetMappingRepo for dataset ${dsInfo.spec} (manual mode)")
+              xml
+            }
           }
 
           val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt

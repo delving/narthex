@@ -437,30 +437,48 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
         case MappingPattern() =>
           logger.debug(s"Mapping: ${entry.getName}")
-          sipMappingOpt.foreach { sipMapping =>
-            zos.putNextEntry(new ZipEntry(sipMapping.fileName))
+          sipMappingOpt match {
+            case Some(sipMapping) =>
+              // We can parse the mapping - process it normally
+              zos.putNextEntry(new ZipEntry(sipMapping.fileName))
 
-            customMappingXml match {
-              case Some(customXml) =>
-                // Use custom mapping XML (e.g., from default mappings)
-                logger.debug(s"Using custom mapping XML for ${sipMapping.fileName}")
-                val xmlBytes = customXml.getBytes("UTF-8")
-                zos.write(xmlBytes)
+              customMappingXml match {
+                case Some(customXml) =>
+                  // Use custom mapping XML (e.g., from default mappings or DatasetMappingRepo)
+                  logger.debug(s"Using custom mapping XML for ${sipMapping.fileName}")
+                  val xmlBytes = customXml.getBytes("UTF-8")
+                  zos.write(xmlBytes)
 
-              case None =>
-                // if there is a new schema version, set it
-                sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))
+                case None =>
+                  // if there is a new schema version, set it
+                  sipPrefixRepoOpt.foreach(sipPrefix => sipMapping.recMapping.setSchemaVersion(new SchemaVersion(sipPrefix.schemaVersions)))
 
-                sipPrefixRepoOpt.map { prefixRepo =>
-                  val factsMap = prefixRepo.toMap(facts)
-                  for(factEntry <- factsMap.entrySet().asScala) {
-                    sipMapping.recMapping.setFact(factEntry.getKey(), factEntry.getValue())
+                  sipPrefixRepoOpt.map { prefixRepo =>
+                    val factsMap = prefixRepo.toMap(facts)
+                    for(factEntry <- factsMap.entrySet().asScala) {
+                      sipMapping.recMapping.setFact(factEntry.getKey(), factEntry.getValue())
+                    }
                   }
-                }
-                RecMapping.write(zos, sipMapping.recMapping)
-            }
-            zos.closeEntry()
-            mappingWritten = true
+                  RecMapping.write(zos, sipMapping.recMapping)
+              }
+              zos.closeEntry()
+              mappingWritten = true
+
+            case None =>
+              // Cannot parse mapping - use customMappingXml if available, otherwise copy verbatim
+              customMappingXml match {
+                case Some(customXml) =>
+                  logger.info(s"sipMappingOpt is None, using custom mapping XML for ${entry.getName}")
+                  zos.putNextEntry(new ZipEntry(entry.getName))
+                  zos.write(customXml.getBytes("UTF-8"))
+                  zos.closeEntry()
+                  mappingWritten = true
+                case None =>
+                  // Copy mapping verbatim as fallback - don't lose the mapping!
+                  logger.warn(s"sipMappingOpt is None and no custom mapping, copying mapping verbatim: ${entry.getName}")
+                  copyEntry()
+                  mappingWritten = true
+              }
           }
 
         case RecordDefinitionPattern() =>
