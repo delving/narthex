@@ -675,7 +675,7 @@
                                     <li data-ng-class="{'active':leftTabOpen === 'activity'}">
                                         <a href role="tab" data-ng-click="leftTabOpen = 'activity'">Activity</a>
                                     </li>
-                                    <li data-ng-class="{'active':leftTabOpen === 'mapping'}" ng-if="$root.enableDefaultMappings">
+                                    <li data-ng-class="{'active':leftTabOpen === 'mapping'}">
                                         <a href role="tab" data-ng-click="setLeftTab('mapping')">Mapping</a>
                                     </li>
                                 </ul>
@@ -729,8 +729,8 @@
                                                         <small>Schema prefix: <strong>{{ datasetSchemaPrefix | uppercase }}</strong></small>
                                                     </p>
 
-                                                    <!-- Mapping Source Selection -->
-                                                    <div class="form-group">
+                                                    <!-- Mapping Source Selection (only shown when default mappings feature is enabled) -->
+                                                    <div class="form-group" ng-if="$root.enableDefaultMappings">
                                                         <div class="radio">
                                                             <label>
                                                                 <input type="radio" name="mappingSource_{{ dataset.datasetSpec }}" value="manual"
@@ -747,8 +747,8 @@
                                                         </div>
                                                     </div>
 
-                                                    <!-- Default Mapping Selection (shown when "default" is selected) -->
-                                                    <div ng-if="mapping.source === 'default'" class="panel panel-info">
+                                                    <!-- Default Mapping Selection (shown when "default" is selected and feature is enabled) -->
+                                                    <div ng-if="$root.enableDefaultMappings && mapping.source === 'default'" class="panel panel-info">
                                                         <div class="panel-heading">
                                                             <h5 class="panel-title">Select Default Mapping</h5>
                                                         </div>
