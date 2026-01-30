@@ -20,6 +20,7 @@ import dataset.DsInfo
 import dataset.DsInfo.DsState._
 import java.io.{BufferedReader, BufferedWriter, File, FileOutputStream, InputStreamReader, OutputStreamWriter}
 import java.util.zip.{ZipEntry, ZipOutputStream}
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.pattern.pipe
@@ -27,6 +28,7 @@ import dataset.DatasetActor._
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, JsonHarvestConfig, JsonHarvestPage, NoRecordsMatch, PMHHarvestPage}
+import harvest.PocketWriter
 import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
 import play.api.Logger
@@ -107,6 +109,9 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var jsonConfig: Option[JsonHarvestConfig] = None       // JSON harvest configuration
   var jsonPageNumber: Int = 1                            // Current JSON page number
 
+  // Background pocket writer for concurrent pocket generation during harvest
+  var pocketWriterOpt: Option[PocketWriter] = None
+
   private def cleanup(): Unit = {
     zipOutputOpt.foreach { zipOutput =>
       try {
@@ -117,13 +122,23 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
     }
     zipOutputOpt = None
-    
+
     tempFileOpt.foreach { tempFile =>
       if (tempFile.exists() && !tempFile.delete()) {
         log.warning(s"Failed to delete temp file: ${tempFile.getAbsolutePath}")
       }
     }
     tempFileOpt = None
+
+    // Clean up pocket writer on error - signal finish and delete partial file
+    pocketWriterOpt.foreach { pocketWriter =>
+      pocketWriter.finish()
+      val outputFile = pocketWriter.getOutputFile
+      if (outputFile.exists() && !outputFile.delete()) {
+        log.warning(s"Failed to delete partial pocket file: ${outputFile.getAbsolutePath}")
+      }
+    }
+    pocketWriterOpt = None
   }
 
   override def postStop(): Unit = {
@@ -290,6 +305,28 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       zipOutput.putNextEntry(new ZipEntry(harvestPageName))
       zipOutput.write(page.getBytes("UTF-8"))
       zipOutput.closeEntry()
+
+      // Lazily create pocket writer and send page for background processing
+      val pocketWriter = pocketWriterOpt.getOrElse {
+        datasetContext.sourceRepoOpt match {
+          case Some(sourceRepo) =>
+            val idFilter = datasetContext.dsInfo.getIdFilter
+            val writer = PocketWriter.create(
+              sourceRepo.sourceDir,
+              sourceRepo.sourceFacts,
+              idFilter,
+              datasetContext.orgContext
+            )(harvestingExecutionContext)
+            pocketWriterOpt = Some(writer)
+            log.info(s"Initialized PocketWriter for background pocket generation")
+            writer
+          case None =>
+            log.warning("No source repo available for pocket writing")
+            throw new RuntimeException("No source repo available")
+        }
+      }
+      pocketWriter.addPage(page)
+
       pageCount += 1
       pageCount
     } catch {
@@ -311,6 +348,25 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
     }
     zipOutputOpt = None
+
+    // Signal pocket writer that no more pages are coming and wait for completion
+    // Collect IDs for use in acceptHarvestedFile (avoids re-parsing)
+    var harvestedIds: Option[Set[String]] = None
+    pocketWriterOpt.foreach { pocketWriter =>
+      log.info("Waiting for background pocket writer to complete...")
+      pocketWriter.finish()
+      try {
+        val pocketCount = pocketWriter.awaitCompletion(600000) // 10 minute timeout
+        harvestedIds = Some(pocketWriter.getCollectedIds)
+        log.info(s"Pocket writer completed with $pocketCount records, collected ${harvestedIds.get.size} IDs")
+      } catch {
+        case NonFatal(e) =>
+          log.error(s"Pocket writer failed: ${e.getMessage}", e)
+          // Continue with harvest completion even if pocket writing failed
+          // acceptFile will fall back to parsing, generatePockets will fall back to parsing
+      }
+    }
+    pocketWriterOpt = None
 
     // Create error files if any errors occurred
     val (errorsZipOpt, errorLogOpt) = createErrorFiles()
@@ -341,8 +397,16 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
             datasetContext.sourceRepoOpt match {
               case Some(sourceRepo) =>
                 Future {
-                  val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
-                  val fileOption = sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
+                  // Use pre-computed IDs if available (from PocketWriter), otherwise fall back to parsing
+                  val fileOption = harvestedIds match {
+                    case Some(ids) =>
+                      log.info(s"Using pre-computed IDs from harvest (${ids.size} records, no parsing needed)")
+                      sourceRepo.acceptHarvestedFile(tempFileOpt.get, ids)
+                    case None =>
+                      log.info("Falling back to acceptFile with parsing (PocketWriter failed or unavailable)")
+                      val acceptZipReporter = ProgressReporter(COLLECTING, context.parent)
+                      sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
+                  }
 
                   // Save deleted record IDs file if any deleted records were found
                   if (deletedRecordIds.nonEmpty) {
