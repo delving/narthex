@@ -315,7 +315,15 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   def countFiles = fileList.size
 
-  def clearData() = fileList.foreach(FileUtils.deleteQuietly)
+  def clearData() = {
+    fileList.foreach(FileUtils.deleteQuietly)
+    // Also clear cached pockets file
+    val cachedPockets = new File(home, "pockets.xml.gz")
+    if (cachedPockets.exists()) {
+      cachedPockets.delete()
+      logger.info(s"Cleared cached pockets file: ${cachedPockets.getAbsolutePath}")
+    }
+  }
 
   def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(VERBATIM_FILTER, progressReporter, { targetFile =>
     val name = file.getName
@@ -348,6 +356,75 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       throw new RuntimeException(s"SourceRepo can only accept .zip, .xml.gz, or .xml")
     }
   })
+
+  /**
+   * Accept a harvested file with pre-computed IDs.
+   * This skips parsing entirely since IDs were already extracted by PocketWriter during harvest.
+   *
+   * @param file The harvested ZIP file to accept
+   * @param recordIds Set of record IDs already extracted during harvest
+   * @return Option containing the accepted file, or None if no records
+   */
+  def acceptHarvestedFile(file: File, recordIds: Set[String]): Option[File] = {
+    def writeToFile(file: File, string: String): Unit = Some(new PrintWriter(file)).foreach { writer =>
+      writer.println(string)
+      writer.close()
+    }
+
+    val zipFiles = listZipFiles
+    val fileNumber = zipFiles.lastOption.map(getFileNumber(_) + 1).getOrElse(0)
+    val files = if (fileNumber > 0 && fileNumber % MAX_FILES == 0) moveFiles else zipFiles
+    val targetFile = createZipFile(fileNumber)
+
+    // Move the ZIP file
+    FileUtils.moveFile(file, targetFile)
+    logger.info(s"Accepted harvested file: ${targetFile.getAbsolutePath}")
+
+    if (recordIds.isEmpty) {
+      targetFile.delete()
+      None
+    } else {
+      // Write IDs file directly from pre-computed IDs
+      val newIdsFile = createIdsFile(fileNumber)
+      val idWriter = createWriter(newIdsFile)
+      recordIds.foreach { id =>
+        idWriter.write(id)
+        idWriter.write('\n')
+      }
+      idWriter.close()
+
+      // Write active count
+      writeToFile(createActiveIdsFile(newIdsFile), recordIds.size.toString)
+
+      // Handle intersections with previous files (for incremental harvests)
+      val idsFiles = files.map(createIdsFile)
+      idsFiles.foreach { idsFile =>
+        if (!idsFile.exists()) throw new RuntimeException(s"where the hell is $idsFile?")
+        val source = Source.fromFile(idsFile, "UTF-8")
+        try {
+          val ids = source.getLines()
+          val intersectionIds = ids.filter(recordIds.contains).toList
+          if (intersectionIds.nonEmpty) {
+            val intersection = createIntersectionFile(idsFile, newIdsFile)
+            writeToFile(intersection, intersectionIds.mkString("\n"))
+            val avoid = avoidSet(idsFile)
+            val source2 = Source.fromFile(idsFile, "UTF-8")
+            try {
+              val activeCount = source2.getLines().count(!avoid.contains(_))
+              writeToFile(createActiveIdsFile(idsFile), activeCount.toString)
+            } finally {
+              source2.close()
+            }
+          }
+        } finally {
+          source.close()
+        }
+      }
+
+      logger.info(s"Accepted ${recordIds.size} records from harvest (no parsing needed)")
+      Some(targetFile)
+    }
+  }
 
   def parsePockets(output: Pocket => Unit, idFilter: IdFilter, progress: ProgressReporter): Int = {
     val parser = new PocketParser(sourceFacts, idFilter, orgContext)
@@ -383,22 +460,66 @@ class SourceRepo(home: File, orgContext: OrgContext) {
   def latestSourceFileOpt: Option[File] = listZipFiles.lastOption
 
   def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
-    var recordCount = 0
-    val bufferedOut = new BufferedOutputStream(sourceOutputStream, 65536)  // 64KB buffer for faster I/O
-    val rawOutput = createWriter(bufferedOut)
-    try {
-      val startList = s"""<$POCKET_LIST>\n"""
-      val endList = s"""</$POCKET_LIST>\n"""
-      rawOutput.write(startList)
-      def pocketWriter(pocket: Pocket): Unit = {
-        rawOutput.write(pocket.getText)
+    val cachedPockets = new File(home, "pockets.xml.gz")
+
+    if (cachedPockets.exists()) {
+      // Fast path: stream cached pockets directly (harvest case)
+      logger.info(s"Using cached pockets from ${cachedPockets.getName} (${cachedPockets.length()} bytes)")
+      val gzIn = new GZIPInputStream(new BufferedInputStream(new FileInputStream(cachedPockets), 65536))
+      val bufferedOut = new BufferedOutputStream(sourceOutputStream, 65536)
+      try {
+        IOUtils.copy(gzIn, bufferedOut)
+        bufferedOut.flush()
+      } finally {
+        gzIn.close()
       }
-      recordCount = parsePockets(pocketWriter, idFilter, progress)
-      rawOutput.write(endList)
-    } finally {
-      rawOutput.close()
+      // Return record count from .act files
+      val actFiles = fileList.filter(_.getName.endsWith(".act"))
+      val recordCount = actFiles.map(FileUtils.readFileToString).map(_.trim.toInt).sum
+      logger.info(s"Streamed $recordCount cached pockets")
+      recordCount
+    } else {
+      // Slow path: parse from source ZIPs (file upload case)
+      logger.info("No cached pockets found, parsing from source files")
+      var recordCount = 0
+      val bufferedOut = new BufferedOutputStream(sourceOutputStream, 65536)  // 64KB buffer for faster I/O
+      val rawOutput = createWriter(bufferedOut)
+
+      // Optimization: buffer multiple records before writing to reduce I/O syscalls
+      val writeBuffer = new StringBuilder(1024 * 1024)  // 1MB buffer
+      val flushThreshold = 512 * 1024  // Flush when buffer exceeds 512KB
+      var bufferedRecords = 0
+
+      try {
+        val startList = s"""<$POCKET_LIST>\n"""
+        val endList = s"""</$POCKET_LIST>\n"""
+        rawOutput.write(startList)
+
+        def pocketWriter(pocket: Pocket): Unit = {
+          writeBuffer.append(pocket.getText)
+          bufferedRecords += 1
+
+          // Flush buffer when it exceeds threshold
+          if (writeBuffer.length >= flushThreshold) {
+            rawOutput.write(writeBuffer.toString())
+            writeBuffer.clear()
+            bufferedRecords = 0
+          }
+        }
+
+        recordCount = parsePockets(pocketWriter, idFilter, progress)
+
+        // Flush any remaining buffered records
+        if (writeBuffer.nonEmpty) {
+          rawOutput.write(writeBuffer.toString())
+        }
+
+        rawOutput.write(endList)
+      } finally {
+        rawOutput.close()
+      }
+      recordCount
     }
-    recordCount
   }
 
   // todo: report this to the front end
