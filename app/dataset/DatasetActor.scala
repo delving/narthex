@@ -946,8 +946,14 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
 
       if (datasetContext.sipMapperOpt.isDefined) {
-        log.info(s"There is a mapper, so setting to processable")
-        dsInfo.setState(PROCESSABLE)
+        // Don't overwrite PROCESSED state (e.g., from upload-processed endpoint)
+        val currentState = dsInfo.getState()
+        if (currentState != PROCESSED) {
+          log.info(s"There is a mapper, so setting to processable")
+          dsInfo.setState(PROCESSABLE)
+        } else {
+          log.info(s"Keeping PROCESSED state (externally processed)")
+        }
       } else {
         log.info("No mapper, not processing")
       }
