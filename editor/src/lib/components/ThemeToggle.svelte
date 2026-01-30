@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { themeStore, type ThemeMode } from '$lib/stores/theme';
+	import { themeStore, type ThemeMode } from '$lib/stores/theme.svelte';
 
 	function cycleTheme() {
 		themeStore.toggle();

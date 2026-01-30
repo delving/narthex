@@ -19,7 +19,7 @@
 	import DatasetPicker from '$lib/components/DatasetPicker.svelte';
 	import StatisticsPanel from '$lib/components/StatisticsPanel.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-	import { themeStore } from '$lib/stores/theme';
+	import { themeStore } from '$lib/stores/theme.svelte';
 
 	// Editor mode: 'mapping' for normal mapping view, 'stats' for full statistics view
 	let editorMode = $state<'mapping' | 'stats'>('mapping');
