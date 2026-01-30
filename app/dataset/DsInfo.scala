@@ -143,12 +143,25 @@ object DsInfo {
   def parseHub3ErrorResponse(responseBody: String): Option[String] = {
     try {
       val json = Json.parse(responseBody)
-      // Try various common error response formats
-      (json \ "error" \ "message").asOpt[String]
-        .orElse((json \ "error").asOpt[String])
-        .orElse((json \ "message").asOpt[String])
-        .orElse((json \ "detail").asOpt[String])
-        .orElse((json \ "errors").asOpt[scala.collection.immutable.Seq[String]].map(_.mkString("; ")))
+
+      // Extract error and detail fields - detail usually contains the actual parsing error
+      val errorField = (json \ "error").asOpt[String]
+      val detailField = (json \ "detail").asOpt[String]
+
+      // Combine error and detail if both present (detail has the specific error like "invalid language tag")
+      (errorField, detailField) match {
+        case (Some(error), Some(detail)) =>
+          Some(s"$error - $detail")
+        case (Some(error), None) =>
+          Some(error)
+        case (None, Some(detail)) =>
+          Some(detail)
+        case (None, None) =>
+          // Fall back to other common formats
+          (json \ "error" \ "message").asOpt[String]
+            .orElse((json \ "message").asOpt[String])
+            .orElse((json \ "errors").asOpt[scala.collection.immutable.Seq[String]].map(_.mkString("; ")))
+      }
     } catch {
       case _: Exception => None
     }

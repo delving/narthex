@@ -25,7 +25,21 @@ define(['angular'], function (angular) {
                     lines.forEach(function(line) {
                         if (line.trim()) {
                             try {
-                                entries.push(JSON.parse(line));
+                                var entry = JSON.parse(line);
+                                // Normalize field names (activity log uses snake_case, template expects camelCase)
+                                if (entry.error_message && !entry.errorMessage) {
+                                    entry.errorMessage = entry.error_message;
+                                }
+                                if (entry.affected_records && !entry.affectedRecords) {
+                                    entry.affectedRecords = entry.affected_records;
+                                }
+                                if (entry.affected_record_count && !entry.affectedRecordCount) {
+                                    entry.affectedRecordCount = entry.affected_record_count;
+                                }
+                                if (entry.hub3_response && !entry.hub3Response) {
+                                    entry.hub3Response = entry.hub3_response;
+                                }
+                                entries.push(entry);
                             } catch (e) {
                                 console.error('Error parsing JSONL line:', line, e);
                             }
@@ -145,8 +159,10 @@ define(['angular'], function (angular) {
             switch(status) {
                 case 'completed': return 'label-success';
                 case 'failed': return 'label-danger';
+                case 'hub3_error': return 'label-danger';
                 case 'started': return 'label-info';
                 case 'in_progress': return 'label-warning';
+                case 'reported': return 'label-warning';
                 default: return 'label-default';
             }
         };

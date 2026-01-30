@@ -1012,6 +1012,9 @@
                                                         <span ng-if="activity.errorMessage" class="text-danger">
                                                             <br/>{{ activity.errorMessage }}
                                                         </span>
+                                                        <span ng-if="activity.affectedRecordCount" class="text-muted">
+                                                            <br/><small>Affected records: {{ activity.affectedRecordCount }}</small>
+                                                        </span>
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
                                                     <td>{{ activity.total_records || activity.recordCount || '-' }}</td>
@@ -1061,6 +1064,9 @@
                                                         </span>
                                                         <span ng-if="activity.errorMessage" class="text-danger">
                                                             <br/>{{ activity.errorMessage }}
+                                                        </span>
+                                                        <span ng-if="activity.affectedRecordCount" class="text-muted">
+                                                            <br/><small>Affected records: {{ activity.affectedRecordCount }}</small>
                                                         </span>
                                                     </td>
                                                     <td>{{ activityModal.scope.formatDuration(activity.duration_seconds) }}</td>
