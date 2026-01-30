@@ -1951,6 +1951,52 @@ define(["angular"], function () {
             });
         };
 
+        // Count selected dataset mapping versions for comparison
+        $scope.getDatasetSelectedCount = function() {
+            if (!$scope.mapping.datasetVersions) return 0;
+            return $scope.mapping.datasetVersions.filter(function(v) { return v.selected; }).length;
+        };
+
+        // Compare two selected dataset mapping versions
+        $scope.compareDatasetVersions = function() {
+            var selected = $scope.mapping.datasetVersions.filter(function(v) { return v.selected; });
+            if (selected.length !== 2) return;
+
+            // Sort by timestamp (older first)
+            selected.sort(function(a, b) {
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+
+            var spec = $scope.dataset.datasetSpec;
+            var oldHash = selected[0].hash;
+            var newHash = selected[1].hash;
+
+            // Fetch both XMLs and show diff
+            $http.get('/narthex/app/dataset/' + spec + '/mapping-xml/' + oldHash).then(function(oldResponse) {
+                $http.get('/narthex/app/dataset/' + spec + '/mapping-xml/' + newHash).then(function(newResponse) {
+                    $modal.open({
+                        templateUrl: '/narthex/assets/templates/xml-diff-modal.html',
+                        controller: 'XmlDiffModalCtrl',
+                        size: 'lg',
+                        resolve: {
+                            oldXml: function() { return oldResponse.data; },
+                            newXml: function() { return newResponse.data; },
+                            title: function() {
+                                return 'Compare: ' + oldHash + ' vs ' + newHash;
+                            }
+                        }
+                    });
+                });
+            });
+        };
+
+        // Clear all dataset version selections
+        $scope.clearDatasetVersionSelections = function() {
+            if ($scope.mapping.datasetVersions) {
+                $scope.mapping.datasetVersions.forEach(function(v) { v.selected = false; });
+            }
+        };
+
         function escapeHtml(text) {
             return text
                 .replace(/&/g, "&amp;")

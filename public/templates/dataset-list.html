@@ -812,9 +812,30 @@
                                                                 <i class="fa fa-refresh"></i>
                                                             </button>
                                                         </h5>
+
+                                                        <!-- Compare Button -->
+                                                        <div class="btn-toolbar" style="margin-bottom: 10px;"
+                                                             ng-if="mapping.datasetVersions.length > 1">
+                                                            <button class="btn btn-sm btn-info"
+                                                                    ng-click="compareDatasetVersions()"
+                                                                    ng-disabled="getDatasetSelectedCount() !== 2">
+                                                                <i class="fa fa-exchange"></i> Compare Selected
+                                                                <span ng-if="getDatasetSelectedCount() > 0">({{ getDatasetSelectedCount() }}/2)</span>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-default"
+                                                                    ng-click="clearDatasetVersionSelections()"
+                                                                    ng-if="getDatasetSelectedCount() > 0">
+                                                                <i class="fa fa-times"></i> Clear
+                                                            </button>
+                                                            <span class="text-muted" style="margin-left: 10px; line-height: 30px;">
+                                                                Select 2 versions to compare
+                                                            </span>
+                                                        </div>
+
                                                         <table class="table table-condensed table-striped">
                                                             <thead>
                                                                 <tr>
+                                                                    <th style="width: 30px;" ng-if="mapping.datasetVersions.length > 1"></th>
                                                                     <th>Version</th>
                                                                     <th>Date</th>
                                                                     <th>Source</th>
@@ -823,6 +844,10 @@
                                                             </thead>
                                                             <tbody>
                                                                 <tr ng-repeat="version in mapping.datasetVersions | limitTo:5">
+                                                                    <td ng-if="mapping.datasetVersions.length > 1">
+                                                                        <input type="checkbox" ng-model="version.selected"
+                                                                               ng-disabled="getDatasetSelectedCount() >= 2 && !version.selected">
+                                                                    </td>
                                                                     <td>
                                                                         <code>{{ version.hash }}</code>
                                                                         <span class="label label-success" ng-if="version.isCurrent">Current</span>
