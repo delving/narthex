@@ -22,10 +22,11 @@ import org.joda.time.DateTime
 
 import dataset.DatasetActor.{Scheduled, WorkFailure}
 import dataset.DatasetContext
+import dataset.DsInfo.Hub3BulkApiException
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import organization.OrgContext
 import nxutil.Utils._
-import services.ProgressReporter
+import services.{ActivityLogger, ProgressReporter}
 import services.ProgressReporter.InterruptedException
 import services.ProgressReporter.ProgressState._
 import services.Temporal._
@@ -80,6 +81,33 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         // Graceful interruption - not an error, user cancelled the operation
         log.info(s"GraphSaver interrupted for ${datasetContext.dsInfo.spec}")
         handleInterruption()
+
+      case hub3Ex: Hub3BulkApiException =>
+        // Hub3 rejected records - log detailed error to activity log for user visibility
+        log.error(s"GraphSaver Hub3 rejection for ${datasetContext.dsInfo.spec}: ${hub3Ex.message}")
+        log.error(s"  Hub3 error details: ${hub3Ex.hub3ErrorMessage.getOrElse("(no parsed message)")}")
+        log.error(s"  Affected records: ${hub3Ex.affectedRecordIds.mkString(", ")}")
+
+        // Log to activity log so users can see it in the UI
+        ActivityLogger.logBulkApiError(
+          activityLog = datasetContext.activityLog,
+          operation = "SAVE",
+          statusCode = hub3Ex.statusCode,
+          errorMessage = hub3Ex.message,
+          fullResponse = hub3Ex.hub3FullResponse,
+          affectedRecordIds = hub3Ex.affectedRecordIds
+        )
+
+        reader.foreach(_.close())
+        reader = None
+
+        // CRITICAL: Always release BOTH semaphores on failure to be safe
+        orgContext.semaphore.release(datasetContext.dsInfo.spec)
+        orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
+        log.info(s"Released both semaphores for ${datasetContext.dsInfo.spec} due to Hub3 rejection")
+
+        context.parent ! WorkFailure(hub3Ex.message, Some(hub3Ex))
+
       case _ =>
         log.error(s"GraphSaver failure for ${datasetContext.dsInfo.spec}: ${ex.getMessage}", ex)
         reader.foreach(_.close())

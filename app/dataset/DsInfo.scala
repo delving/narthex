@@ -100,6 +100,60 @@ object DsInfo {
     }
   }
 
+  /**
+   * Exception thrown when Hub3 bulk API rejects a request.
+   * Contains structured error information for better debugging and user feedback.
+   *
+   * @param message Human-readable error message
+   * @param statusCode HTTP status code from Hub3
+   * @param hub3ErrorMessage Error message extracted from Hub3 response (if parseable)
+   * @param hub3FullResponse Full response body from Hub3 for debugging
+   * @param affectedRecordIds List of record IDs that were in the failed batch (if extractable)
+   */
+  case class Hub3BulkApiException(
+    message: String,
+    statusCode: Int,
+    hub3ErrorMessage: Option[String],
+    hub3FullResponse: String,
+    affectedRecordIds: scala.collection.immutable.Seq[String]
+  ) extends Exception(message)
+
+  /**
+   * Extract record IDs (hubId) from bulk action JSON lines.
+   * Each line is a JSON object with a "hubId" field.
+   */
+  def extractRecordIdsFromBulkActions(bulkActions: String, maxIds: Int = 10): scala.collection.immutable.Seq[String] = {
+    bulkActions.split("\n")
+      .filter(_.nonEmpty)
+      .take(maxIds)
+      .flatMap { line =>
+        try {
+          (Json.parse(line) \ "hubId").asOpt[String]
+        } catch {
+          case _: Exception => None
+        }
+      }
+      .toSeq
+  }
+
+  /**
+   * Parse Hub3 error response to extract meaningful error message.
+   * Hub3 can return errors in various formats, this tries to handle them all.
+   */
+  def parseHub3ErrorResponse(responseBody: String): Option[String] = {
+    try {
+      val json = Json.parse(responseBody)
+      // Try various common error response formats
+      (json \ "error" \ "message").asOpt[String]
+        .orElse((json \ "error").asOpt[String])
+        .orElse((json \ "message").asOpt[String])
+        .orElse((json \ "detail").asOpt[String])
+        .orElse((json \ "errors").asOpt[scala.collection.immutable.Seq[String]].map(_.mkString("; ")))
+    } catch {
+      case _: Exception => None
+    }
+  }
+
   // ============================================================================
   // Field Registry for WebSocket Serialization
   // ============================================================================
@@ -1470,10 +1524,39 @@ class DsInfo(
   val bulkApi = s"${naveApiUrl}/api/index/bulk/"
 
   private def checkUpdateResponse(response: WSResponse,
-                                  logString: String): Unit = {
+                                  bulkActions: String): Unit = {
     if (response.status != 201) {
-      logger.error(logString)
-      throw new Exception(s"${response.statusText}: ${response.body}:")
+      // Log full details at ERROR level for debugging
+      logger.error(s"Hub3 bulk API error for dataset $spec")
+      logger.error(s"  HTTP Status: ${response.status} ${response.statusText}")
+      logger.error(s"  Response Body: ${response.body}")
+
+      // Extract record IDs from the bulk actions for context
+      val affectedIds = DsInfo.extractRecordIdsFromBulkActions(bulkActions)
+      if (affectedIds.nonEmpty) {
+        logger.error(s"  Affected records (first ${affectedIds.size}): ${affectedIds.mkString(", ")}")
+      }
+
+      // Log sample of the request that failed (first 2000 chars to avoid huge logs)
+      val requestSample = if (bulkActions.length > 2000) bulkActions.take(2000) + "..." else bulkActions
+      logger.error(s"  Request sample: $requestSample")
+
+      // Try to parse structured error from Hub3
+      val hub3ErrorMessage = DsInfo.parseHub3ErrorResponse(response.body)
+
+      // Create user-friendly error message
+      val userMessage = hub3ErrorMessage match {
+        case Some(msg) => s"Hub3 rejected records: $msg"
+        case None => s"Hub3 bulk API error (${response.status}): ${response.body.take(500)}"
+      }
+
+      throw DsInfo.Hub3BulkApiException(
+        message = userMessage,
+        statusCode = response.status,
+        hub3ErrorMessage = hub3ErrorMessage,
+        hub3FullResponse = response.body,
+        affectedRecordIds = affectedIds
+      )
     }
   }
 

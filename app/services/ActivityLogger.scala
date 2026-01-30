@@ -287,6 +287,40 @@ object ActivityLogger {
   }
 
   /**
+   * Log a Hub3 bulk API error to the activity log.
+   * This captures detailed information when Hub3 rejects records during save operations.
+   *
+   * @param activityLog File to append to
+   * @param operation The operation that failed (typically "SAVE")
+   * @param statusCode HTTP status code from Hub3
+   * @param errorMessage Parsed error message from Hub3 response
+   * @param fullResponse Full Hub3 response body for debugging
+   * @param affectedRecordIds Record IDs that were in the failed batch
+   */
+  def logBulkApiError(
+    activityLog: File,
+    operation: String,
+    statusCode: Int,
+    errorMessage: String,
+    fullResponse: String,
+    affectedRecordIds: Seq[String]
+  ): Unit = {
+    val entry = Json.obj(
+      "timestamp" -> timeToString(DateTime.now()),
+      "operation" -> operation,
+      "status" -> "hub3_error",
+      "error_type" -> "bulk_api_rejection",
+      "http_status" -> statusCode,
+      "error_message" -> errorMessage,
+      // Truncate full response if too long to avoid bloating the log
+      "hub3_response" -> (if (fullResponse.length > 5000) fullResponse.take(5000) + "..." else fullResponse),
+      "affected_records" -> affectedRecordIds,
+      "affected_record_count" -> affectedRecordIds.size
+    )
+    appendEntry(activityLog, entry)
+  }
+
+  /**
    * Log indexing errors received from Hub3 webhook notification.
    *
    * @param activityLog File to append to
