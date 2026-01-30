@@ -176,6 +176,7 @@ object GraphProperties {
   val processedInvalid = NXProp("processedInvalid", intProp)
   val processedIncrementalValid = NXProp("processedIncrementalValid", intProp)
   val processedIncrementalInvalid = NXProp("processedIncrementalInvalid", intProp)
+  val processedExternally = NXProp("processedExternally")  // Source of external processing (e.g., "sip-creator")
 
   // Acquisition tracking properties (for clear record count semantics)
   val acquiredRecordCount = NXProp("acquiredRecordCount", intProp)    // Total records (harvested or uploaded)

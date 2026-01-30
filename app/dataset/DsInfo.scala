@@ -238,6 +238,7 @@ object DsInfo {
       IntField("processedInvalid", processedInvalid),
       IntField("processedIncrementalValid", processedIncrementalValid),
       IntField("processedIncrementalInvalid", processedIncrementalInvalid),
+      StringField("processedExternally", processedExternally),
       IntField("acquiredRecordCount", acquiredRecordCount),
       IntField("deletedRecordCount", deletedRecordCount),
       IntField("sourceRecordCount", sourceRecordCount),

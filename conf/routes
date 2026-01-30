@@ -51,6 +51,8 @@ GET         /narthex/app/dataset/:spec/create/:character/:prefix             con
 + nocsrf
 POST        /narthex/app/dataset/:spec/upload                                controllers.AppController.uploadDataset(spec)
 + nocsrf
+POST        /narthex/app/dataset/:spec/upload-processed                      controllers.AppController.uploadProcessedFile(spec)
++ nocsrf
 POST        /narthex/app/dataset/:spec/set-properties                        controllers.AppController.setDatasetProperties(spec)
 + nocsrf
 POST        /narthex/app/dataset/:spec/toggle-skos                           controllers.AppController.toggleSkosifiedField(spec)

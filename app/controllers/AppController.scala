@@ -2068,6 +2068,89 @@ $nodeMappingsXml
     }
   }
 
+  /**
+   * Upload a processed file from an external source (e.g., sip-creator).
+   * This allows bypassing the processing step in narthex when the same
+   * processing has already been done externally.
+   *
+   * Request: POST /narthex/app/dataset/:spec/upload-processed
+   * Content-Type: multipart/form-data
+   * Body:
+   *   - file: ZSTD compressed RDF/XML file (required)
+   *   - errorFile: Error log file (optional)
+   *   - validCount: Number of valid records (required)
+   *   - invalidCount: Number of invalid records (required)
+   *   - source: Source of the processed file (optional, defaults to "sip-creator")
+   *
+   * Response: { "success": true, "validCount": 12345, "invalidCount": 5 }
+   */
+  def uploadProcessedFile(spec: String) = Action(parse.multipartFormData) { request =>
+    import java.nio.file.{Files, StandardCopyOption}
+    import dataset.DsInfo.DsState._
+
+    val datasetContext = orgContext.datasetContext(spec)
+
+    request.body.file("file").map { filePart =>
+      try {
+        val uploadedFile = filePart.ref.path.toFile
+
+        // Get counts from form data (sent by sip-creator)
+        val validCount = request.body.dataParts.get("validCount")
+          .flatMap(_.headOption).map(_.toInt).getOrElse(0)
+        val invalidCount = request.body.dataParts.get("invalidCount")
+          .flatMap(_.headOption).map(_.toInt).getOrElse(0)
+        val source = request.body.dataParts.get("source")
+          .flatMap(_.headOption).getOrElse("sip-creator")
+
+        logger.info(s"Uploading processed file for $spec: validCount=$validCount, invalidCount=$invalidCount, source=$source")
+
+        // 1. Clear existing processed data
+        datasetContext.processedRepo.clear()
+
+        // 2. Copy processed file to processed/00000.xml.zst
+        val output = datasetContext.processedRepo.createOutput
+        Files.copy(uploadedFile.toPath, output.xmlFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+        logger.info(s"Copied processed file to ${output.xmlFile.getAbsolutePath}")
+
+        // 3. Handle optional error file
+        request.body.file("errorFile").foreach { errorPart =>
+          Files.copy(errorPart.ref.path, output.errorFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+          logger.info(s"Copied error file to ${output.errorFile.getAbsolutePath}")
+        }
+
+        // 4. Update dataset state - mark as processed externally
+        datasetContext.dsInfo.setState(PROCESSED)
+        datasetContext.dsInfo.setProcessedRecordCounts(validCount, invalidCount)
+        datasetContext.dsInfo.setSingularLiteralProps(
+          processedExternally -> source
+        )
+
+        // 5. Clear stale analysis if present (analysis is stale after new processing)
+        datasetContext.dsInfo.removeState(ANALYZED)
+
+        // 6. Broadcast update via WebSocket so UI refreshes
+        sendRefresh(spec)
+
+        logger.info(s"Successfully uploaded processed file for $spec")
+        Ok(Json.obj(
+          "success" -> true,
+          "validCount" -> validCount,
+          "invalidCount" -> invalidCount,
+          "source" -> source
+        ))
+      } catch {
+        case e: Exception =>
+          logger.error(s"Failed to upload processed file for $spec: ${e.getMessage}", e)
+          InternalServerError(Json.obj(
+            "success" -> false,
+            "error" -> e.getMessage
+          ))
+      }
+    }.getOrElse {
+      BadRequest(Json.obj("success" -> false, "error" -> "No file provided"))
+    }
+  }
+
   // Memory monitoring endpoints
   def memoryStats = Action {
     import memoryMonitorService.MemoryStats._
