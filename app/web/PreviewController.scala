@@ -81,8 +81,15 @@ class PreviewController @Inject() (orgContext: OrgContext)(implicit val ec: Exec
         key.equalsIgnoreCase("Content-Type")
       }.map(_._2)
 
+      // Strip BOM (Byte Order Mark) that some servers include
+      var bodyText = response.body
+      if (bodyText.nonEmpty && bodyText.charAt(0) == '\uFEFF') {
+        bodyText = bodyText.substring(1)
+      }
+      // Also handle mojibake patterns (UTF-8 BOM misinterpreted as Latin-1)
+      bodyText = bodyText.replace("ï»¿", "").replace("\u0239\u0187\u0191", "")
+
       // Strip XSL stylesheet reference to allow XML to render in browser
-      val bodyText = response.body
       val cleanedBody = if (bodyText.contains("<?xml-stylesheet")) {
         bodyText.replaceAll("""<\?xml-stylesheet[^>]*\?>""", "")
       } else {
