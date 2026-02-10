@@ -489,6 +489,12 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           futurePage.map {
             case page: AdLibHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
+              datasetContext.dsInfo.setAcquisitionCounts(
+                acquired = page.diagnostic.totalItems,
+                deleted = 0,
+                source = page.diagnostic.totalItems,
+                method = "adlib"
+              )
               finish(strategy, None)
           }
         case _ =>
@@ -714,6 +720,12 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           futurePage.map {
             case page: PMHHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
+              datasetContext.dsInfo.setAcquisitionCounts(
+                acquired = page.totalRecords,
+                deleted = 0,
+                source = page.totalRecords,
+                method = "pmh"
+              )
               finish(strategy, None)
             case NoRecordsMatch(message, _) =>
               log.info(s"Sample harvest returned no records: $message")
@@ -884,6 +896,12 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           futurePage.map {
             case page: JsonHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
+              datasetContext.dsInfo.setAcquisitionCounts(
+                acquired = page.diagnostic.totalItems.getOrElse(0),
+                deleted = 0,
+                source = page.diagnostic.totalItems.getOrElse(0),
+                method = "json"
+              )
               finish(strategy, None)
           }
         case _ =>
