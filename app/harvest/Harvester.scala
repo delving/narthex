@@ -87,6 +87,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var zipOutputOpt: Option[ZipOutputStream] = None
   var pageCount = 0
   var progressOpt: Option[ProgressReporter] = None
+  private val adlibPageSize = 50  // Default page limit for AdLib API
   var recordsPerPage: Option[Int] = None  // Tracks page size for total pages calculation
   var harvestedRecords: Int = 0  // Actual count of harvested records for accurate progress
   var maxTotalRecords: Int = 0  // Track max total records reported by API (to handle inconsistent responses)
@@ -503,12 +504,14 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
       if (pageHasError && continueOnError) {
         // Error recovery path: AdLib API returned an error or empty records
-        // Build the full page URL with current parameters for reconstruction
-        val fullPageUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=${diagnostic.pageItems}&startFrom=${diagnostic.current}"
+        // When pageItems is 0 (error response with no records), use the default page size
+        // to avoid an infinite loop where offset never advances
+        val effectivePageSize = if (diagnostic.pageItems > 0) diagnostic.pageItems else adlibPageSize
+        val fullPageUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=$effectivePageSize&startFrom=${diagnostic.current}"
         log.warning(s"AdLib API error on page at offset ${diagnostic.current} from $fullPageUrl: ${errorOpt.getOrElse("empty records")}")
         harvestErrors += (fullPageUrl -> errorOpt.getOrElse("empty records"))
 
-        val recordUrls = breakPageIntoRecords(fullPageUrl, diagnostic.pageItems, diagnostic.current)
+        val recordUrls = breakPageIntoRecords(fullPageUrl, effectivePageSize, diagnostic.current)
         errorRecoveryTotal = recordUrls.size
         errorRecoveryPageUrl = fullPageUrl
 
@@ -525,9 +528,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
         }
 
         // Continue with next page if not last
-        if (!diagnostic.isLast) {
-          log.info(s"Continuing to next page after error recovery")
-          val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic), credentials = adlibCredentials)
+        // Use a corrected diagnostic so the next page offset advances past the failed page
+        val nextPageDiagnostic = diagnostic.copy(pageItems = effectivePageSize)
+        if (!nextPageDiagnostic.isLast) {
+          log.info(s"Continuing to next page after error recovery (advancing offset by $effectivePageSize)")
+          val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(nextPageDiagnostic), credentials = adlibCredentials)
           handleFailure(futurePage, strategy, "adlib harvest page")
           futurePage pipeTo self
         } else {
@@ -580,12 +585,13 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
           case Failure(e) if continueOnError =>
             // Error recovery path: failed to process records locally
-            // Build the full page URL with current parameters for reconstruction
-            val fullPageUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=${diagnostic.pageItems}&startFrom=${diagnostic.current}"
+            // When pageItems is 0, use the default page size to avoid infinite loop
+            val effectivePageSize = if (diagnostic.pageItems > 0) diagnostic.pageItems else adlibPageSize
+            val fullPageUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=$effectivePageSize&startFrom=${diagnostic.current}"
             log.warning(s"Failed to process harvest page records from $fullPageUrl, breaking into individual records: ${e.getMessage}")
             harvestErrors += (fullPageUrl -> e.toString)
 
-            val recordUrls = breakPageIntoRecords(fullPageUrl, diagnostic.pageItems, diagnostic.current)
+            val recordUrls = breakPageIntoRecords(fullPageUrl, effectivePageSize, diagnostic.current)
 
             recordUrls.zipWithIndex.foreach { case (_, idx) =>
               self ! AdLibSingleRecordHarvest(
@@ -599,8 +605,10 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
             }
 
             // Continue with next page if not last
-            if (!diagnostic.isLast) {
-              val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(diagnostic), credentials = adlibCredentials)
+            // Use a corrected diagnostic so the next page offset advances past the failed page
+            val nextPageDiagnostic = diagnostic.copy(pageItems = effectivePageSize)
+            if (!nextPageDiagnostic.isLast) {
+              val futurePage = fetchAdLibPage(timeout, wsApi, strategy, url, database, search, Some(nextPageDiagnostic), credentials = adlibCredentials)
               handleFailure(futurePage, strategy, "adlib harvest page")
               futurePage pipeTo self
             }
