@@ -608,6 +608,19 @@
                             </div>
                         </div>
 
+                        <!-- Error recovery info box -->
+                        <div data-ng-if="dataset.progress.errorRecoveryUrl" class="alert alert-info"
+                             role="alert" style="margin-top: 5px; font-size: 12px;">
+                            <i class="fa fa-wrench"></i>
+                            <strong>Error recovery</strong> - A harvest page failed, recovering individual records
+                            <br/>
+                            <small class="text-muted">
+                                Failed URL: {{ dataset.progress.errorRecoveryUrl }}
+                                <br/>
+                                Records recovered: {{ dataset.progress.errorPagesRecovered || 0 }} / {{ dataset.progress.errorPagesTotal || '?' }}
+                            </small>
+                        </div>
+
                         <!-- Retry status indicator (non-blocking) -->
                         <div data-ng-if="dataset.inRetry" class="alert alert-warning" role="alert">
                             <div class="pull-right btn-group">

@@ -1166,7 +1166,10 @@ define(["angular"], function () {
                         currentPage: message.currentPage,
                         totalPages: message.totalPages,
                         currentRecords: message.currentRecords,
-                        totalRecords: message.totalRecords
+                        totalRecords: message.totalRecords,
+                        errorRecoveryUrl: message.errorRecoveryUrl,
+                        errorPagesTotal: message.errorPagesTotal,
+                        errorPagesRecovered: message.errorPagesRecovered
                     });
                     $scope.datasetBusy = true;
                 }

@@ -99,7 +99,10 @@ object DatasetActor {
                     currentPage: Option[Int] = None,
                     totalPages: Option[Int] = None,
                     currentRecords: Option[Int] = None,
-                    totalRecords: Option[Int] = None)
+                    totalRecords: Option[Int] = None,
+                    errorRecoveryUrl: Option[String] = None,
+                    errorPagesTotal: Option[Int] = None,
+                    errorPagesRecovered: Option[Int] = None)
       extends DatasetActorData
 
   implicit val activeWrites: Writes[Active] = new Writes[Active] {
@@ -114,7 +117,10 @@ object DatasetActor {
       "currentPage" -> active.currentPage,
       "totalPages" -> active.totalPages,
       "currentRecords" -> active.currentRecords,
-      "totalRecords" -> active.totalRecords
+      "totalRecords" -> active.totalRecords,
+      "errorRecoveryUrl" -> active.errorRecoveryUrl,
+      "errorPagesTotal" -> active.errorPagesTotal,
+      "errorPagesRecovered" -> active.errorPagesRecovered
     )
   }
 
@@ -163,7 +169,10 @@ object DatasetActor {
                           currentPage: Option[Int] = None,
                           totalPages: Option[Int] = None,
                           currentRecords: Option[Int] = None,
-                          totalRecords: Option[Int] = None)
+                          totalRecords: Option[Int] = None,
+                          errorRecoveryUrl: Option[String] = None,
+                          errorPagesTotal: Option[Int] = None,
+                          errorPagesRecovered: Option[Int] = None)
 
   case object CheckForStuckState
 
@@ -301,10 +310,10 @@ class DatasetActor(val datasetContext: DatasetContext,
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
   // Schedule periodic check for stuck states
-  // Check every 5 minutes, max time = 2x harvest timeout (default 180s = 3min, so 6min total, but use minimum of 30min)
+  // Check every 5 minutes, max time = 120 minutes to allow for error recovery
+  // (error recovery fetches individual records with retries, which can take a long time)
   private val stuckStateCheckInterval = 5.minutes
-  private val harvestTimeoutMinutes = (orgContext.appConfig.harvestTimeOut / 1000 / 60).toInt
-  private val maxStateTime = Math.max(30, harvestTimeoutMinutes * 2).minutes
+  private val maxStateTime = 120.minutes
 
   log.info(s"Stuck state detection enabled: check every ${stuckStateCheckInterval.toMinutes} minutes, max state time ${maxStateTime.toMinutes} minutes")
 
@@ -1394,7 +1403,10 @@ class DatasetActor(val datasetContext: DatasetContext,
                                      currentPage = tick.currentPage,
                                      totalPages = tick.totalPages,
                                      currentRecords = tick.currentRecords,
-                                     totalRecords = tick.totalRecords)
+                                     totalRecords = tick.totalRecords,
+                                     errorRecoveryUrl = tick.errorRecoveryUrl,
+                                     errorPagesTotal = tick.errorPagesTotal,
+                                     errorPagesRecovered = tick.errorPagesRecovered)
         broadcastProgress(nextActive)
         stay() using nextActive
       }

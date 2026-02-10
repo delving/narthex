@@ -34,6 +34,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 import play.api.libs.ws.WSClient
 import services.ProgressReporter.ProgressState._
+import services.ProgressReporter.ProgressType.PERCENT
 import services.{ProgressReporter, StringHandling}
 import triplestore.GraphProperties
 
@@ -100,6 +101,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var errorRecords: List[(String, String, String)] = List.empty // (recordId, xml, error)
   var errorPagesSubmitted: Int = 0
   var errorPagesProcessed: Int = 0
+  var errorRecoveryTotal: Int = 0
+  var errorRecoveryPageUrl: String = ""
   var continueOnError: Boolean = false
   var errorThresholdOpt: Option[Int] = None
   var recordsProcessed: Int = 0
@@ -506,6 +509,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
         harvestErrors += (fullPageUrl -> errorOpt.getOrElse("empty records"))
 
         val recordUrls = breakPageIntoRecords(fullPageUrl, diagnostic.pageItems, diagnostic.current)
+        errorRecoveryTotal = recordUrls.size
+        errorRecoveryPageUrl = fullPageUrl
 
         log.info(s"Breaking failed page into ${recordUrls.size} individual record requests")
         recordUrls.zipWithIndex.foreach { case (_, idx) =>
@@ -611,7 +616,22 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     case AdLibSingleRecordHarvest(recordOffset, url, database, search, strategy, originalPageUrl, _) => actorWork(context) {
       errorPagesSubmitted += 1
       val singleRecordUrl = s"$url?database=$database&search=$search&xmltype=grouped&limit=1&startFrom=$recordOffset"
-      log.debug(s"Attempting single-record harvest from $singleRecordUrl")
+      log.info(s"Error recovery: record $errorPagesSubmitted at offset $recordOffset from $singleRecordUrl")
+
+      // Send progress tick directly with error recovery fields to prevent stuck detection
+      context.parent ! ProgressTick(
+        reporterOpt = None,
+        progressState = HARVESTING,
+        progressType = PERCENT,
+        count = if (maxTotalRecords > 0) math.min(99, (harvestedRecords * 100) / maxTotalRecords) else 0,
+        currentPage = Some(pageCount),
+        totalPages = if (maxTotalPages > 0) Some(maxTotalPages) else None,
+        currentRecords = Some(harvestedRecords),
+        totalRecords = if (maxTotalRecords > 0) Some(maxTotalRecords) else None,
+        errorRecoveryUrl = Some(originalPageUrl),
+        errorPagesTotal = Some(errorRecoveryTotal),
+        errorPagesRecovered = Some(errorPagesProcessed)
+      )
 
       val futurePage = fetchAdLibPage(
         timeout, wsApi, strategy, url, database, search,
