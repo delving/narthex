@@ -612,6 +612,13 @@
 				functions: result.functions || []
 			};
 
+			// If the mapping's prefix differs from current, reload the target rec-def
+			if (result.prefix && result.prefix !== mappingPrefix) {
+				console.log(`Mapping prefix "${result.prefix}" differs from current "${mappingPrefix}", reloading rec-def`);
+				mappingPrefix = result.prefix;
+				await loadTargetData(mappingPrefix);
+			}
+
 			// Start with the current tree
 			let modifiedTree = sourceTree;
 
