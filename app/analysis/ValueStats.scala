@@ -216,8 +216,9 @@ object ValueStats {
         json = json + ("encodingIssues" -> encJson)
       }
 
-      // Add numeric range if we found numeric values
-      if (numericCount > 0 && minNumeric.isDefined && maxNumeric.isDefined) {
+      // Add numeric range if we found numeric values (guard against non-finite doubles)
+      if (numericCount > 0 && minNumeric.isDefined && maxNumeric.isDefined
+        && minNumeric.get.isFinite && maxNumeric.get.isFinite) {
         json = json + ("numericRange" -> Json.obj(
           "min" -> minNumeric.get,
           "max" -> maxNumeric.get,
@@ -371,8 +372,8 @@ object ValueStats {
         addEncodingSample(value, "replacementChars")
       }
 
-      // Try to parse as numeric
-      Try(value.trim.replace(",", ".").toDouble).toOption.foreach { num =>
+      // Try to parse as numeric (filter out Infinity/NaN which can't be serialized to JSON)
+      Try(value.trim.replace(",", ".").toDouble).toOption.filter(d => d.isFinite).foreach { num =>
         numCount += 1
         minNum = Some(minNum.map(m => Math.min(m, num)).getOrElse(num))
         maxNum = Some(maxNum.map(m => Math.max(m, num)).getOrElse(num))
