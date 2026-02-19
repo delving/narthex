@@ -93,11 +93,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(true)
   logger.info(s"narthex.trends.enabled: $enableTrendTracking")
 
-  // Hour of day (0-23) to run daily trend snapshot (default: 0 = midnight)
-  def trendSnapshotHour: Int = configuration
-    .getOptional[Int]("narthex.trends.snapshotHour")
-    .getOrElse(0)
-  logger.info(s"narthex.trends.snapshotHour: $trendSnapshotHour")
+  // Minute offset past midnight to run daily aggregation (default: 30 = 00:30)
+  def trendAggregationMinute: Int = configuration
+    .getOptional[Int]("narthex.trends.aggregationMinute")
+    .getOrElse(30)
+  logger.info(s"narthex.trends.aggregationMinute: $trendAggregationMinute")
 
   def crunchWhiteSpace: Boolean =
     configuration.getOptional[Boolean]("crunchWhiteSpace").getOrElse(true)

@@ -87,79 +87,80 @@ class OrgContext @Inject() (
    * Captures record counts from all datasets and Hub3 index.
    */
   private def scheduleDailyTrendSnapshot(): Unit = {
-    val snapshotHour = narthexConfig.trendSnapshotHour
+    val minute = narthexConfig.trendAggregationMinute
 
-    // Calculate initial delay until next scheduled time
     val now = ZonedDateTime.now(ZoneId.systemDefault())
-    val targetTime = now.toLocalDate.atTime(LocalTime.of(snapshotHour, 0)).atZone(ZoneId.systemDefault())
+    val targetTime = now.toLocalDate.atTime(LocalTime.of(0, minute)).atZone(ZoneId.systemDefault())
     val nextRun = if (now.isAfter(targetTime)) targetTime.plusDays(1) else targetTime
     val initialDelayMillis = java.time.Duration.between(now, nextRun).toMillis
 
-    logger.info(s"Scheduling daily trend snapshot at $snapshotHour:00. First run in ${initialDelayMillis / 3600000} hours.")
+    logger.info(s"Scheduling daily trend aggregation at 00:$minute. First run in ${initialDelayMillis / 3600000} hours.")
 
     actorSystem.scheduler.scheduleWithFixedDelay(
       initialDelayMillis.millis,
       24.hours
     )(new Runnable {
-      override def run(): Unit = runDailyTrendSnapshot()
+      override def run(): Unit = runDailyTrendAggregation()
     })(actorSystem.dispatcher)
   }
 
-  /**
-   * Execute daily trend snapshot for all datasets.
-   */
-  private def runDailyTrendSnapshot(): Unit = {
-    logger.info("Running daily trend snapshot...")
+  private def runDailyTrendAggregation(): Unit = {
+    logger.info("Running daily trend aggregation...")
+
+    val yesterday = org.joda.time.LocalDate.now().minusDays(1).toString("yyyy-MM-dd")
 
     val result = for {
       datasets <- DsInfo.listDsInfo(this)
       (_, hub3Counts) <- indexStatsService.fetchHub3IndexCounts()
     } yield {
-      var captured = 0
+      var aggregated = 0
       val specs = scala.collection.mutable.ListBuffer[String]()
 
       datasets.foreach { dsInfo =>
         try {
-          val trendsLog = datasetContext(dsInfo.spec).trendsLog
-          val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
-          val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
-          val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
-          val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
-          val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
-          val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
+          val ctx = datasetContext(dsInfo.spec)
+          val trendsLog = ctx.trendsLog
+          val dailyLog = ctx.trendsDailyLog
 
-          TrendTrackingService.captureSnapshot(
-            trendsLog = trendsLog,
-            snapshotType = "daily",
-            sourceRecords = sourceRecords,
-            acquiredRecords = acquiredRecords,
-            deletedRecords = deletedRecords,
-            validRecords = validRecords,
-            invalidRecords = invalidRecords,
-            indexedRecords = indexedRecords
-          )
+          val hub3Count = hub3Counts.getOrElse(dsInfo.spec, 0)
+
+          val lastSnapshot = TrendTrackingService.getLastSnapshot(trendsLog)
+          lastSnapshot.foreach { last =>
+            if (last.indexedRecords != hub3Count && hub3Count > 0) {
+              TrendTrackingService.captureEventSnapshot(
+                trendsLog, "daily",
+                sourceRecords = last.sourceRecords,
+                acquiredRecords = last.acquiredRecords,
+                deletedRecords = last.deletedRecords,
+                validRecords = last.validRecords,
+                invalidRecords = last.invalidRecords,
+                indexedRecords = hub3Count
+              )
+            }
+          }
+
+          TrendTrackingService.aggregateDay(trendsLog, dailyLog, yesterday)
           specs += dsInfo.spec
-          captured += 1
+          aggregated += 1
         } catch {
           case e: Exception =>
-            logger.warn(s"Failed to capture trend snapshot for ${dsInfo.spec}: ${e.getMessage}")
+            logger.warn(s"Failed to aggregate trends for ${dsInfo.spec}: ${e.getMessage}")
         }
       }
 
-      // Generate organization-level summary file for fast API responses
       try {
-        TrendTrackingService.generateTrendsSummary(trendsSummaryFile, datasetsDir, specs.toList)
+        TrendTrackingService.generateTrendsSummaryFromDaily(trendsSummaryFile, datasetsDir, specs.toList)
       } catch {
         case e: Exception =>
           logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
       }
 
-      logger.info(s"Daily trend snapshot complete: $captured/${datasets.size} datasets processed")
+      logger.info(s"Daily trend aggregation complete: $aggregated/${datasets.size} datasets")
     }
 
     val _ = result.recover {
       case e: Exception =>
-        logger.error(s"Daily trend snapshot failed: ${e.getMessage}", e)
+        logger.error(s"Daily trend aggregation failed: ${e.getMessage}", e)
     }
   }
 
