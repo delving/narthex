@@ -27,6 +27,9 @@ define(["angular"], function (angular) {
         $scope.discoveryResult = null;
         $scope.discovering = false;
         $scope.importing = false;
+        $scope.verifying = false;
+        $scope.verifyProgress = null;
+        var verifyPollTimer = null;
         $scope.selectedSets = {};
         $scope.defaultMappings = [];
         $scope.availablePrefixes = [];
@@ -35,6 +38,14 @@ define(["angular"], function (angular) {
         function loadSources() {
             discoveryService.listSources().then(function(sources) {
                 $scope.sources = sources;
+                // Calculate total new sets across all sources for sidebar badge
+                var totalNew = 0;
+                sources.forEach(function(s) {
+                    if (s.newSetCount && s.enabled) {
+                        totalNew += s.newSetCount;
+                    }
+                });
+                $rootScope.discoveryNewCount = totalNew;
             });
         }
 
@@ -217,6 +228,59 @@ define(["angular"], function (angular) {
             var date = new Date(dateStr);
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
         };
+
+        // Verification
+        $scope.startVerification = function() {
+            if (!$scope.selectedSource || $scope.verifying) return;
+
+            $scope.verifying = true;
+            $scope.verifyProgress = { status: 'starting', checked: 0, total: 0 };
+
+            discoveryService.startVerification($scope.selectedSource.id).then(function(result) {
+                if (result.status === 'complete') {
+                    $scope.verifying = false;
+                    $scope.verifyProgress = null;
+                    $scope.discover(); // Refresh to show updated counts
+                } else {
+                    $scope.verifyProgress = { status: 'running', checked: 0, total: result.totalToCheck };
+                    startVerifyPolling();
+                }
+            }, function(error) {
+                $scope.verifying = false;
+                $scope.verifyProgress = null;
+                alert("Verification failed: " + (error.data ? error.data.error : "Unknown error"));
+            });
+        };
+
+        function startVerifyPolling() {
+            if (verifyPollTimer) return;
+            verifyPollTimer = setInterval(function() {
+                if (!$scope.selectedSource) {
+                    stopVerifyPolling();
+                    return;
+                }
+                discoveryService.getVerificationStatus($scope.selectedSource.id).then(function(status) {
+                    $scope.verifyProgress = status;
+                    if (status.status === 'complete' || status.status === 'idle') {
+                        stopVerifyPolling();
+                        $scope.verifying = false;
+                        $scope.discover(); // Refresh with new counts
+                    }
+                });
+            }, 3000);
+        }
+
+        function stopVerifyPolling() {
+            if (verifyPollTimer) {
+                clearInterval(verifyPollTimer);
+                verifyPollTimer = null;
+            }
+        }
+
+        // Clean up polling on scope destroy
+        $scope.$on('$destroy', function() {
+            stopVerifyPolling();
+        });
 
         // Initialize
         loadSources();

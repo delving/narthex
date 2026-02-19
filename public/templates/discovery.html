@@ -70,10 +70,38 @@
                         <!-- Discovery Result -->
                         <div ng-if="discoveryResult && !discovering">
                             <div class="well well-sm">
-                                <strong>{{ discoveryResult.totalSets }}</strong> total sets found |
+                                <strong>{{ discoveryResult.totalSets }}</strong> total sets |
                                 <strong class="text-success">{{ discoveryResult.newSets.length }}</strong> new |
                                 <strong class="text-info">{{ discoveryResult.existingSets.length }}</strong> existing |
+                                <strong class="text-muted">{{ discoveryResult.emptySets.length }}</strong> empty |
                                 <strong class="text-warning">{{ discoveryResult.ignoredSets.length }}</strong> ignored
+                                <span class="pull-right" ng-if="discoveryResult.countsAvailable">
+                                    <small class="text-muted">
+                                        <i class="fa fa-clock-o"></i> Counts verified: {{ formatDate(discoveryResult.countsLastVerified) }}
+                                    </small>
+                                </span>
+                            </div>
+
+                            <!-- Verification Controls -->
+                            <div style="margin-bottom: 15px;">
+                                <button class="btn btn-sm"
+                                        ng-class="discoveryResult.countsAvailable ? 'btn-default' : 'btn-primary'"
+                                        ng-click="startVerification()"
+                                        ng-disabled="verifying">
+                                    <i class="fa" ng-class="verifying ? 'fa-spinner fa-spin' : 'fa-check-circle'"></i>
+                                    {{ discoveryResult.countsAvailable ? 'Refresh Counts' : 'Verify Record Counts' }}
+                                </button>
+                                <span ng-if="verifyProgress && verifyProgress.status === 'running'" style="margin-left: 10px;">
+                                    <div class="progress" style="display: inline-block; width: 200px; height: 20px; margin-bottom: 0; vertical-align: middle;">
+                                        <div class="progress-bar progress-bar-striped active"
+                                             style="width: {{ verifyProgress.total > 0 ? (verifyProgress.checked / verifyProgress.total * 100) : 0 }}%;">
+                                            {{ verifyProgress.checked }} / {{ verifyProgress.total }}
+                                        </div>
+                                    </div>
+                                    <small class="text-muted" style="margin-left: 5px;">
+                                        {{ verifyProgress.withRecords }} with records
+                                    </small>
+                                </span>
                             </div>
 
                             <!-- New Sets -->
@@ -88,6 +116,7 @@
                                             <th style="width: 30px;"></th>
                                             <th>Spec</th>
                                             <th>Title</th>
+                                            <th style="width: 80px;">Records</th>
                                             <th>Mapping</th>
                                             <th style="width: 40px;"></th>
                                         </tr>
@@ -107,6 +136,14 @@
                                             <td>
                                                 {{ set.title || set.setName }}
                                                 <br><small class="text-muted" ng-if="set.description">{{ set.description | limitTo:80 }}...</small>
+                                            </td>
+                                            <td class="text-right">
+                                                <span ng-if="set.recordCount !== null && set.recordCount !== undefined">
+                                                    {{ set.recordCount | number }}
+                                                </span>
+                                                <span ng-if="set.recordCount === null || set.recordCount === undefined" class="text-muted">
+                                                    &mdash;
+                                                </span>
                                             </td>
                                             <td>
                                                 <span ng-if="set.matchedMappingRule" class="label label-primary">
@@ -151,6 +188,28 @@
                                             <td>{{ set.normalizedSpec }}</td>
                                             <td>{{ set.title || set.setName }}</td>
                                             <td><span class="label label-info">Already imported</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Empty Sets -->
+                            <div class="panel panel-default" ng-if="discoveryResult.emptySets.length > 0">
+                                <div class="panel-heading" ng-click="showEmpty = !showEmpty" style="cursor: pointer;">
+                                    <span class="badge pull-right">{{ discoveryResult.emptySets.length }}</span>
+                                    <i class="fa" ng-class="showEmpty ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                    Empty Sets <small class="text-muted">(0 records)</small>
+                                </div>
+                                <table class="table table-condensed" style="margin-bottom: 0;" ng-if="showEmpty">
+                                    <tbody>
+                                        <tr ng-repeat="set in discoveryResult.emptySets">
+                                            <td>{{ set.normalizedSpec }}</td>
+                                            <td>{{ set.title || set.setName }}</td>
+                                            <td>
+                                                <button class="btn btn-xs btn-default" ng-click="ignoreSet(set)">
+                                                    <i class="fa fa-ban"></i> Ignore
+                                                </button>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>

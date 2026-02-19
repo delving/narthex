@@ -66,6 +66,17 @@ define(["angular", "common"], function (angular) {
                     return $http.post(baseUrl + '/import', requests).then(function(r) { return r.data; });
                 },
 
+                // Record count verification
+                startVerification: function(sourceId) {
+                    return $http.post(baseUrl + '/sources/' + sourceId + '/verify')
+                        .then(function(r) { return r.data; });
+                },
+
+                getVerificationStatus: function(sourceId) {
+                    return $http.get(baseUrl + '/sources/' + sourceId + '/verify-status')
+                        .then(function(r) { return r.data; });
+                },
+
                 // Utility
                 previewSpecTransform: function(setSpec) {
                     return $http.post(baseUrl + '/preview-spec', { setSpec: setSpec }).then(function(r) { return r.data; });
