@@ -211,4 +211,24 @@ object OaiSourceConfig {
   )
 
   implicit val ignoreRequestFormat: Format[IgnoreRequest] = Json.format[IgnoreRequest]
+
+  /**
+   * Cached record counts for a source's sets.
+   */
+  case class SetCountCache(
+    sourceId: String,
+    lastVerified: DateTime,
+    counts: Map[String, Int],
+    errors: Map[String, String],
+    summary: CountSummary
+  )
+
+  case class CountSummary(
+    totalSets: Int,
+    newWithRecords: Int,
+    empty: Int
+  )
+
+  implicit val countSummaryFormat: Format[CountSummary] = Json.format[CountSummary]
+  implicit val setCountCacheFormat: Format[SetCountCache] = Json.format[SetCountCache]
 }

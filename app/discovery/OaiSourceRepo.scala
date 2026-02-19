@@ -156,6 +156,35 @@ class OaiSourceRepo(orgRoot: File) {
   }
 
   /**
+   * Load cached record counts for a source.
+   */
+  def loadCountsCache(sourceId: String): Option[SetCountCache] = {
+    val cacheFile = new File(sourcesDir, s"$sourceId-counts.json")
+    if (!cacheFile.exists()) {
+      None
+    } else {
+      try {
+        val content = FileUtils.readFileToString(cacheFile, "UTF-8")
+        Some(Json.parse(content).as[SetCountCache])
+      } catch {
+        case e: Exception =>
+          logger.error(s"Error reading counts cache for $sourceId: ${e.getMessage}", e)
+          None
+      }
+    }
+  }
+
+  /**
+   * Save record counts cache for a source.
+   */
+  def saveCountsCache(cache: SetCountCache): Unit = {
+    val cacheFile = new File(sourcesDir, s"${cache.sourceId}-counts.json")
+    val json = Json.prettyPrint(Json.toJson(cache))
+    FileUtils.writeStringToFile(cacheFile, json, "UTF-8")
+    logger.info(s"Saved counts cache for ${cache.sourceId}: ${cache.summary.newWithRecords} with records, ${cache.summary.empty} empty")
+  }
+
+  /**
    * Normalize a setSpec for use as a Narthex dataset identifier.
    * Example: "enb_05.documenten" -> "enb-05-documenten"
    */
