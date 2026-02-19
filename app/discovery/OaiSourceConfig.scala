@@ -123,8 +123,10 @@ object OaiSourceConfig {
    * @param setName           From <setName> element
    * @param title             From dc:title in setDescription (if present)
    * @param description       From dc:description in setDescription (if present)
-   * @param status            "new", "existing", or "ignored"
+   * @param status            "new", "existing", "ignored", or "empty"
    * @param matchedMappingRule  Which mapping rule matched, if any
+   * @param recordCount       Cached record count from ListIdentifiers (if verified)
+   * @param countVerifiedAt   When the record count was last verified
    */
   case class DiscoveredSet(
     setSpec: String,
@@ -133,7 +135,9 @@ object OaiSourceConfig {
     title: Option[String],
     description: Option[String],
     status: String,
-    matchedMappingRule: Option[MappingRule]
+    matchedMappingRule: Option[MappingRule],
+    recordCount: Option[Int] = None,
+    countVerifiedAt: Option[DateTime] = None
   )
 
   implicit val discoveredSetFormat: Format[DiscoveredSet] = Json.format[DiscoveredSet]
@@ -148,7 +152,10 @@ object OaiSourceConfig {
    * @param newSets    Sets that don't exist in Narthex and aren't ignored
    * @param existingSets  Sets that already exist as datasets
    * @param ignoredSets   Sets that are in the ignore list
+   * @param emptySets     Sets that have a verified record count of 0
    * @param errors     Any errors encountered during discovery
+   * @param countsLastVerified  When the counts cache was last verified
+   * @param countsAvailable     Whether a counts cache exists for this source
    */
   case class DiscoveryResult(
     sourceId: String,
@@ -158,7 +165,10 @@ object OaiSourceConfig {
     newSets: List[DiscoveredSet],
     existingSets: List[DiscoveredSet],
     ignoredSets: List[DiscoveredSet],
-    errors: List[String]
+    emptySets: List[DiscoveredSet] = List.empty,
+    errors: List[String],
+    countsLastVerified: Option[DateTime] = None,
+    countsAvailable: Boolean = false
   )
 
   implicit val discoveryResultFormat: Format[DiscoveryResult] = Json.format[DiscoveryResult]

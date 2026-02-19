@@ -128,17 +128,45 @@ class DatasetDiscoveryService @Inject()(
                   }
               }
 
-              logger.info(s"Discovery result for ${source.name}: ${newSets.size} new, ${existing.size} existing, ${ignored.size} ignored")
+              // Load cached counts
+              val countsCache = sourceRepo.loadCountsCache(sourceId)
+              val cachedCounts = countsCache.map(_.counts).getOrElse(Map.empty)
+              val countsVerifiedAt = countsCache.map(_.lastVerified)
+
+              // Enrich new sets with cached record counts and re-classify
+              val enrichedNew = newSets.map { set =>
+                cachedCounts.get(set.setSpec) match {
+                  case Some(count) =>
+                    set.copy(
+                      recordCount = Some(count),
+                      countVerifiedAt = countsVerifiedAt
+                    )
+                  case None => set
+                }
+              }
+
+              // Split new sets into truly new (has records or unknown) and empty (verified 0)
+              val (trulyNew, empty) = enrichedNew.partition { set =>
+                !set.recordCount.contains(0)
+              }
+
+              // Update empty sets status
+              val emptySets = empty.map(_.copy(status = "empty"))
+
+              logger.info(s"Discovery result for ${source.name}: ${trulyNew.size} new, ${existing.size} existing, ${emptySets.size} empty, ${ignored.size} ignored")
 
               Right(DiscoveryResult(
                 sourceId = sourceId,
                 sourceName = source.name,
                 timestamp = timestamp,
                 totalSets = discoveredSets.length,
-                newSets = newSets,
+                newSets = trulyNew,
                 existingSets = existing,
                 ignoredSets = ignored,
-                errors = List.empty
+                emptySets = emptySets,
+                errors = List.empty,
+                countsLastVerified = countsVerifiedAt,
+                countsAvailable = countsCache.isDefined
               ))
             }
         }
