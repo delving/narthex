@@ -210,11 +210,9 @@ class AppController @Inject() (
 
       def augmentWithTrends(datasets: List[DatasetIndexStats]): List[JsObject] = {
         datasets.map { ds =>
-          val trendsLog = new java.io.File(
-            orgContext.datasetsDir,
-            s"${ds.spec}/trends.jsonl"
-          )
-          val trendSummary = TrendTrackingService.getDatasetTrendSummary(trendsLog, ds.spec)
+          val dailyLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends-daily.jsonl")
+          val trendsLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends.jsonl")
+          val trendSummary = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, ds.spec)
           val baseJson = Json.toJson(ds).as[JsObject]
 
           trendSummary match {
@@ -275,8 +273,8 @@ class AppController @Inject() (
         logger.debug("Computing trends from individual dataset files")
         listDsInfo(orgContext).map { datasets =>
           val summaries = datasets.flatMap { dsInfo =>
-            val trendsLog = orgContext.datasetContext(dsInfo.spec).trendsLog
-            TrendTrackingService.getDatasetTrendSummary(trendsLog, dsInfo.spec)
+            val ctx = orgContext.datasetContext(dsInfo.spec)
+            TrendTrackingService.getDatasetTrendSummaryFromDaily(ctx.trendsDailyLog, ctx.trendsLog, dsInfo.spec)
           }
 
           // Calculate net delta across all datasets
@@ -323,8 +321,8 @@ class AppController @Inject() (
    * Get trend history for a specific dataset.
    */
   def getDatasetTrends(spec: String) = Action { request =>
-    val trendsLog = orgContext.datasetContext(spec).trendsLog
-    val trends = TrendTrackingService.getDatasetTrends(trendsLog, spec)
+    val ctx = orgContext.datasetContext(spec)
+    val trends = TrendTrackingService.getDatasetTrendsFromDaily(ctx.trendsDailyLog, ctx.trendsLog, spec)
     Ok(Json.toJson(trends))
   }
 
@@ -334,15 +332,16 @@ class AppController @Inject() (
   def triggerTrendSnapshot = Action.async { request =>
     import triplestore.GraphProperties._
 
+    val today = org.joda.time.LocalDate.now().toString("yyyy-MM-dd")
+
     listDsInfo(orgContext).flatMap { datasets =>
-      // Fetch Hub3 index counts
       indexStatsService.fetchHub3IndexCounts().map { case (_, hub3Counts) =>
         var captured = 0
         val specs = scala.collection.mutable.ListBuffer[String]()
 
         datasets.foreach { dsInfo =>
           try {
-            val trendsLog = orgContext.datasetContext(dsInfo.spec).trendsLog
+            val ctx = orgContext.datasetContext(dsInfo.spec)
             val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
             val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
             val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
@@ -350,9 +349,9 @@ class AppController @Inject() (
             val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
             val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
 
-            TrendTrackingService.captureSnapshot(
-              trendsLog = trendsLog,
-              snapshotType = "daily",
+            TrendTrackingService.captureEventSnapshot(
+              trendsLog = ctx.trendsLog,
+              event = "manual",
               sourceRecords = sourceRecords,
               acquiredRecords = acquiredRecords,
               deletedRecords = deletedRecords,
@@ -360,6 +359,9 @@ class AppController @Inject() (
               invalidRecords = invalidRecords,
               indexedRecords = indexedRecords
             )
+
+            TrendTrackingService.aggregateDay(ctx.trendsLog, ctx.trendsDailyLog, today)
+
             specs += dsInfo.spec
             captured += 1
           } catch {
@@ -368,9 +370,8 @@ class AppController @Inject() (
           }
         }
 
-        // Generate organization-level summary file for fast API responses
         try {
-          TrendTrackingService.generateTrendsSummary(
+          TrendTrackingService.generateTrendsSummaryFromDaily(
             orgContext.trendsSummaryFile,
             orgContext.datasetsDir,
             specs.toList
