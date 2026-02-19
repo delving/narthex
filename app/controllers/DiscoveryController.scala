@@ -29,7 +29,8 @@ import discovery.OaiSourceConfig._
 @Singleton
 class DiscoveryController @Inject()(
   cc: ControllerComponents,
-  discoveryService: DatasetDiscoveryService
+  discoveryService: DatasetDiscoveryService,
+  setCountVerifier: SetCountVerifier
 )(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
   private val sourceRepo = discoveryService.sourceRepo
@@ -40,7 +41,29 @@ class DiscoveryController @Inject()(
    * List all OAI sources.
    */
   def listSources: Action[AnyContent] = Action { request =>
-    Ok(Json.toJson(sourceRepo.listSources()))
+    val sources = sourceRepo.listSources()
+
+    val enrichedSources = sources.map { source =>
+      val cache = sourceRepo.loadCountsCache(source.id)
+      val sourceJson = Json.toJson(source).as[JsObject]
+
+      cache match {
+        case Some(c) =>
+          sourceJson ++ Json.obj(
+            "newSetCount" -> c.summary.newWithRecords,
+            "emptySetCount" -> c.summary.empty,
+            "countsLastVerified" -> Json.toJson(c.lastVerified)
+          )
+        case None =>
+          sourceJson ++ Json.obj(
+            "newSetCount" -> JsNull,
+            "emptySetCount" -> JsNull,
+            "countsLastVerified" -> JsNull
+          )
+      }
+    }
+
+    Ok(JsArray(enrichedSources))
   }
 
   /**
@@ -196,5 +219,67 @@ class DiscoveryController @Inject()(
       case None =>
         BadRequest(Json.obj("error" -> "Missing setSpec"))
     }
+  }
+
+  // --- Verification ---
+
+  /**
+   * Start background record count verification for a source.
+   */
+  def startVerification(id: String): Action[AnyContent] = Action.async { request =>
+    sourceRepo.getSource(id) match {
+      case None =>
+        Future.successful(NotFound(Json.obj("error" -> s"Source not found: $id")))
+      case Some(source) =>
+        if (setCountVerifier.isRunning(id)) {
+          Future.successful(Conflict(Json.obj("error" -> "Verification already running")))
+        } else {
+          discoveryService.discoverSets(id).map {
+            case Right(result) =>
+              // Check all non-existing, non-ignored sets (both new and previously empty)
+              val setsToCheck = (result.newSets ++ result.emptySets).map(_.setSpec)
+              if (setsToCheck.isEmpty) {
+                Ok(Json.obj("status" -> "complete", "totalToCheck" -> 0))
+              } else {
+                // Fire and forget — verification runs in background
+                setCountVerifier.verify(
+                  sourceId = id,
+                  baseUrl = source.url,
+                  prefix = source.defaultMetadataPrefix,
+                  setSpecs = setsToCheck,
+                  delayMs = 500,
+                  onProgress = (counts, errors) => {
+                    val withRecords = counts.values.count(_ > 0)
+                    val emptyCount = counts.values.count(_ == 0)
+                    sourceRepo.saveCountsCache(OaiSourceConfig.SetCountCache(
+                      sourceId = id,
+                      lastVerified = org.joda.time.DateTime.now(),
+                      counts = counts,
+                      errors = errors,
+                      summary = OaiSourceConfig.CountSummary(counts.size + errors.size, withRecords, emptyCount)
+                    ))
+                  }
+                )
+                Ok(Json.obj("status" -> "started", "totalToCheck" -> setsToCheck.size))
+              }
+            case Left(error) =>
+              BadRequest(Json.obj("error" -> error))
+          }
+        }
+    }
+  }
+
+  /**
+   * Get verification progress for a source.
+   */
+  def getVerificationStatus(id: String): Action[AnyContent] = Action { request =>
+    val progress = setCountVerifier.getProgress(id)
+    Ok(Json.obj(
+      "status" -> progress.status,
+      "total" -> progress.total,
+      "checked" -> progress.checked,
+      "withRecords" -> progress.withRecords,
+      "errors" -> progress.errors
+    ))
   }
 }

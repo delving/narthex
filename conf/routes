@@ -172,6 +172,9 @@ POST        /narthex/app/discovery/sources/:id/unignore                      con
 POST        /narthex/app/discovery/import                                    controllers.DiscoveryController.importSets
 + nocsrf
 POST        /narthex/app/discovery/preview-spec                              controllers.DiscoveryController.previewSpecTransform
++ nocsrf
+POST        /narthex/app/discovery/sources/:id/verify                        controllers.DiscoveryController.startVerification(id)
+GET         /narthex/app/discovery/sources/:id/verify-status                  controllers.DiscoveryController.getVerificationStatus(id)
 
 GET         /narthex/app/dataset/:spec/sip-list                              controllers.AppController.listSipFiles(spec)
 GET         /narthex/app/dataset/:spec/delete-latest                         controllers.AppController.deleteLatestSipFile(spec)
