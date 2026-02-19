@@ -69,12 +69,13 @@
                             </li>
                             <li class="sidebar-list" ng-if="enableDatasetDiscovery">
                                 <a href id="nav-discovery" data-ng-click="sidebarNav('discovery')">
-                                    Dataset Discovery<span class="menu-icon fa fa-search-plus"></span>
+                                    Dataset Discovery
                                     <span ng-if="discoveryNewCount > 0"
                                           class="badge"
-                                          style="background-color: #d9534f; color: white; margin-left: 5px; font-size: 10px;">
+                                          style="background-color: #d9534f; color: white; font-size: 10px; vertical-align: middle; margin-left: 2px;">
                                         {{ discoveryNewCount }}
                                     </span>
+                                    <span class="menu-icon fa fa-search-plus"></span>
                                 </a>
                             </li>
                             <li class="sidebar-list">

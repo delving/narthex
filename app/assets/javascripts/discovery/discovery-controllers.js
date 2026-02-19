@@ -109,6 +109,10 @@ define(["angular"], function (angular) {
             discoveryService.discoverSets($scope.selectedSource.id).then(function(result) {
                 $scope.discoveryResult = result;
                 $scope.discovering = false;
+                // Check if verification is already running (e.g. triggered externally)
+                if (!$scope.verifying) {
+                    checkForRunningVerification();
+                }
             }, function(error) {
                 $scope.discovering = false;
                 alert("Discovery failed: " + (error.data ? error.data.error : "Unknown error"));
@@ -246,9 +250,14 @@ define(["angular"], function (angular) {
                     startVerifyPolling();
                 }
             }, function(error) {
-                $scope.verifying = false;
-                $scope.verifyProgress = null;
-                alert("Verification failed: " + (error.data ? error.data.error : "Unknown error"));
+                if (error.status === 409) {
+                    // Already running — just start polling
+                    startVerifyPolling();
+                } else {
+                    $scope.verifying = false;
+                    $scope.verifyProgress = null;
+                    alert("Verification failed: " + (error.data ? error.data.error : "Unknown error"));
+                }
             });
         };
 
@@ -275,6 +284,17 @@ define(["angular"], function (angular) {
                 clearInterval(verifyPollTimer);
                 verifyPollTimer = null;
             }
+        }
+
+        function checkForRunningVerification() {
+            if (!$scope.selectedSource) return;
+            discoveryService.getVerificationStatus($scope.selectedSource.id).then(function(status) {
+                if (status.status === 'running') {
+                    $scope.verifying = true;
+                    $scope.verifyProgress = status;
+                    startVerifyPolling();
+                }
+            });
         }
 
         // Clean up polling on scope destroy
