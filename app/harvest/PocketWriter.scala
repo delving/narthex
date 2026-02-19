@@ -17,7 +17,7 @@
 package harvest
 
 import java.io._
-import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch}
+import java.util.concurrent.{CountDownLatch, LinkedBlockingQueue, TimeUnit}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.zip.GZIPOutputStream
 
@@ -29,34 +29,37 @@ import record.PocketParser._
 import services.FileHandling.createWriter
 import services.ProgressReporter
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.ConcurrentLinkedQueue
 import scala.io.Source
 import scala.util.control.NonFatal
 
 /**
- * Background pocket writer that processes harvest pages concurrently.
+ * Background pocket writer that processes harvest pages on a dedicated thread.
  *
- * During harvest, pages are submitted via addPage() and processed in the background.
+ * During harvest, pages are submitted via addPage() and processed in the background
+ * on its own daemon thread (not the shared harvesting execution context).
  * The writer parses each page into individual records (pockets) and writes them
  * to a compressed file. It also collects record IDs for the .ids file.
+ *
+ * Uses a LinkedBlockingQueue so the processing thread blocks efficiently
+ * (no busy-wait / Thread.sleep) while waiting for pages.
  *
  * @param outputFile The file to write pockets to (will be gzipped)
  * @param sourceFacts Record structure info (recordRoot, uniqueId)
  * @param idFilter Filter to apply to record IDs
  * @param orgContext Organization context for parsing
- * @param ec Execution context for background processing
  */
 class PocketWriter(
     outputFile: File,
     sourceFacts: SourceFacts,
     idFilter: IdFilter,
     orgContext: OrgContext
-)(implicit ec: ExecutionContext) {
+) {
 
   private val logger = Logger(getClass)
 
-  // Page queue for background processing
-  private val pageQueue = new ConcurrentLinkedQueue[String]()
+  // Blocking queue — processing thread waits efficiently via poll(timeout)
+  private val pageQueue = new LinkedBlockingQueue[String]()
 
   // Signals that no more pages will be added
   private val finished = new AtomicBoolean(false)
@@ -73,9 +76,12 @@ class PocketWriter(
   // Track any error that occurred during processing
   @volatile private var processingError: Option[Throwable] = None
 
-  // Start background processing immediately
-  private val processingFuture: Future[Int] = Future {
-    processPages()
+  // Dedicated daemon thread — does NOT consume the shared harvesting thread pool
+  private val processingThread: Thread = {
+    val t = new Thread(() => processPages(), s"pocket-writer-${outputFile.getName}")
+    t.setDaemon(true)
+    t.start()
+    t
   }
 
   /**
@@ -86,7 +92,7 @@ class PocketWriter(
     if (finished.get()) {
       throw new IllegalStateException("Cannot add pages after finish() has been called")
     }
-    pageQueue.offer(pageContent)
+    pageQueue.put(pageContent)
   }
 
   /**
@@ -109,8 +115,8 @@ class PocketWriter(
       throw new IllegalStateException("Must call finish() before awaitCompletion()")
     }
 
-    import java.util.concurrent.TimeUnit
     if (!completionLatch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+      processingThread.interrupt()
       throw new RuntimeException(s"Pocket writer timed out after ${timeoutMs}ms")
     }
 
@@ -133,9 +139,9 @@ class PocketWriter(
   }
 
   /**
-   * Background processing loop.
+   * Background processing loop — runs on dedicated thread.
    */
-  private def processPages(): Int = {
+  private def processPages(): Unit = {
     var writer: BufferedWriter = null
 
     try {
@@ -149,9 +155,10 @@ class PocketWriter(
       val parser = new PocketParser(sourceFacts, idFilter, orgContext)
       val progress = ProgressReporter() // Dummy progress reporter
 
-      // Process pages until finished and queue is empty
+      // Process pages until finished and queue is drained
       while (!finished.get() || !pageQueue.isEmpty) {
-        val page = pageQueue.poll()
+        // Block up to 200ms waiting for a page — efficient, no busy-wait
+        val page = pageQueue.poll(200, TimeUnit.MILLISECONDS)
 
         if (page != null) {
           // Parse this page and write pockets
@@ -171,10 +178,8 @@ class PocketWriter(
               logger.error(s"Error parsing harvest page: ${e.getMessage}", e)
               // Continue processing other pages
           }
-        } else {
-          // Queue is empty but not finished yet, wait a bit
-          Thread.sleep(10)
         }
+        // page == null means poll timed out, loop back and check finished flag
       }
 
       // Write closing tag
@@ -183,7 +188,6 @@ class PocketWriter(
 
       val count = recordCount.get()
       logger.info(s"PocketWriter completed: wrote $count records to ${outputFile.getAbsolutePath} (${outputFile.length()} bytes)")
-      count
 
     } catch {
       case NonFatal(e) =>
@@ -193,7 +197,6 @@ class PocketWriter(
         if (outputFile.exists()) {
           outputFile.delete()
         }
-        0
     } finally {
       if (writer != null) {
         try { writer.close() } catch { case _: Exception => }
@@ -206,19 +209,19 @@ class PocketWriter(
 object PocketWriter {
   /**
    * Create a PocketWriter for use during harvest.
+   * Uses a dedicated daemon thread — does not require an ExecutionContext.
    *
    * @param sourceDir The source directory where pockets.xml.gz will be written
    * @param sourceFacts Record structure info
    * @param idFilter Filter to apply to record IDs
    * @param orgContext Organization context
-   * @param ec Execution context for background processing
    */
   def create(
       sourceDir: File,
       sourceFacts: SourceFacts,
       idFilter: IdFilter,
       orgContext: OrgContext
-  )(implicit ec: ExecutionContext): PocketWriter = {
+  ): PocketWriter = {
     val outputFile = new File(sourceDir, "pockets.xml.gz")
     new PocketWriter(outputFile, sourceFacts, idFilter, orgContext)
   }

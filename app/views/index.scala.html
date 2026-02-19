@@ -67,16 +67,15 @@
                                     Default Mappings<span class="menu-icon fa fa-exchange"></span>
                                 </a>
                             </li>
-                            <li class="sidebar-list" ng-if="enableDatasetDiscovery">
+                            <li class="sidebar-list" ng-if="enableDatasetDiscovery" style="position: relative;">
                                 <a href id="nav-discovery" data-ng-click="sidebarNav('discovery')">
-                                    Dataset Discovery
-                                    <span ng-if="discoveryNewCount > 0"
-                                          class="badge"
-                                          style="background-color: #d9534f; color: white; font-size: 10px; vertical-align: middle; margin-left: 2px;">
-                                        {{ discoveryNewCount }}
-                                    </span>
-                                    <span class="menu-icon fa fa-search-plus"></span>
+                                    Dataset Discovery<span class="menu-icon fa fa-search-plus"></span>
                                 </a>
+                                <span ng-if="discoveryNewCount > 0"
+                                      class="badge"
+                                      style="position: absolute; top: 4px; left: 155px; background-color: #d9534f; color: white; font-size: 10px;">
+                                    {{ discoveryNewCount }}
+                                </span>
                             </li>
                             <li class="sidebar-list">
                                 <a href id="nav-sip-creator" data-ng-click="sidebarNav('sip-creator')">

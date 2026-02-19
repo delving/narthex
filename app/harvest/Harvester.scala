@@ -22,11 +22,11 @@ import java.io.{BufferedReader, BufferedWriter, File, FileOutputStream, InputStr
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest, HarvestStallTimeout}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, JsonHarvestConfig, JsonHarvestPage, NoRecordsMatch, PMHHarvestPage}
 import harvest.PocketWriter
 import nxutil.Utils.actorWork
@@ -39,6 +39,7 @@ import services.{ProgressReporter, StringHandling}
 import triplestore.GraphProperties
 
 import scala.concurrent._
+import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 import scala.language.postfixOps
@@ -71,17 +72,38 @@ object Harvester {
     credentials: Option[(String, String)] = None
   )
 
+  case object HarvestStallTimeout
+
   def props(datasetContext: DatasetContext, timeOut: Long, wsApi: WSClient,
-            harvestingExecutionContext: ExecutionContext) = Props(classOf[Harvester], timeOut, datasetContext,
-    wsApi, harvestingExecutionContext)
+            harvestingExecutionContext: ExecutionContext,
+            pageStallTimeoutMinutes: Int = 10) = Props(classOf[Harvester], timeOut, datasetContext,
+    wsApi, harvestingExecutionContext, pageStallTimeoutMinutes)
 }
 
 class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
-                implicit val harvestingExecutionContext: ExecutionContext) extends Actor
+                implicit val harvestingExecutionContext: ExecutionContext,
+                pageStallTimeoutMinutes: Int = 10) extends Actor
   with Harvesting
   with ActorLogging {
 
   private val logger = Logger(getClass)
+
+  // Stall detection: if no new page is received within this duration, abort harvest
+  private var stallTimer: Option[Cancellable] = None
+
+  private def resetStallTimer(strategy: HarvestStrategy): Unit = {
+    stallTimer.foreach(_.cancel())
+    stallTimer = Some(
+      context.system.scheduler.scheduleOnce(pageStallTimeoutMinutes.minutes, self, HarvestStallTimeout)(
+        context.dispatcher
+      )
+    )
+  }
+
+  private def cancelStallTimer(): Unit = {
+    stallTimer.foreach(_.cancel())
+    stallTimer = None
+  }
 
   var tempFileOpt: Option[File] = None
   var zipOutputOpt: Option[ZipOutputStream] = None
@@ -146,6 +168,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   }
 
   override def postStop(): Unit = {
+    cancelStallTimer()
     cleanup()
 
     // Also ensure semaphores are released when Harvester stops
@@ -320,7 +343,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
               sourceRepo.sourceFacts,
               idFilter,
               datasetContext.orgContext
-            )(harvestingExecutionContext)
+            )
             pocketWriterOpt = Some(writer)
             log.info(s"Initialized PocketWriter for background pocket generation")
             writer
@@ -342,6 +365,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   }
 
   def finish(strategy: HarvestStrategy, errorOpt: Option[String]) = {
+    cancelStallTimer()
     // Close ZIP output stream but keep tempFile for potential use
     zipOutputOpt.foreach { zipOutput =>
       try {
@@ -463,6 +487,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     // http://umu.adlibhosting.com/api/wwwopac.ashx?xmltype=grouped&limit=50&database=collect&search=modification%20greater%20%272014-12-01%27
 
     case HarvestAdLib(strategy, url, database, search, credentials) => actorWork(context) {
+      // Start stall timer - will abort if no page received within timeout
+      resetStallTimer(strategy)
       // Reset counters for new harvest
       pageCount = 0
       harvestedRecords = 0
@@ -505,6 +531,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case AdLibHarvestPage(records, url, database, search, strategy, diagnostic, errorOpt) => actorWork(context) {
+      resetStallTimer(strategy)
       // Check if this page contains an error from the AdLib API
       val pageHasError = errorOpt.isDefined || records.isEmpty
 
@@ -699,6 +726,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix, recordId) => actorWork(context) {
+      // Start stall timer - will abort if no page received within timeout
+      resetStallTimer(strategy)
       // Reset counters for new harvest
       pageCount = 0
       harvestedRecords = 0
@@ -800,6 +829,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount) => actorWork(context) {
+      resetStallTimer(strategy)
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
 
@@ -871,6 +901,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case HarvestJSON(strategy, url, config, credentials, apiKey) => actorWork(context) {
+      // Start stall timer - will abort if no page received within timeout
+      resetStallTimer(strategy)
       // Reset counters for new harvest
       pageCount = 0
       harvestedRecords = 0
@@ -911,6 +943,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case JsonHarvestPage(records, url, strategy, config, diagnostic, errorOpt) => actorWork(context) {
+      resetStallTimer(strategy)
       // Check if this page contains an error
       val pageHasError = errorOpt.isDefined || records.isEmpty
 
@@ -966,11 +999,20 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case HarvestError(error, strategy) =>
+      cancelStallTimer()
       finish(strategy, Some(error))
 
     case NoRecordsMatch(message, strategy) =>
+      cancelStallTimer()
       logger.debug("noRecordsMatch (pre-finish)")
       finish(strategy, Some(message))
+
+    case HarvestStallTimeout =>
+      val msg = s"Harvest stalled for $datasetContext: no new page received within $pageStallTimeoutMinutes minutes. Aborting harvest."
+      log.error(msg)
+      cancelStallTimer()
+      cleanup()
+      context.parent ! WorkFailure(msg)
   }
 
 }

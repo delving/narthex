@@ -310,10 +310,9 @@ class DatasetActor(val datasetContext: DatasetContext,
   startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
 
   // Schedule periodic check for stuck states
-  // Check every 5 minutes, max time = 120 minutes to allow for error recovery
-  // (error recovery fetches individual records with retries, which can take a long time)
+  // Check every 5 minutes, max time = 20 minutes (stall timer handles hung harvests sooner)
   private val stuckStateCheckInterval = 5.minutes
-  private val maxStateTime = 120.minutes
+  private val maxStateTime = 20.minutes
 
   log.info(s"Stuck state detection enabled: check every ${stuckStateCheckInterval.toMinutes} minutes, max state time ${maxStateTime.toMinutes} minutes")
 
@@ -671,7 +670,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           Harvester.props(datasetContext,
                          orgContext.appConfig.harvestTimeOut,
                          orgContext.wsApi,
-                         harvestingExecutionContext),
+                         harvestingExecutionContext,
+                         orgContext.appConfig.harvestPageStallTimeoutMinutes),
           "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
@@ -1243,7 +1243,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           Harvester.props(datasetContext,
                          orgContext.appConfig.harvestTimeOut,
                          orgContext.wsApi,
-                         harvestingExecutionContext),
+                         harvestingExecutionContext,
+                         orgContext.appConfig.harvestPageStallTimeoutMinutes),
           "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)

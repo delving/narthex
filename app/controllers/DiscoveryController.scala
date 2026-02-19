@@ -241,25 +241,24 @@ class DiscoveryController @Inject()(
               if (setsToCheck.isEmpty) {
                 Ok(Json.obj("status" -> "complete", "totalToCheck" -> 0))
               } else {
-                // Fire and forget — verification runs in background
+                // Fire and forget — verification runs in background, saves cache only when complete
                 setCountVerifier.verify(
                   sourceId = id,
                   baseUrl = source.url,
                   prefix = source.defaultMetadataPrefix,
                   setSpecs = setsToCheck,
-                  delayMs = 500,
-                  onProgress = (counts, errors) => {
-                    val withRecords = counts.values.count(_ > 0)
-                    val emptyCount = counts.values.count(_ == 0)
-                    sourceRepo.saveCountsCache(OaiSourceConfig.SetCountCache(
-                      sourceId = id,
-                      lastVerified = org.joda.time.DateTime.now(),
-                      counts = counts,
-                      errors = errors,
-                      summary = OaiSourceConfig.CountSummary(counts.size + errors.size, withRecords, emptyCount)
-                    ))
-                  }
-                )
+                  delayMs = 500
+                ).foreach { case (counts, errors) =>
+                  val withRecords = counts.values.count(_ > 0)
+                  val emptyCount = counts.values.count(_ == 0)
+                  sourceRepo.saveCountsCache(OaiSourceConfig.SetCountCache(
+                    sourceId = id,
+                    lastVerified = org.joda.time.DateTime.now(),
+                    counts = counts,
+                    errors = errors,
+                    summary = OaiSourceConfig.CountSummary(counts.size + errors.size, withRecords, emptyCount)
+                  ))
+                }
                 Ok(Json.obj("status" -> "started", "totalToCheck" -> setsToCheck.size))
               }
             case Left(error) =>
