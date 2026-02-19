@@ -15,12 +15,6 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     configuration.getOptional[Long]("harvest.timeout").getOrElse(3L * 60 * 1000)
   logger.info(s"harvest.timeout: $harvestTimeOut")
 
-  // Maximum time (in minutes) to wait for a harvest page before aborting.
-  // If no new page is received within this duration, the harvest is considered stalled.
-  def harvestPageStallTimeoutMinutes: Int =
-    configuration.getOptional[Int]("harvest.pageStallTimeoutMinutes").getOrElse(2)
-  logger.info(s"harvest.pageStallTimeoutMinutes: $harvestPageStallTimeoutMinutes")
-
   def useBulkApi: Boolean = true
   logger.info(s"useBulkApi: $useBulkApi")
 
