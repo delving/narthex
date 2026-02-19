@@ -884,7 +884,13 @@ class DsInfo(
   def removeLiteralProp(prop: NXProp): Unit = {
     val futureUpdate =
       ts.up.sparqlUpdate(removeLiteralPropertyQ(graphName, uri, prop))
-    Await.ready(futureUpdate, patience)
+    try {
+      Await.result(futureUpdate, patience)
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to remove property ${prop.name} for $spec: ${e.getMessage}", e)
+        throw e
+    }
     // Invalidate cached model so next read gets fresh data
     cachedModel = None
   }
@@ -1106,6 +1112,7 @@ class DsInfo(
   def setError(message: String) = {
     if (message.isEmpty) {
       removeLiteralProp(datasetErrorMessage)
+      removeLiteralProp(datasetErrorTime)
     } else {
       setSingularLiteralProps(
         datasetErrorMessage -> message,

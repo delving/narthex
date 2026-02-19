@@ -1414,7 +1414,9 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(Command(commandName), InError(message)) =>
       log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
+        log.info(s"Clearing error for ${dsInfo.spec}: $message")
         dsInfo.removeLiteralProp(datasetErrorMessage)
+        dsInfo.removeLiteralProp(datasetErrorTime)
         log.info(s"clear error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
         orgContext.saveSemaphore.release(dsInfo.spec)
