@@ -1068,19 +1068,18 @@ class DatasetActor(val datasetContext: DatasetContext,
       dsInfo.setState(SAVED)
       dsInfo.setRecordsSync(false)
 
-      // Capture trend snapshot after successful save
+      // Capture trend snapshot after successful save (change-gated)
       try {
         val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
         val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
         val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
         val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
         val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
-        // Use validRecords as proxy for indexed - actual Hub3 count checked in daily scheduler
         val indexedRecords = validRecords
 
-        TrendTrackingService.captureSnapshot(
+        TrendTrackingService.captureEventSnapshot(
           trendsLog = datasetContext.trendsLog,
-          snapshotType = "event",
+          event = "save",
           sourceRecords = sourceRecords,
           acquiredRecords = acquiredRecords,
           deletedRecords = deletedRecords,
