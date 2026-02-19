@@ -188,3 +188,47 @@ class OaiListSetsParser @Inject()(wsClient: WSClient)(implicit ec: ExecutionCont
       .filter(_.nonEmpty)
   }
 }
+
+object OaiListSetsParser {
+  /**
+   * Parse completeListSize from a ListIdentifiers XML response.
+   *
+   * Strategies (in order):
+   * 1. Read completeListSize attribute from resumptionToken
+   * 2. If no resumptionToken or no attribute, count header elements
+   * 3. noRecordsMatch error -> 0
+   * 4. Other OAI-PMH errors -> Left(error)
+   */
+  def parseCompleteListSize(xmlString: String): Either[String, Int] = {
+    try {
+      val xml = scala.xml.XML.loadString(xmlString)
+
+      // Check for OAI-PMH error
+      val errorNode = xml \\ "error"
+      if (errorNode.nonEmpty) {
+        val errorCode = (errorNode.head \ "@code").text
+        if (errorCode == "noRecordsMatch") {
+          return Right(0)
+        }
+        return Left(s"OAI-PMH error [$errorCode]: ${errorNode.head.text}")
+      }
+
+      // Try resumptionToken completeListSize attribute
+      val resumptionToken = xml \\ "resumptionToken"
+      if (resumptionToken.nonEmpty) {
+        val sizeAttr = (resumptionToken.head \ "@completeListSize").text.trim
+        if (sizeAttr.nonEmpty) {
+          return Right(sizeAttr.toInt)
+        }
+      }
+
+      // Fallback: count header elements
+      val headers = xml \\ "header"
+      Right(headers.length)
+
+    } catch {
+      case e: Exception =>
+        Left(s"Failed to parse ListIdentifiers response: ${e.getMessage}")
+    }
+  }
+}
