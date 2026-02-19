@@ -30,8 +30,8 @@ bump-version:
 	@NEW_VERSION=$$(echo $(VERSION) | awk -F. '{print $$1"."$$2"."$$3"."$$4+1}') && \
 	echo "New version: $$NEW_VERSION" && \
 	sed -i 's/version := "$(VERSION)"/version := "'$$NEW_VERSION'"/' version.sbt && \
-	sed -i 's/urlArgs: "v=$(VERSION)"/urlArgs: "v='$$NEW_VERSION'"/' app/assets/javascripts/main.js && \
-	sed -i 's/v=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/v='$$NEW_VERSION'/g' app/assets/javascripts/datasetList/main.js && \
+	sed -i 's/urlArgs: "v=[^"]*"/urlArgs: "v='$$NEW_VERSION'"/' app/assets/javascripts/main.js && \
+	sed -i 's/v=[0-9][0-9.]*[0-9]/v='$$NEW_VERSION'/g' app/assets/javascripts/datasetList/main.js && \
 	echo "Version bumped to $$NEW_VERSION in:" && \
 	echo "  - version.sbt" && \
 	echo "  - app/assets/javascripts/main.js" && \
@@ -51,7 +51,7 @@ set-version:
 	@echo "Setting version to: $(V)"
 	@sed -i 's/version := "[^"]*"/version := "$(V)"/' version.sbt
 	@sed -i 's/urlArgs: "v=[^"]*"/urlArgs: "v=$(V)"/' app/assets/javascripts/main.js
-	@sed -i 's/v=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/v=$(V)/g' app/assets/javascripts/datasetList/main.js
+	@sed -i 's/v=[0-9][0-9.]*[0-9]/v=$(V)/g' app/assets/javascripts/datasetList/main.js
 	@echo "Version set to $(V)"
 	@echo ""
 	@echo "Committing and tagging..."
