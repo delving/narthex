@@ -1,229 +1,256 @@
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <h2><i class="fa fa-map"></i> Default Mappings</h2>
-            <p class="text-muted">
-                Manage organization-wide default mappings that can be shared across datasets.
-                Mappings are organized by schema prefix (e.g., EDM, CRM) and can have multiple named variations.
-            </p>
+<div class="container-fluid" style="padding: 15px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 15px;">
+        <div>
+            <h3 style="margin: 0 0 4px 0;">
+                <i class="fa fa-exchange"></i> Default Mappings
+            </h3>
+            <small class="text-muted">Organization-wide mappings shared across datasets, organized by schema prefix.</small>
         </div>
+        <a href="#/" class="btn btn-default btn-sm">
+            <i class="fa fa-arrow-left"></i> Back to Datasets
+        </a>
     </div>
 
-    <!-- Create New Mapping Section -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h4 class="panel-title">
-                        <i class="fa fa-plus"></i> Create New Mapping
-                    </h4>
+    <!-- Create New Mapping Section (collapsible) -->
+    <div class="panel panel-default" style="margin-bottom: 20px;">
+        <div class="panel-heading" style="cursor: pointer; padding: 10px 15px;"
+             ng-click="showCreateForm = !showCreateForm">
+            <span style="font-weight: 600;">
+                <i class="fa" ng-class="showCreateForm ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                <i class="fa fa-plus" style="margin-left: 4px;"></i> Create New Mapping
+            </span>
+        </div>
+        <div class="panel-body" ng-if="showCreateForm">
+            <div class="row">
+                <div class="col-sm-3">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="control-label" style="font-size: 12px; margin-bottom: 4px;">Prefix</label>
+                        <select class="form-control input-sm" ng-model="newMappingPrefix">
+                            <option value="">Select a prefix...</option>
+                            <option ng-repeat="prefix in availablePrefixes" value="{{ prefix }}">
+                                {{ prefix | uppercase }}
+                            </option>
+                        </select>
+                    </div>
                 </div>
-                <div class="panel-body">
-                    <form class="form-inline">
-                        <div class="form-group">
-                            <label for="newMappingPrefix">Prefix:</label>
-                            <select class="form-control" id="newMappingPrefix" ng-model="newMappingPrefix">
-                                <option value="">Select a prefix...</option>
-                                <option ng-repeat="prefix in availablePrefixes" value="{{ prefix }}">
-                                    {{ prefix | uppercase }}
-                                </option>
-                            </select>
+                <div class="col-sm-3">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="control-label" style="font-size: 12px; margin-bottom: 4px;">Name</label>
+                        <input type="text" class="form-control input-sm"
+                               ng-model="newMappingName" placeholder="e.g., Museum Mapping">
+                    </div>
+                </div>
+                <div class="col-sm-2">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="control-label" style="font-size: 12px; margin-bottom: 4px;">Mapping XML</label>
+                        <div>
+                            <label class="btn btn-default btn-sm btn-block" style="margin-bottom: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <i class="fa fa-file-code-o"></i>
+                                <span ng-if="!selectedFileName">Choose file...</span>
+                                <span ng-if="selectedFileName">{{ selectedFileName }}</span>
+                                <input type="file" accept=".xml" style="display: none;"
+                                       onchange="angular.element(this).scope().onFileSelect(this.files)">
+                            </label>
                         </div>
-                        <div class="form-group">
-                            <label for="newMappingName">Name:</label>
-                            <input type="text" class="form-control" id="newMappingName"
-                                   ng-model="newMappingName" placeholder="e.g., Museum Mapping">
+                    </div>
+                </div>
+                <div class="col-sm-2">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="control-label" style="font-size: 12px; margin-bottom: 4px;">Notes</label>
+                        <input type="text" class="form-control input-sm"
+                               ng-model="uploadNotes" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="col-sm-2">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="control-label" style="font-size: 12px; margin-bottom: 4px;">&nbsp;</label>
+                        <div>
+                            <button type="button" class="btn btn-primary btn-sm btn-block" ng-click="createFirstMapping()">
+                                <i class="fa fa-upload"></i> Create &amp; Upload
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label for="mappingFile">Mapping XML:</label>
-                            <input type="file" id="mappingFile" accept=".xml"
-                                   onchange="angular.element(this).scope().onFileSelect(this.files)">
-                        </div>
-                        <div class="form-group">
-                            <label for="uploadNotes">Notes:</label>
-                            <input type="text" class="form-control" id="uploadNotes"
-                                   ng-model="uploadNotes" placeholder="Optional notes">
-                        </div>
-                        <button type="button" class="btn btn-primary" ng-click="createFirstMapping()">
-                            <i class="fa fa-upload"></i> Create & Upload
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Prefixes List (Level 1) -->
-    <div class="row">
-        <div class="col-md-12">
-            <!-- Prefix Accordion -->
-            <div class="panel panel-default" ng-repeat="prefixData in prefixes">
-                <div class="panel-heading" style="cursor: pointer" ng-click="togglePrefixExpand(prefixData.prefix)">
-                    <h4 class="panel-title">
-                        <i class="fa" ng-class="{'fa-chevron-down': isPrefixExpanded(prefixData.prefix), 'fa-chevron-right': !isPrefixExpanded(prefixData.prefix)}"></i>
-                        {{ prefixData.prefix | uppercase }}
-                        <span class="badge">{{ prefixData.mappings.length }} mapping(s)</span>
-                        <span class="badge badge-info" ng-if="getTotalVersionCount(prefixData) > 0">
-                            {{ getTotalVersionCount(prefixData) }} version(s)
-                        </span>
-                    </h4>
+    <!-- Prefixes List -->
+    <div ng-repeat="prefixData in prefixes">
+        <div class="panel panel-default" style="margin-bottom: 15px;">
+            <div class="panel-heading" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;"
+                 ng-click="togglePrefixExpand(prefixData.prefix)">
+                <h4 class="panel-title" style="margin: 0;">
+                    <i class="fa" ng-class="{'fa-chevron-down': isPrefixExpanded(prefixData.prefix), 'fa-chevron-right': !isPrefixExpanded(prefixData.prefix)}"></i>
+                    {{ prefixData.prefix | uppercase }}
+                </h4>
+                <div>
+                    <span class="badge">{{ prefixData.mappings.length }} mapping(s)</span>
+                    <span class="badge" style="background-color: #5bc0de;" ng-if="getTotalVersionCount(prefixData) > 0">
+                        {{ getTotalVersionCount(prefixData) }} version(s)
+                    </span>
                 </div>
+            </div>
 
-                <div class="panel-body" ng-if="isPrefixExpanded(prefixData.prefix)">
-                    <!-- Named Mappings List (Level 2) -->
-                    <div class="panel panel-info" ng-repeat="mapping in prefixData.mappings"
-                         style="margin-bottom: 10px;">
-                        <div class="panel-heading" style="cursor: pointer; padding: 8px 15px;"
-                             ng-click="toggleMappingExpand(prefixData.prefix, mapping.name); $event.stopPropagation()">
-                            <h5 class="panel-title" style="margin: 0;">
-                                <i class="fa" ng-class="{'fa-chevron-down': isMappingExpanded(prefixData.prefix, mapping.name), 'fa-chevron-right': !isMappingExpanded(prefixData.prefix, mapping.name)}"></i>
-                                {{ mapping.displayName }}
-                                <small class="text-muted">({{ mapping.name }})</small>
-                                <span class="badge">{{ mapping.versionCount }} version(s)</span>
-                                <span class="pull-right text-muted" style="font-size: 12px;" ng-if="mapping.latestTimestamp">
-                                    Latest: {{ formatTimestamp(mapping.latestTimestamp) }}
-                                </span>
-                            </h5>
+            <div ng-if="isPrefixExpanded(prefixData.prefix)" style="padding: 0;">
+                <!-- Named Mappings -->
+                <div ng-repeat="mapping in prefixData.mappings"
+                     style="border-bottom: 1px solid #ddd;"
+                     ng-style="{'border-bottom': $last ? 'none' : '1px solid #ddd'}">
+
+                    <!-- Mapping Header -->
+                    <div style="cursor: pointer; padding: 10px 15px; background: #f0f8ff; display: flex; align-items: center; justify-content: space-between;"
+                         ng-click="toggleMappingExpand(prefixData.prefix, mapping.name); $event.stopPropagation()">
+                        <div>
+                            <i class="fa" style="width: 14px; text-align: center;"
+                               ng-class="{'fa-chevron-down': isMappingExpanded(prefixData.prefix, mapping.name), 'fa-chevron-right': !isMappingExpanded(prefixData.prefix, mapping.name)}"></i>
+                            <strong style="margin-left: 4px;">{{ mapping.displayName }}</strong>
+                            <small class="text-muted">({{ mapping.name }})</small>
+                            <span class="label label-default" style="margin-left: 6px;">{{ mapping.versionCount }} version(s)</span>
+                        </div>
+                        <small class="text-muted" ng-if="mapping.latestTimestamp">
+                            {{ formatTimestamp(mapping.latestTimestamp) }}
+                        </small>
+                    </div>
+
+                    <!-- Mapping Body (expanded) -->
+                    <div ng-if="isMappingExpanded(prefixData.prefix, mapping.name)"
+                         ng-click="$event.stopPropagation()"
+                         style="padding: 12px 15px; background: #fff;">
+
+                        <!-- Compare Button -->
+                        <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 10px;"
+                             ng-if="mapping.versions && mapping.versions.length > 1">
+                            <button class="btn btn-xs btn-info"
+                                    ng-click="compareVersions(prefixData.prefix, mapping)"
+                                    ng-disabled="getSelectedCount(mapping) !== 2">
+                                <i class="fa fa-exchange"></i> Compare Selected
+                                <span ng-if="getSelectedCount(mapping) > 0">({{ getSelectedCount(mapping) }}/2)</span>
+                            </button>
+                            <small class="text-muted">Select exactly 2 versions to compare</small>
                         </div>
 
-                        <div class="panel-body" ng-if="isMappingExpanded(prefixData.prefix, mapping.name)"
-                             ng-click="$event.stopPropagation()">
-                            <!-- Compare Button -->
-                            <div class="btn-toolbar" style="margin-bottom: 10px;"
-                                 ng-if="mapping.versions && mapping.versions.length > 1">
-                                <button class="btn btn-sm btn-info"
-                                        ng-click="compareVersions(prefixData.prefix, mapping)"
-                                        ng-disabled="getSelectedCount(mapping) !== 2">
-                                    <i class="fa fa-exchange"></i> Compare Selected
-                                    <span ng-if="getSelectedCount(mapping) > 0">({{ getSelectedCount(mapping) }}/2)</span>
-                                </button>
-                                <span class="text-muted" style="margin-left: 10px; line-height: 30px;">
-                                    Select exactly 2 versions to compare
-                                </span>
-                            </div>
-
-                            <!-- Versions Table -->
-                            <table class="table table-striped table-hover table-condensed"
-                                   ng-if="mapping.versions && mapping.versions.length > 0">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 30px;"></th>
-                                        <th>Version</th>
-                                        <th>Timestamp</th>
-                                        <th>Source</th>
-                                        <th>Notes</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr ng-repeat="version in mapping.versions | orderBy:'-timestamp'">
-                                        <td>
-                                            <input type="checkbox" ng-model="version.selected"
-                                                   ng-disabled="getSelectedCount(mapping) >= 2 && !version.selected">
-                                        </td>
-                                        <td>
-                                            <code>{{ version.hash }}</code>
-                                            <span class="label label-success" ng-if="mapping.currentVersion === version.hash">
-                                                Current
-                                            </span>
-                                        </td>
-                                        <td>{{ formatTimestamp(version.timestamp) }}</td>
-                                        <td>
-                                            <span ng-if="version.source === 'upload'">
-                                                <i class="fa fa-upload"></i> Uploaded
-                                            </span>
-                                            <span ng-if="version.source === 'copy_from_dataset'">
-                                                <i class="fa fa-copy"></i> {{ version.sourceDataset || 'Dataset' }}
-                                            </span>
-                                        </td>
-                                        <td>{{ version.notes || '-' }}</td>
-                                        <td>
-                                            <button class="btn btn-xs btn-info"
-                                                    ng-click="previewMapping(prefixData.prefix, mapping.name, version.hash)">
-                                                <i class="fa fa-eye"></i> Preview
+                        <!-- Versions Table -->
+                        <table class="table table-striped table-condensed" style="margin-bottom: 0; font-size: 13px;"
+                               ng-if="mapping.versions && mapping.versions.length > 0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 28px;" ng-if="mapping.versions.length > 1"></th>
+                                    <th>Version</th>
+                                    <th>Timestamp</th>
+                                    <th>Source</th>
+                                    <th>Notes</th>
+                                    <th style="width: 140px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="version in mapping.versions | orderBy:'-timestamp'">
+                                    <td ng-if="mapping.versions.length > 1" style="vertical-align: middle;">
+                                        <input type="checkbox" ng-model="version.selected"
+                                               ng-disabled="getSelectedCount(mapping) >= 2 && !version.selected">
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        <code style="font-size: 12px;">{{ version.hash }}</code>
+                                        <span class="label label-success" ng-if="mapping.currentVersion === version.hash"
+                                              style="margin-left: 4px; font-size: 10px;">Current</span>
+                                    </td>
+                                    <td style="vertical-align: middle;">{{ formatTimestamp(version.timestamp) }}</td>
+                                    <td style="vertical-align: middle;">
+                                        <span ng-if="version.source === 'upload'">
+                                            <i class="fa fa-upload text-muted"></i> Uploaded
+                                        </span>
+                                        <span ng-if="version.source === 'copy_from_dataset'">
+                                            <i class="fa fa-copy text-muted"></i> {{ version.sourceDataset || 'Dataset' }}
+                                        </span>
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        <span class="text-muted" ng-if="!version.notes">-</span>
+                                        <span ng-if="version.notes">{{ version.notes }}</span>
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        <div class="btn-group btn-group-xs">
+                                            <button class="btn btn-default"
+                                                    ng-click="previewMapping(prefixData.prefix, mapping.name, version.hash)"
+                                                    title="Preview">
+                                                <i class="fa fa-eye"></i>
                                             </button>
-                                            <button class="btn btn-xs btn-success"
+                                            <button class="btn btn-default"
                                                     ng-if="mapping.currentVersion !== version.hash"
-                                                    ng-click="setCurrentVersion(prefixData.prefix, mapping.name, version.hash)">
-                                                <i class="fa fa-check"></i> Set Current
+                                                    ng-click="setCurrentVersion(prefixData.prefix, mapping.name, version.hash)"
+                                                    title="Set as current">
+                                                <i class="fa fa-check text-success"></i>
                                             </button>
-                                            <button class="btn btn-xs btn-danger"
-                                                    ng-click="deleteVersion(prefixData.prefix, mapping.name, version.hash)">
-                                                <i class="fa fa-trash"></i>
+                                            <button class="btn btn-default"
+                                                    ng-click="deleteVersion(prefixData.prefix, mapping.name, version.hash)"
+                                                    title="Delete version">
+                                                <i class="fa fa-trash text-danger"></i>
                                             </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                            <div class="alert alert-info" ng-if="!mapping.versions || mapping.versions.length === 0">
-                                <i class="fa fa-info-circle"></i> Loading versions...
-                            </div>
+                        <div class="text-center text-muted" style="padding: 15px;" ng-if="!mapping.versions || mapping.versions.length === 0">
+                            <i class="fa fa-spinner fa-spin"></i> Loading versions...
+                        </div>
 
-                            <!-- Actions for this mapping -->
-                            <hr>
+                        <!-- Upload / Copy Actions -->
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
                             <div class="row">
-                                <div class="col-md-6">
-                                    <h6><i class="fa fa-upload"></i> Upload New Version</h6>
-                                    <form class="form-inline">
-                                        <div class="form-group">
-                                            <input type="file" accept=".xml" style="width: 180px;"
+                                <div class="col-sm-6">
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <label class="btn btn-default btn-xs" style="margin-bottom: 0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            <i class="fa fa-file-code-o"></i> Choose XML...
+                                            <input type="file" accept=".xml" style="display: none;"
                                                    onchange="angular.element(this).scope().onFileSelect(this.files)">
-                                        </div>
-                                        <div class="form-group">
-                                            <input type="text" class="form-control input-sm"
-                                                   ng-model="uploadNotes" placeholder="Notes" style="width: 120px;">
-                                        </div>
-                                        <button type="button" class="btn btn-primary btn-sm"
+                                        </label>
+                                        <input type="text" class="form-control input-sm" style="width: 120px; display: inline-block;"
+                                               ng-model="uploadNotes" placeholder="Notes">
+                                        <button type="button" class="btn btn-primary btn-xs"
                                                 ng-click="uploadMapping(prefixData.prefix, mapping.name)">
                                             <i class="fa fa-upload"></i> Upload
                                         </button>
-                                    </form>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <h6><i class="fa fa-copy"></i> Copy from Dataset</h6>
-                                    <form class="form-inline">
-                                        <div class="form-group">
-                                            <select class="form-control input-sm" ng-model="selectedDataset"
-                                                    style="width: 200px;">
-                                                <option value="">Select a dataset...</option>
-                                                <option ng-repeat="ds in datasets" value="{{ ds.spec }}">
-                                                    {{ ds.spec }}
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <button type="button" class="btn btn-info btn-sm"
+                                <div class="col-sm-6">
+                                    <div style="display: flex; align-items: center; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                                        <small class="text-muted"><i class="fa fa-copy"></i> Copy from:</small>
+                                        <select class="form-control input-sm" ng-model="selectedDataset"
+                                                style="width: 180px; display: inline-block;">
+                                            <option value="">Select dataset...</option>
+                                            <option ng-repeat="ds in datasets" value="{{ ds.spec }}">
+                                                {{ ds.spec }}
+                                            </option>
+                                        </select>
+                                        <button type="button" class="btn btn-info btn-xs"
                                                 ng-disabled="!selectedDataset"
                                                 ng-click="copyFromDataset(prefixData.prefix, mapping.name, selectedDataset)">
                                             <i class="fa fa-copy"></i> Copy
                                         </button>
-                                    </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Add New Mapping to Prefix -->
-                    <div class="well well-sm" style="margin-top: 15px;">
-                        <form class="form-inline">
-                            <div class="form-group">
-                                <label>Add New Mapping:</label>
-                                <input type="text" class="form-control input-sm"
-                                       ng-model="newMappingName" placeholder="Mapping name (e.g., Archive Mapping)">
-                            </div>
-                            <button type="button" class="btn btn-success btn-sm"
-                                    ng-click="createNewMapping(prefixData.prefix)">
-                                <i class="fa fa-plus"></i> Create
-                            </button>
-                        </form>
-                    </div>
+                <!-- Add New Mapping to Prefix -->
+                <div style="padding: 10px 15px; background: #fafafa; border-top: 1px solid #ddd; display: flex; align-items: center; gap: 8px;">
+                    <small class="text-muted" style="white-space: nowrap;">Add mapping:</small>
+                    <input type="text" class="form-control input-sm" style="width: 200px;"
+                           ng-model="newMappingName" placeholder="e.g., Archive">
+                    <button type="button" class="btn btn-success btn-xs"
+                            ng-click="createNewMapping(prefixData.prefix)">
+                        <i class="fa fa-plus"></i> Create
+                    </button>
                 </div>
             </div>
-
-            <div class="alert alert-warning" ng-if="prefixes.length === 0">
-                <i class="fa fa-info-circle"></i> No default mappings found.
-                Use the form above to create your first mapping.
-            </div>
         </div>
+    </div>
+
+    <div class="alert alert-warning" ng-if="prefixes.length === 0" style="margin-top: 10px;">
+        <i class="fa fa-info-circle"></i> No default mappings found.
+        Use the form above to create your first mapping.
     </div>
 </div>

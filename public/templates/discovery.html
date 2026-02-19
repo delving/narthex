@@ -49,17 +49,17 @@
             <!-- Source selected -->
             <div ng-if="selectedSource">
                 <div class="panel panel-primary">
-                    <div class="panel-heading">
-                        <h4 class="panel-title">
+                    <div class="panel-heading" style="display: flex; align-items: center; justify-content: space-between;">
+                        <h4 class="panel-title" style="margin: 0;">
                             <i class="fa fa-search"></i> {{ selectedSource.name }}
-                            <button class="btn btn-sm btn-default pull-right" ng-click="discover()" ng-disabled="discovering">
-                                <i class="fa fa-refresh" ng-class="{'fa-spin': discovering}"></i>
-                                {{ discovering ? 'Discovering...' : 'Discover Sets' }}
-                            </button>
                         </h4>
+                        <button class="btn btn-sm btn-default" ng-click="discover()" ng-disabled="discovering">
+                            <i class="fa fa-refresh" ng-class="{'fa-spin': discovering}"></i>
+                            {{ discovering ? 'Discovering...' : 'Discover Sets' }}
+                        </button>
                     </div>
                     <div class="panel-body">
-                        <p class="text-muted small">{{ selectedSource.url }}</p>
+                        <p class="text-muted small" style="margin-bottom: 10px;">{{ selectedSource.url }}</p>
 
                         <!-- Loading -->
                         <div ng-if="discovering" class="text-center" style="padding: 40px;">
@@ -69,39 +69,41 @@
 
                         <!-- Discovery Result -->
                         <div ng-if="discoveryResult && !discovering">
-                            <div class="well well-sm">
-                                <strong>{{ discoveryResult.totalSets }}</strong> total sets |
-                                <strong class="text-success">{{ discoveryResult.newSets.length }}</strong> new |
-                                <strong class="text-info">{{ discoveryResult.existingSets.length }}</strong> existing |
-                                <strong class="text-muted">{{ discoveryResult.emptySets.length }}</strong> empty |
-                                <strong class="text-warning">{{ discoveryResult.ignoredSets.length }}</strong> ignored
-                                <span class="pull-right" ng-if="discoveryResult.countsAvailable">
-                                    <small class="text-muted">
-                                        <i class="fa fa-clock-o"></i> Counts verified: {{ formatDate(discoveryResult.countsLastVerified) }}
-                                    </small>
-                                </span>
+                            <div class="well well-sm" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                                <div>
+                                    <strong>{{ discoveryResult.totalSets }}</strong> total sets |
+                                    <strong class="text-success">{{ discoveryResult.newSets.length }}</strong> new |
+                                    <strong class="text-info">{{ discoveryResult.existingSets.length }}</strong> existing |
+                                    <strong class="text-muted">{{ discoveryResult.emptySets.length }}</strong> empty |
+                                    <strong class="text-warning">{{ discoveryResult.ignoredSets.length }}</strong> ignored
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span ng-if="discoveryResult.countsAvailable">
+                                        <small class="text-muted">
+                                            <i class="fa fa-clock-o"></i> {{ formatDate(discoveryResult.countsLastVerified) }}
+                                        </small>
+                                    </span>
+                                    <button class="btn btn-xs"
+                                            ng-class="discoveryResult.countsAvailable ? 'btn-default' : 'btn-primary'"
+                                            ng-click="startVerification()"
+                                            ng-disabled="verifying">
+                                        <i class="fa" ng-class="verifying ? 'fa-spinner fa-spin' : 'fa-check-circle'"></i>
+                                        {{ discoveryResult.countsAvailable ? 'Refresh Counts' : 'Verify Record Counts' }}
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Verification Controls -->
-                            <div style="margin-bottom: 15px;">
-                                <button class="btn btn-sm"
-                                        ng-class="discoveryResult.countsAvailable ? 'btn-default' : 'btn-primary'"
-                                        ng-click="startVerification()"
-                                        ng-disabled="verifying">
-                                    <i class="fa" ng-class="verifying ? 'fa-spinner fa-spin' : 'fa-check-circle'"></i>
-                                    {{ discoveryResult.countsAvailable ? 'Refresh Counts' : 'Verify Record Counts' }}
-                                </button>
-                                <span ng-if="verifyProgress && verifyProgress.status === 'running'" style="margin-left: 10px;">
-                                    <div class="progress" style="display: inline-block; width: 200px; height: 20px; margin-bottom: 0; vertical-align: middle;">
-                                        <div class="progress-bar progress-bar-striped active"
-                                             style="width: {{ verifyProgress.total > 0 ? (verifyProgress.checked / verifyProgress.total * 100) : 0 }}%;">
-                                            {{ verifyProgress.checked }} / {{ verifyProgress.total }}
-                                        </div>
+                            <!-- Verification Progress -->
+                            <div ng-if="verifyProgress && verifyProgress.status === 'running'" style="margin-bottom: 12px;">
+                                <div class="progress" style="height: 20px; margin-bottom: 4px;">
+                                    <div class="progress-bar progress-bar-striped active"
+                                         style="width: {{ verifyProgress.total > 0 ? (verifyProgress.checked / verifyProgress.total * 100) : 0 }}%;">
+                                        {{ verifyProgress.checked }} / {{ verifyProgress.total }}
                                     </div>
-                                    <small class="text-muted" style="margin-left: 5px;">
-                                        {{ verifyProgress.withRecords }} with records
-                                    </small>
-                                </span>
+                                </div>
+                                <small class="text-muted">
+                                    {{ verifyProgress.withRecords }} with records
+                                </small>
                             </div>
 
                             <!-- New Sets -->
