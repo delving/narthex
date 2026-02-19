@@ -66,6 +66,46 @@ object TrendDelta {
 }
 
 /**
+ * End-of-day record counts for daily summary.
+ */
+case class EndOfDayCounts(
+  sourceRecords: Int,
+  acquiredRecords: Int,
+  deletedRecords: Int,
+  validRecords: Int,
+  invalidRecords: Int,
+  indexedRecords: Int
+)
+
+object EndOfDayCounts {
+  implicit val format: Format[EndOfDayCounts] = Json.format[EndOfDayCounts]
+
+  def fromSnapshot(s: TrendSnapshot): EndOfDayCounts = EndOfDayCounts(
+    sourceRecords = s.sourceRecords,
+    acquiredRecords = s.acquiredRecords,
+    deletedRecords = s.deletedRecords,
+    validRecords = s.validRecords,
+    invalidRecords = s.invalidRecords,
+    indexedRecords = s.indexedRecords
+  )
+}
+
+/**
+ * Daily summary: one line per day in trends-daily.jsonl.
+ * Contains end-of-day counts and delta vs previous day.
+ */
+case class DailySummary(
+  date: String,
+  endOfDay: EndOfDayCounts,
+  delta: TrendDelta,
+  events: Int
+)
+
+object DailySummary {
+  implicit val format: Format[DailySummary] = Json.format[DailySummary]
+}
+
+/**
  * Summary of trends for a single dataset.
  */
 case class DatasetTrendSummary(
@@ -436,5 +476,266 @@ object TrendTrackingService extends Logging {
       shrinking = shrinking,
       stable = stable
     )
+  }
+
+  // === Task 2: Change-gated event capture ===
+
+  /**
+   * Read only the last snapshot from a trends file (efficient: reads last line only).
+   */
+  def getLastSnapshot(trendsLog: File): Option[TrendSnapshot] = {
+    if (!trendsLog.exists() || trendsLog.length() == 0) {
+      return None
+    }
+
+    Using(Source.fromFile(trendsLog)) { source =>
+      source.getLines()
+        .filter(_.nonEmpty)
+        .foldLeft(Option.empty[String])((_, line) => Some(line))
+        .flatMap(line => Try(Json.parse(line).as[TrendSnapshot]).toOption)
+    }.getOrElse(None)
+  }
+
+  /**
+   * Capture an event snapshot with guards:
+   * - Skip if sourceRecords == 0 (pre-harvest state)
+   * - Skip if counts unchanged vs last entry
+   * - Skip if sourceRecords dropped > 50% (partial harvest)
+   */
+  def captureEventSnapshot(
+    trendsLog: File,
+    event: String,
+    sourceRecords: Int,
+    acquiredRecords: Int,
+    deletedRecords: Int,
+    validRecords: Int,
+    invalidRecords: Int,
+    indexedRecords: Int
+  ): Unit = {
+    if (sourceRecords == 0) {
+      logger.debug("Skipping event snapshot: sourceRecords is 0")
+      return
+    }
+
+    val lastSnapshot = getLastSnapshot(trendsLog)
+    lastSnapshot.foreach { prev =>
+      if (prev.sourceRecords == sourceRecords &&
+          prev.acquiredRecords == acquiredRecords &&
+          prev.deletedRecords == deletedRecords &&
+          prev.validRecords == validRecords &&
+          prev.invalidRecords == invalidRecords &&
+          prev.indexedRecords == indexedRecords) {
+        logger.debug("Skipping event snapshot: counts unchanged")
+        return
+      }
+
+      if (prev.sourceRecords > 0 && sourceRecords < prev.sourceRecords * 0.5) {
+        logger.warn(s"Skipping event snapshot: sourceRecords dropped from ${prev.sourceRecords} to $sourceRecords (>50% drop, likely partial harvest)")
+        return
+      }
+    }
+
+    val snapshot = TrendSnapshot(
+      timestamp = DateTime.now(),
+      snapshotType = event,
+      sourceRecords = sourceRecords,
+      acquiredRecords = acquiredRecords,
+      deletedRecords = deletedRecords,
+      validRecords = validRecords,
+      invalidRecords = invalidRecords,
+      indexedRecords = indexedRecords
+    )
+    appendSnapshot(trendsLog, snapshot)
+    logger.debug(s"Captured event snapshot ($event): source=$sourceRecords, valid=$validRecords, indexed=$indexedRecords")
+  }
+
+  // === Task 3: Daily summary read/write ===
+
+  def appendDailySummary(dailyLog: File, summary: DailySummary): Unit = {
+    val line = Json.stringify(Json.toJson(summary)) + "\n"
+    val writer = appender(dailyLog)
+    try {
+      writer.write(line)
+      writer.flush()
+    } finally {
+      writer.close()
+    }
+  }
+
+  def readDailySummaries(dailyLog: File): List[DailySummary] = {
+    if (!dailyLog.exists()) {
+      return List.empty
+    }
+
+    Using(Source.fromFile(dailyLog)) { source =>
+      source.getLines()
+        .filter(_.nonEmpty)
+        .flatMap { line =>
+          Try(Json.parse(line).as[DailySummary]).toOption
+        }
+        .toList
+    }.getOrElse(List.empty)
+  }
+
+  def getLastDailySummary(dailyLog: File): Option[DailySummary] = {
+    if (!dailyLog.exists() || dailyLog.length() == 0) {
+      return None
+    }
+
+    Using(Source.fromFile(dailyLog)) { source =>
+      source.getLines()
+        .filter(_.nonEmpty)
+        .foldLeft(Option.empty[String])((_, line) => Some(line))
+        .flatMap(line => Try(Json.parse(line).as[DailySummary]).toOption)
+    }.getOrElse(None)
+  }
+
+  // === Task 4: Daily aggregation logic ===
+
+  def aggregateDay(trendsLog: File, dailyLog: File, date: String): Unit = {
+    val lastSnapshot = getLastSnapshot(trendsLog)
+    if (lastSnapshot.isEmpty) {
+      logger.debug(s"No snapshots to aggregate for $date")
+      return
+    }
+
+    val current = lastSnapshot.get
+    val endOfDay = EndOfDayCounts.fromSnapshot(current)
+
+    // Count events for this specific date
+    val datePrefix = date
+    val todayEvents = readSnapshots(trendsLog).count { s =>
+      timeToString(s.timestamp).startsWith(datePrefix)
+    }
+
+    val previousSummary = getLastDailySummary(dailyLog)
+
+    val delta = previousSummary match {
+      case Some(prev) =>
+        TrendDelta(
+          source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
+          valid = endOfDay.validRecords - prev.endOfDay.validRecords,
+          indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
+        )
+      case None =>
+        TrendDelta.zero
+    }
+
+    val summary = DailySummary(
+      date = date,
+      endOfDay = endOfDay,
+      delta = delta,
+      events = todayEvents
+    )
+
+    appendDailySummary(dailyLog, summary)
+    logger.info(s"Aggregated daily summary for $date: source=${endOfDay.sourceRecords}, delta=${delta.source}")
+  }
+
+  // === Task 5: Fix delta calculation ===
+
+  def calculateDeltaFromDailySummaries(summaries: List[DailySummary], daysAgo: Int): TrendDelta = {
+    if (summaries.size < 2) return TrendDelta.zero
+
+    val current = summaries.last
+    val cutoffDate = org.joda.time.LocalDate.parse(current.date).minusDays(daysAgo).toString("yyyy-MM-dd")
+
+    val baseline = summaries.reverse.find(_.date <= cutoffDate)
+
+    baseline match {
+      case Some(base) =>
+        TrendDelta(
+          source = current.endOfDay.sourceRecords - base.endOfDay.sourceRecords,
+          valid = current.endOfDay.validRecords - base.endOfDay.validRecords,
+          indexed = current.endOfDay.indexedRecords - base.endOfDay.indexedRecords
+        )
+      case None =>
+        TrendDelta.zero
+    }
+  }
+
+  // === Task 6: New summary methods ===
+
+  def getDatasetTrendSummaryFromDaily(
+    dailyLog: File,
+    trendsLog: File,
+    spec: String
+  ): Option[DatasetTrendSummary] = {
+    val dailySummaries = readDailySummaries(dailyLog)
+
+    if (dailySummaries.nonEmpty) {
+      val current = dailySummaries.last
+      Some(DatasetTrendSummary(
+        spec = spec,
+        currentSource = current.endOfDay.sourceRecords,
+        currentValid = current.endOfDay.validRecords,
+        currentIndexed = current.endOfDay.indexedRecords,
+        delta24h = calculateDeltaFromDailySummaries(dailySummaries, 1),
+        delta7d = calculateDeltaFromDailySummaries(dailySummaries, 7),
+        delta30d = calculateDeltaFromDailySummaries(dailySummaries, 30)
+      ))
+    } else {
+      getDatasetTrendSummary(trendsLog, spec)
+    }
+  }
+
+  def getDatasetTrendsFromDaily(
+    dailyLog: File,
+    trendsLog: File,
+    spec: String
+  ): DatasetTrends = {
+    val dailySummaries = readDailySummaries(dailyLog)
+    val lastSnapshot = getLastSnapshot(trendsLog)
+
+    if (dailySummaries.nonEmpty) {
+      DatasetTrends(
+        spec = spec,
+        current = lastSnapshot,
+        delta24h = calculateDeltaFromDailySummaries(dailySummaries, 1),
+        delta7d = calculateDeltaFromDailySummaries(dailySummaries, 7),
+        delta30d = calculateDeltaFromDailySummaries(dailySummaries, 30),
+        history = dailySummaries.takeRight(MAX_HISTORY_DAYS).map { ds =>
+          TrendSnapshot(
+            timestamp = DateTime.parse(ds.date + "T23:59:59.000Z"),
+            snapshotType = "daily",
+            sourceRecords = ds.endOfDay.sourceRecords,
+            acquiredRecords = ds.endOfDay.acquiredRecords,
+            deletedRecords = ds.endOfDay.deletedRecords,
+            validRecords = ds.endOfDay.validRecords,
+            invalidRecords = ds.endOfDay.invalidRecords,
+            indexedRecords = ds.endOfDay.indexedRecords
+          )
+        }
+      )
+    } else {
+      getDatasetTrends(trendsLog, spec)
+    }
+  }
+
+  def generateTrendsSummaryFromDaily(summaryFile: File, datasetsDir: File, specs: List[String]): Unit = {
+    val summaries = specs.flatMap { spec =>
+      val dailyLog = new File(datasetsDir, s"$spec/trends-daily.jsonl")
+      val trendsLog = new File(datasetsDir, s"$spec/trends.jsonl")
+      getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, spec)
+    }
+
+    val summary = TrendsSummaryFile(
+      generatedAt = DateTime.now(),
+      summaries = summaries
+    )
+
+    val tmpFile = new File(summaryFile.getParent, summaryFile.getName + ".tmp")
+    val content = Json.prettyPrint(Json.toJson(summary))
+
+    val writer = new java.io.FileWriter(tmpFile)
+    try {
+      writer.write(content)
+      writer.flush()
+    } finally {
+      writer.close()
+    }
+
+    tmpFile.renameTo(summaryFile)
+    logger.info(s"Generated trends summary from daily data: ${summaries.size} datasets")
   }
 }
