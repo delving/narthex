@@ -671,7 +671,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           Harvester.props(datasetContext,
                          orgContext.appConfig.harvestTimeOut,
                          orgContext.wsApi,
-                         harvestingExecutionContext),
+                         harvestingExecutionContext,
+                         orgContext.appConfig.harvestPageStallTimeoutMinutes),
           "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
@@ -1243,7 +1244,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           Harvester.props(datasetContext,
                          orgContext.appConfig.harvestTimeOut,
                          orgContext.wsApi,
-                         harvestingExecutionContext),
+                         harvestingExecutionContext,
+                         orgContext.appConfig.harvestPageStallTimeoutMinutes),
           "harvester")
         harvester ! kickoff
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
