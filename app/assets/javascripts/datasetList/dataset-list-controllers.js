@@ -1301,6 +1301,44 @@ define(["angular"], function () {
             return '/narthex/preview/' + encodeURIComponent(fullUrl);
         };
 
+        // Copy harvest URL to clipboard with visual feedback
+        $scope.harvestUrlCopied = false;
+        $scope.incrementalUrlCopied = false;
+        $scope.copyHarvestUrl = function(url, isIncremental) {
+            if (!url) return;
+            var flagName = isIncremental ? 'incrementalUrlCopied' : 'harvestUrlCopied';
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+            } else {
+                var textarea = document.createElement('textarea');
+                textarea.value = url;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+            $scope[flagName] = true;
+            $timeout(function() { $scope[flagName] = false; }, 2000);
+        };
+
+        // Get the raw harvest URL for the current harvest type
+        $scope.getRawHarvestUrl = function() {
+            var type = $scope.dataset.edit.harvestType;
+            if (type == 'pmh') return $scope.pmhPreviewBase;
+            if (type == 'adlib') return $scope.adlibPreviewBase;
+            if (type == 'download') return $scope.dataset.edit.harvestDownloadURL;
+            if (type == 'json') return '/narthex/preview/json/' + $scope.dataset.datasetSpec;
+            return '';
+        };
+
+        // Get the raw incremental harvest URL
+        $scope.getRawIncrementalUrl = function() {
+            if (!$scope.pmhPreviewBase) return '';
+            var fromDate = $scope.trimMillis($scope.dataset.edit.harvestPreviousTime);
+            if (!fromDate) return $scope.pmhPreviewBase;
+            return $scope.pmhPreviewBase + '&from=' + fromDate + 'Z';
+        };
+
         // Build preview URLs initially
         buildPreviewUrls();
 

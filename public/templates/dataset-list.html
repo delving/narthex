@@ -1429,7 +1429,7 @@
                 </div>
             </div>
 
-            <div class="btn-group  pull-right" role="group">
+            <div class="btn-group pull-right" role="group">
                 <button type="button" class="btn btn-default" data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')" data-ng-disabled="!unchangedHarvest">
                     <i class="fa fa-download"></i>
                     <span>Harvest</span>
@@ -1455,6 +1455,11 @@
                     <span>Preview</span>
                 </a>
             </div>
+            <button type="button" class="btn btn-default" style="margin-left: 5px;" data-ng-click="copyHarvestUrl(getRawHarvestUrl(), false)" title="Copy harvest URL to clipboard">
+                <i class="fa" data-ng-class="harvestUrlCopied ? 'fa-check' : 'fa-clipboard'"></i>
+                <span data-ng-hide="harvestUrlCopied">Copy URL</span>
+                <span data-ng-show="harvestUrlCopied">Copied!</span>
+            </button>
             <button type="button" class="btn btn-success" data-ng-click="setHarvest()" data-ng-disabled="unchangedHarvest">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
@@ -1519,6 +1524,11 @@
             <button type="button" class="btn btn-success" data-ng-click="setHarvestCron()" data-ng-disabled="unchangedHarvestCron">
                 <i class="fa fa-check-circle"></i>
                 <span>Save</span>
+            </button>
+            <button type="button" class="btn btn-default pull-right" style="margin-left: 5px;" data-ng-click="copyHarvestUrl(getRawIncrementalUrl(), true)" data-ng-disabled="!incrementalPreview" title="Copy harvest URL to clipboard">
+                <i class="fa" data-ng-class="incrementalUrlCopied ? 'fa-check' : 'fa-clipboard'"></i>
+                <span data-ng-hide="incrementalUrlCopied">Copy URL</span>
+                <span data-ng-show="incrementalUrlCopied">Copied!</span>
             </button>
             <a ng-href="{{ getIncrementalPreviewUrl() }}" target="_blank" class="btn btn-default pull-right" data-ng-disabled="!incrementalPreview">
                 <i class="fa fa-binoculars"></i>
