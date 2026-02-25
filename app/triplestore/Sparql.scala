@@ -187,7 +187,8 @@ object Sparql {
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
-      |    ?s nx:harvestInRetry true .
+      |    ?s nx:harvestInRetry ?retryFlag .
+      |    FILTER (?retryFlag = true || str(?retryFlag) = "true")
       |    OPTIONAL { ?s nx:harvestRetryCount ?retryCount }
       |    OPTIONAL { ?s nx:harvestLastRetryTime ?lastRetryTime }
       |    OPTIONAL { ?s nx:harvestRetryMessage ?retryMessage }

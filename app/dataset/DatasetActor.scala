@@ -244,6 +244,7 @@ class DatasetActor(val datasetContext: DatasetContext,
   val dsInfo = datasetContext.dsInfo
 
   val errorMessage = dsInfo.getLiteralProp(datasetErrorMessage).getOrElse("")
+  val retryMessage = dsInfo.getLiteralProp(harvestRetryMessage).getOrElse("")
 
   // Use Akka event stream for WebSocket broadcasts - this is more reliable than
   // actor selection which can fail due to path mismatches with Play's ActorFlow
@@ -307,7 +308,17 @@ class DatasetActor(val datasetContext: DatasetContext,
     active.progressState == HARVESTING
   }
 
-  startWith(Idle, if (errorMessage.nonEmpty) InError(errorMessage) else Dormant)
+  startWith(Idle,
+    if (dsInfo.isInRetry) {
+      val retryCount = dsInfo.getRetryCount
+      log.info(s"Restoring retry state for ${dsInfo.spec} (attempt #$retryCount): $retryMessage")
+      InRetry(retryMessage, retryCount)
+    } else if (errorMessage.nonEmpty) {
+      InError(errorMessage)
+    } else {
+      Dormant
+    }
+  )
 
   // Schedule periodic check for stuck states
   // Check every 5 minutes, max time = 20 minutes (stall timer handles hung harvests sooner)
