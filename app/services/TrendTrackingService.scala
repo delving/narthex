@@ -131,7 +131,9 @@ case class DatasetTrends(
   delta24h: TrendDelta,
   delta7d: TrendDelta,
   delta30d: TrendDelta,
-  history: List[TrendSnapshot]  // Last 30 daily snapshots
+  history: List[TrendSnapshot],  // Last 30 daily snapshots
+  recentEvents: List[TrendSnapshot] = List.empty,  // Recent event snapshots (last 48h)
+  dailySummaries: List[DailySummary] = List.empty   // Raw daily summaries for chart
 )
 
 object DatasetTrends {
@@ -275,24 +277,21 @@ object TrendTrackingService extends Logging {
 
   /**
    * Calculate delta for a time window.
-   * Compares most recent snapshot to oldest snapshot within the window.
+   * Compares most recent snapshot to the most recent snapshot before the window.
    */
   def calculateDeltaForWindow(snapshots: List[TrendSnapshot], hoursAgo: Int): TrendDelta = {
     val cutoff = DateTime.now().minusHours(hoursAgo)
-    val inWindow = snapshots.filter(_.timestamp.isAfter(cutoff))
+    val sorted = snapshots.sortBy(_.timestamp.getMillis)
 
-    if (inWindow.size < 2) {
-      // Not enough data points - check if we have current vs anything older
-      val sorted = snapshots.sortBy(_.timestamp.getMillis)
-      (sorted.lastOption, sorted.find(_.timestamp.isBefore(cutoff)).orElse(sorted.headOption)) match {
-        case (Some(current), Some(previous)) if current != previous =>
-          calculateDelta(current, previous)
-        case _ =>
-          TrendDelta.zero
-      }
-    } else {
-      val sorted = inWindow.sortBy(_.timestamp.getMillis)
-      calculateDelta(sorted.last, sorted.head)
+    val current = sorted.lastOption
+    // Find the most recent snapshot BEFORE the cutoff (closest baseline)
+    val baseline = sorted.filter(_.timestamp.isBefore(cutoff)).lastOption
+
+    (current, baseline) match {
+      case (Some(curr), Some(prev)) if curr != prev =>
+        calculateDelta(curr, prev)
+      case _ =>
+        TrendDelta.zero
     }
   }
 
@@ -684,17 +683,23 @@ object TrendTrackingService extends Logging {
     trendsLog: File,
     spec: String
   ): DatasetTrends = {
-    val dailySummaries = readDailySummaries(dailyLog)
+    val dailySums = readDailySummaries(dailyLog)
     val lastSnapshot = getLastSnapshot(trendsLog)
 
-    if (dailySummaries.nonEmpty) {
+    // Get recent event snapshots (last 48h) for detailed 24h chart
+    val cutoff48h = DateTime.now().minusHours(48)
+    val recentEvents = readSnapshots(trendsLog)
+      .filter(s => s.timestamp.isAfter(cutoff48h) && s.snapshotType != "daily")
+      .sortBy(_.timestamp.getMillis)
+
+    if (dailySums.nonEmpty) {
       DatasetTrends(
         spec = spec,
         current = lastSnapshot,
-        delta24h = calculateDeltaFromDailySummaries(dailySummaries, 1),
-        delta7d = calculateDeltaFromDailySummaries(dailySummaries, 7),
-        delta30d = calculateDeltaFromDailySummaries(dailySummaries, 30),
-        history = dailySummaries.takeRight(MAX_HISTORY_DAYS).map { ds =>
+        delta24h = calculateDeltaFromDailySummaries(dailySums, 1),
+        delta7d = calculateDeltaFromDailySummaries(dailySums, 7),
+        delta30d = calculateDeltaFromDailySummaries(dailySums, 30),
+        history = dailySums.takeRight(MAX_HISTORY_DAYS).map { ds =>
           TrendSnapshot(
             timestamp = DateTime.parse(ds.date + "T23:59:59.000Z"),
             snapshotType = "daily",
@@ -705,7 +710,9 @@ object TrendTrackingService extends Logging {
             invalidRecords = ds.endOfDay.invalidRecords,
             indexedRecords = ds.endOfDay.indexedRecords
           )
-        }
+        },
+        recentEvents = recentEvents,
+        dailySummaries = dailySums.takeRight(MAX_HISTORY_DAYS)
       )
     } else {
       getDatasetTrends(trendsLog, spec)

@@ -523,8 +523,10 @@ object DsInfo {
         }
 
         // Add trend data (24h delta for indexed records)
+        // Prefer daily summaries (accurate), fall back to raw snapshots (legacy)
         val trendsLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends.jsonl")
-        val trendData = TrendTrackingService.getDatasetTrendSummary(trendsLog, ds.spec) match {
+        val dailyLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends-daily.jsonl")
+        val trendData = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, ds.spec) match {
           case Some(summary) =>
             Json.obj(
               "trend24h" -> Json.obj(
