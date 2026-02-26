@@ -91,6 +91,7 @@ define(["angular"], function () {
             socket.onopen = function () {
                 console.log("WebSocket connected");
                 socket.send("user arrived on datasets page");
+                var wasReconnect = reconnectAttempts > 0;
                 reconnectAttempts = 0;
                 reconnectDelay = 1000;
                 isReconnecting = false;
@@ -101,6 +102,13 @@ define(["angular"], function () {
                     $scope.websocketConnected = true;
                     $scope.websocketError = null;
                 });
+
+                // After reconnect, refresh state for all subscribed (expanded) datasets
+                // to catch any state changes that were missed during the disconnect
+                if (wasReconnect) {
+                    console.log("WebSocket reconnected - refreshing subscribed datasets");
+                    refreshSubscribedDatasets();
+                }
             };
 
             socket.onmessage = function (messageReturned) {
@@ -282,6 +290,42 @@ define(["angular"], function () {
             $scope.socketSubscribers[spec] = undefined;
         };
 
+        /**
+         * After WebSocket reconnect, refresh state for all subscribed datasets.
+         * This catches any state transitions (e.g. analyze/process completing)
+         * that were missed while the WebSocket was disconnected.
+         */
+        function refreshSubscribedDatasets() {
+            var specs = Object.keys($scope.socketSubscribers).filter(function(spec) {
+                return $scope.socketSubscribers[spec]; // filter out undefined entries
+            });
+            specs.forEach(function(spec) {
+                console.log("Refreshing state for subscribed dataset: " + spec);
+                datasetListService.datasetInfo(spec).then(function(freshData) {
+                    var callback = $scope.socketSubscribers[spec];
+                    if (callback) {
+                        // Trigger the subscriber callback with fresh state (same as WebSocket message)
+                        callback(freshData);
+                    }
+                    // Also update the dataset in the list
+                    var idx = _.findIndex($scope.datasets, function(ds) {
+                        return ds.datasetSpec === spec || ds.spec === spec;
+                    });
+                    if (idx !== -1) {
+                        angular.extend($scope.datasets[idx], freshData);
+                        if ($scope.datasets[idx].isLight) {
+                            $scope.decorateDatasetLight($scope.datasets[idx]);
+                        } else {
+                            $scope.decorateDataset($scope.datasets[idx]);
+                        }
+                    }
+                    $scope.updateDatasetStateCounter();
+                });
+            });
+            // Also refresh the full dataset list state counters
+            $scope.updateActiveDatasets();
+        }
+
         function checkNewEnabled() {
             if ($scope.newDataset.specTyped)
                 $scope.newDataset.spec = $scope.newDataset.specTyped.trim().replace(/\W+/g, "-").replace(/[-_]+/g, "-").toLowerCase();
@@ -316,6 +360,8 @@ define(["angular"], function () {
             } else if (filter === 'stateQueued') {
                 // Exclude datasets that are processing/saving (they've moved past queued state)
                 return ds.isQueued === true && !ds.isProcessing && !ds.isSaving;
+            } else if (filter === 'stateRetry') {
+                return ds.inRetry === true && !ds.isProcessing && !ds.isSaving && !ds.isQueued;
             } else if (filter === 'stateEmpty') {
                 return ds.empty;
             } else {
@@ -926,6 +972,15 @@ define(["angular"], function () {
             $scope.updateActiveDatasets();
         }, 5000);
 
+        // Poll for subscribed (expanded) dataset state every 15 seconds as WebSocket fallback.
+        // This catches state transitions missed due to brief WebSocket disconnects.
+        var subscribedRefreshInterval = setInterval(function () {
+            if (!$scope.websocketConnected) {
+                // WebSocket is down - refresh subscribed datasets via HTTP
+                refreshSubscribedDatasets();
+            }
+        }, 15000);
+
         // Index stats alert badge (wrong count + not indexed)
         $scope.indexStatsAlertCount = 0;
         $scope.updateIndexStatsAlertCount = function () {
@@ -945,6 +1000,7 @@ define(["angular"], function () {
         // Clean up intervals on scope destruction
         $scope.$on('$destroy', function () {
             clearInterval(activeDatasetsInterval);
+            clearInterval(subscribedRefreshInterval);
             clearInterval(alertCountInterval);
         });
 
@@ -967,10 +1023,13 @@ define(["angular"], function () {
             // Count activity-based states separately
             var workingCount = 0;
             var queuedCount = 0;
+            var retryCount = 0;
             _.forEach($scope.datasets, function(dataset) {
                 if (dataset.isProcessing || dataset.isSaving) workingCount++;
                 if (dataset.isQueued) queuedCount++;
+                if (dataset.inRetry && !dataset.isProcessing && !dataset.isSaving && !dataset.isQueued) retryCount++;
             });
+            $scope.retryDatasetCount = retryCount;
 
             $scope.datasetStates = _.map(
                 $scope.datasetStates,
@@ -1055,6 +1114,57 @@ define(["angular"], function () {
                         modalAlert.error("Fast Save Failed",
                             error.data && error.data.problem ? error.data.problem : error.statusText);
                     });
+            });
+        };
+
+        // Bulk selection and actions
+        $scope.selectAll = false;
+
+        $scope.selectedCount = function() {
+            return $scope.datasets.filter(function(ds) { return ds.selected && ds.visible; }).length;
+        };
+
+        $scope.toggleSelectAll = function() {
+            $scope.datasets.forEach(function(ds) {
+                if (ds.visible) ds.selected = $scope.selectAll;
+            });
+        };
+
+        $scope.clearSelection = function() {
+            $scope.selectAll = false;
+            $scope.datasets.forEach(function(ds) { ds.selected = false; });
+        };
+
+        $scope.bulkFastSave = function() {
+            var selected = $scope.datasets.filter(function(ds) { return ds.selected && ds.visible; });
+            if (selected.length === 0) return;
+
+            var confirmMessage = "Run Fast Save on " + selected.length + " datasets?";
+            modalAlert.confirm("Bulk Fast Save", confirmMessage, function() {
+                var delay = 0;
+                selected.forEach(function(ds) {
+                    // Determine state for each dataset
+                    var state = null;
+                    if (ds.stateAnalyzed) state = 'stateAnalyzed';
+                    else if (ds.stateProcessed) state = 'stateProcessed';
+                    else if (ds.stateProcessable) state = 'stateProcessable';
+                    else if (ds.stateSourced) state = 'stateSourced';
+
+                    if (state) {
+                        // Stagger commands slightly to avoid overwhelming the queue
+                        $timeout(function() {
+                            datasetListService.command(ds.datasetSpec, "start fast save from " + state)
+                                .then(function() {
+                                    console.log("Bulk fast save queued: " + ds.datasetSpec);
+                                })
+                                .catch(function(error) {
+                                    console.log("Bulk fast save error for " + ds.datasetSpec + ":", error);
+                                });
+                        }, delay);
+                        delay += 200;
+                    }
+                });
+                $scope.clearSelection();
             });
         };
 

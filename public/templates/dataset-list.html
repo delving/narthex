@@ -102,6 +102,13 @@
                     <i class="fa fa-clock-o"></i>
                     {{ activeDatasets.queued.length }} queued
                 </button>
+                <button type="button" class="btn"
+                        ng-class="{'btn-warning': stateFilter === 'stateRetry', 'btn-default': stateFilter !== 'stateRetry'}"
+                        ng-click="stateFilter === 'stateRetry' ? stateFilter = '' : setStateFilter('stateRetry')"
+                        ng-if="retryDatasetCount > 0">
+                    <i class="fa fa-refresh"></i>
+                    {{ retryDatasetCount }} retrying
+                </button>
                 <button type="button" class="btn btn-default"
                         ng-click="toggleStatsPanel()"
                         title="Show completion statistics">
@@ -208,9 +215,23 @@
     <div data-ng-if="!datasets.length" class="col-md-12">
         <h4>No datasets</h4>
     </div>
+    <!-- Bulk Actions Bar -->
+    <div ng-if="selectedCount() > 0" class="bulk-actions-bar"
+         style="padding: 8px 15px; background-color: #d9edf7; border: 1px solid #bce8f1; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px;">
+        <strong>{{ selectedCount() }} selected</strong>
+        <button class="btn btn-sm btn-primary" ng-click="bulkFastSave()">
+            <i class="fa fa-forward"></i> Fast Save
+        </button>
+        <button class="btn btn-sm btn-default" ng-click="clearSelection()">
+            <i class="fa fa-times"></i> Clear
+        </button>
+    </div>
     <table class="dataset-list-table">
         <thead>
             <tr>
+                <th style="width: 30px; text-align: center;">
+                    <input type="checkbox" ng-model="selectAll" ng-change="toggleSelectAll()" title="Select all visible">
+                </th>
                 <th class="spec">Spec</th>
                 <th class="name">Display name</th>
                 <th class="acquired" title="Acquired records (harvested or uploaded) and deleted count">Acquired</th>
@@ -232,6 +253,9 @@
                             class="clickable"
                             data-ng-class="{ 'closed': !expanded, 'open': expanded }"
                             style="{{dataset.isActive ? 'background-color: #f0f8ff; border-left: 3px solid #337ab7;' : (dataset.isQueued ? 'background-color: #fff8e6; border-left: 3px solid #f0ad4e;' : '')}}">
+                            <td style="width: 30px; text-align: center;" ng-click="$event.stopPropagation()">
+                                <input type="checkbox" ng-model="dataset.selected">
+                            </td>
                             <td class="spec">
                                 <span class="spec-field">{{ dataset.datasetSpec }}
                                     <i data-ng-show="dataset.isActive || dataset.progress" class="fa fa-spinner fa-pulse fa-1x fa-fw" title="Processing or saving"></i>
