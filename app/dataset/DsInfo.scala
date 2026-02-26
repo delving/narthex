@@ -1111,10 +1111,39 @@ class DsInfo(
   def removeState(state: DsState.Value) =
     removeLiteralProp(NXProp(state.toString, GraphProperties.timeProp))
 
+  /** Clear all post-harvest workflow states, resetting back to SOURCED. */
+  def resetToSourced(): Unit = {
+    import DsState._
+    removeState(SAVED)
+    removeState(ANALYZED)
+    removeState(INCREMENTAL_SAVED)
+    removeState(PROCESSED)
+    removeState(PROCESSABLE)
+    setState(SOURCED)
+  }
+
+  /** Clear all downstream workflow states (e.g. after re-analysis or new upload). */
+  def clearWorkflowStates(): Unit = {
+    import DsState._
+    removeState(RAW_ANALYZED)
+    removeState(ANALYZED)
+    removeState(SOURCED)
+    removeState(MAPPABLE)
+    removeState(PROCESSABLE)
+    removeState(PROCESSED)
+    removeState(SAVED)
+    removeState(INCREMENTAL_SAVED)
+    removeLiteralProp(GraphProperties.delimitersSet)
+  }
+
+  def clearError(): Unit = {
+    removeLiteralProp(datasetErrorMessage)
+    removeLiteralProp(datasetErrorTime)
+  }
+
   def setError(message: String) = {
     if (message.isEmpty) {
-      removeLiteralProp(datasetErrorMessage)
-      removeLiteralProp(datasetErrorTime)
+      clearError()
     } else {
       setSingularLiteralProps(
         datasetErrorMessage -> message,
@@ -1129,7 +1158,7 @@ class DsInfo(
    */
   def setInRetry(message: String, retryCount: Int = 0): Unit = {
     // Clear existing error message (don't block UI)
-    removeLiteralProp(datasetErrorMessage)
+    clearError()
 
     // Set retry state
     setSingularLiteralProps(

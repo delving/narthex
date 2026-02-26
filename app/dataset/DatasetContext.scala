@@ -108,18 +108,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
     def sendRefresh() = orgContext.orgActor ! dsInfo.createMessage(Command("refresh"))
 
-    // Helper to clean up all workflow states when uploading a new raw file
-    def cleanupWorkflowStates(): Unit = {
-      dsInfo.removeState(RAW_ANALYZED)
-      dsInfo.removeState(ANALYZED)
-      dsInfo.removeState(SOURCED)
-      dsInfo.removeState(MAPPABLE)
-      dsInfo.removeState(PROCESSABLE)
-      dsInfo.removeState(PROCESSED)
-      dsInfo.removeState(SAVED)
-      dsInfo.removeState(INCREMENTAL_SAVED)
-      dsInfo.removeLiteralProp(GraphProperties.delimitersSet)
-    }
+    def cleanupWorkflowStates(): Unit = dsInfo.clearWorkflowStates()
 
     if (fileName.endsWith(".csv")) {
       val csvFile = setTargetFile(createRawFile(fileName))
