@@ -1427,6 +1427,13 @@ class DatasetActor(val datasetContext: DatasetContext,
         orgContext.semaphore.release(dsInfo.spec)
         orgContext.saveSemaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
+      } else if (commandName.startsWith("start")) {
+        log.info(s"Clearing error for ${dsInfo.spec} and forwarding command: $commandName")
+        dsInfo.clearError()
+        orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
+        self ! Command(commandName)
+        goto(Idle) using Dormant
       } else {
         log.info(s"in error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
