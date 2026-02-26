@@ -165,9 +165,11 @@ define(["angular"], function () {
                                     existingDataset.currentOperation = message.currentOperation;
                                 }
                                 if (message.operationStatus !== undefined) existingDataset.operationStatus = message.operationStatus;
-                                // Only update error fields with truthy values - don't clear existing errors with null
-                                if (message.errorMessage) existingDataset.errorMessage = message.errorMessage;
-                                if (message.errorTime) existingDataset.errorTime = message.errorTime;
+                                // Update error fields - clear them when absent from message
+                                existingDataset.errorMessage = message.errorMessage || null;
+                                existingDataset.errorTime = message.errorTime || null;
+                                existingDataset.datasetErrorMessage = message.datasetErrorMessage || null;
+                                existingDataset.datasetErrorTime = message.datasetErrorTime || null;
 
                                 // Re-decorate to update computed properties
                                 $scope.decorateDatasetLight(existingDataset);
@@ -181,6 +183,10 @@ define(["angular"], function () {
                                 var operationChanged = existingDataset.currentOperation !== message.currentOperation;
                                 // Use angular.extend to merge properties without replacing the object
                                 angular.extend(existingDataset, message);
+                                // Clear error fields when absent from message (extend won't remove old keys)
+                                if (!message.datasetErrorMessage) existingDataset.datasetErrorMessage = null;
+                                if (!message.datasetErrorTime) existingDataset.datasetErrorTime = null;
+                                if (!message.errorMessage) existingDataset.errorMessage = null;
                                 // Re-decorate to update computed properties
                                 $scope.decorateDataset(existingDataset);
 
@@ -1293,6 +1299,10 @@ define(["angular"], function () {
                     // Merge message into existing dataset (like collapsed handler does)
                     // This preserves existing state fields that aren't in the message
                     angular.extend($scope.dataset, message);
+                    // Clear error fields when absent from message (extend won't remove old keys)
+                    if (!message.datasetErrorMessage) $scope.dataset.datasetErrorMessage = null;
+                    if (!message.datasetErrorTime) $scope.dataset.datasetErrorTime = null;
+                    if (!message.errorMessage) $scope.dataset.errorMessage = null;
                     $scope.decorateDataset($scope.dataset);
 
                     // Restore progress if dataset is still active (has current operation)
