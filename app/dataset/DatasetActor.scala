@@ -576,6 +576,13 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           // todo: category counting?
 
+          case "clear error" =>
+            log.info(s"Clearing stale error for ${dsInfo.spec}")
+            dsInfo.clearError()
+            dsInfo.clearRetryState()
+            broadcastIdleState()
+            "error cleared"
+
           case _ =>
             log.warning(s"$this sent unrecognized command $commandName")
             "unrecognized"
@@ -731,16 +738,8 @@ class DatasetActor(val datasetContext: DatasetContext,
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       } else {
         // Raw analysis: clean up all downstream workflow states (they're now stale)
-        // This handles re-analysis scenarios where old states should be invalidated
         log.info(s"Cleaning up stale workflow states for ${dsInfo.spec}")
-        dsInfo.removeState(SOURCED)
-        dsInfo.removeState(MAPPABLE)
-        dsInfo.removeState(PROCESSABLE)
-        dsInfo.removeState(PROCESSED)
-        dsInfo.removeState(ANALYZED)
-        dsInfo.removeState(SAVED)
-        dsInfo.removeState(INCREMENTAL_SAVED)
-        dsInfo.removeLiteralProp(delimitersSet)
+        dsInfo.clearWorkflowStates()
 
         val rawFile = datasetContext.rawXmlFile.getOrElse(
           throw new Exception(s"Unable to find 'raw' file to analyze"))
@@ -850,12 +849,7 @@ class DatasetActor(val datasetContext: DatasetContext,
               dsInfo.setHarvestIncrementalMode(true)
             }
           case _ =>
-            dsInfo.removeState(SAVED)
-            dsInfo.removeState(ANALYZED)
-            dsInfo.removeState(INCREMENTAL_SAVED)
-            dsInfo.removeState(PROCESSED)
-            dsInfo.removeState(PROCESSABLE)
-            dsInfo.setState(SOURCED)
+            dsInfo.resetToSourced()
             dsInfo.setLastHarvestTime(incremental = true)
         }
         dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
@@ -889,11 +883,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.setProcessedRecordCounts(0, 0)
             orgContext.semaphore.release(dsInfo.spec)
           } else {
-            dsInfo.removeState(SAVED)
-            dsInfo.removeState(ANALYZED)
-            dsInfo.removeState(INCREMENTAL_SAVED)
-            dsInfo.removeState(PROCESSED)
-            dsInfo.setState(SOURCED)
+            dsInfo.resetToSourced()
             dsInfo.setLastHarvestTime(incremental = false)
 
             // Auto-continue to Make SIP → Process if flag is set (discovery imports)
@@ -930,6 +920,12 @@ class DatasetActor(val datasetContext: DatasetContext,
           }
       }
       active.childOpt.foreach(_ ! PoisonPill)
+      // Clear retry state if this harvest resolved a retry cycle
+      // (retry starts harvest with Active data, so the InRetry-specific handler never matches)
+      if (dsInfo.isInRetry) {
+        log.info(s"Harvest succeeded, clearing retry state for ${dsInfo.spec}")
+        dsInfo.clearRetryState()
+      }
       goto(Idle) using Dormant
   }
 
@@ -1426,8 +1422,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         log.info(s"Clearing error for ${dsInfo.spec}: $message")
-        dsInfo.removeLiteralProp(datasetErrorMessage)
-        dsInfo.removeLiteralProp(datasetErrorTime)
+        dsInfo.clearError()
         log.info(s"clear error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
         orgContext.saveSemaphore.release(dsInfo.spec)
