@@ -26,7 +26,7 @@ import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
-import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest, HarvestStallTimeout}
+import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest, HarvestStallTimeout, SingleRecordRecovered, SingleRecordError}
 import harvest.Harvesting.{AdLibHarvestPage, HarvestError, JsonHarvestConfig, JsonHarvestPage, NoRecordsMatch, PMHHarvestPage}
 import harvest.PocketWriter
 import nxutil.Utils.actorWork
@@ -73,6 +73,11 @@ object Harvester {
   )
 
   case object HarvestStallTimeout
+
+  /** Internal message for thread-safe single-record recovery result handling */
+  sealed trait SingleRecordResult
+  case class SingleRecordRecovered(records: String) extends SingleRecordResult
+  case class SingleRecordError(recordOffset: String, xml: String, error: String) extends SingleRecordResult
 
   def props(datasetContext: DatasetContext, timeOut: Long, wsApi: WSClient,
             harvestingExecutionContext: ExecutionContext,
@@ -682,41 +687,27 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
         credentials = adlibCredentials
       )
 
+      // Use message-passing to avoid mutating actor state from Future thread
+      val selfRef = self
       futurePage.onComplete {
         case Success(AdLibHarvestPage(records, _, _, _, _, _, errorOpt)) =>
-          // Check if the single-record request returned an error
           errorOpt match {
             case Some(error) =>
-              log.warning(s"AdLib API error for single record from $singleRecordUrl: $error")
-              errorRecords :+= (recordOffset.toString, "", s"$error (source: $singleRecordUrl)")
+              selfRef ! SingleRecordError(recordOffset.toString, "", s"$error (source: $singleRecordUrl)")
             case None if records.nonEmpty =>
-              Try(addPage(records)) match {
-                case Success(_) =>
-                  log.debug(s"Successfully recovered record from $singleRecordUrl")
-                  recordsProcessed += 1
-                case Failure(e) =>
-                  log.warning(s"Failed to recover record from $singleRecordUrl: ${e.getMessage}")
-                  errorRecords :+= (recordOffset.toString, records, s"${e.toString} (source: $singleRecordUrl)")
-              }
+              selfRef ! SingleRecordRecovered(records)
             case None =>
-              log.warning(s"Empty response for single record from $singleRecordUrl")
-              errorRecords :+= (recordOffset.toString, "", s"empty response (source: $singleRecordUrl)")
+              selfRef ! SingleRecordError(recordOffset.toString, "", s"empty response (source: $singleRecordUrl)")
           }
-          errorPagesProcessed += 1
 
         case Success(HarvestError(error, _)) =>
-          log.warning(s"Error retrieving single record from $singleRecordUrl: $error")
-          errorRecords :+= (recordOffset.toString, "", s"$error (source: $singleRecordUrl)")
-          errorPagesProcessed += 1
+          selfRef ! SingleRecordError(recordOffset.toString, "", s"$error (source: $singleRecordUrl)")
 
         case Failure(e) =>
-          log.warning(s"Failed single-record harvest from $singleRecordUrl: ${e.getMessage}")
-          errorRecords :+= (recordOffset.toString, "", s"${e.toString} (source: $singleRecordUrl)")
-          errorPagesProcessed += 1
+          selfRef ! SingleRecordError(recordOffset.toString, "", s"${e.toString} (source: $singleRecordUrl)")
 
         case _ =>
-          log.warning(s"Unexpected response for single-record harvest from $singleRecordUrl")
-          errorPagesProcessed += 1
+          selfRef ! SingleRecordError(recordOffset.toString, "", s"unexpected response (source: $singleRecordUrl)")
       }
 
       // Check error threshold
@@ -1006,6 +997,23 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       cancelStallTimer()
       logger.debug("noRecordsMatch (pre-finish)")
       finish(strategy, Some(message))
+
+    // Handle single-record error recovery results on the actor thread (thread-safe state mutation)
+    case SingleRecordRecovered(records) =>
+      Try(addPage(records)) match {
+        case Success(_) =>
+          log.debug(s"Successfully recovered record via error recovery")
+          recordsProcessed += 1
+        case Failure(e) =>
+          log.warning(s"Failed to process recovered record: ${e.getMessage}")
+          errorRecords :+= ("", records, e.toString)
+      }
+      errorPagesProcessed += 1
+
+    case SingleRecordError(recordId, xml, error) =>
+      log.warning(s"Single record error: $error")
+      errorRecords :+= (recordId, xml, error)
+      errorPagesProcessed += 1
 
     case HarvestStallTimeout =>
       val msg = s"Harvest stalled for $datasetContext: no new page received within $pageStallTimeoutMinutes minutes. Aborting harvest."

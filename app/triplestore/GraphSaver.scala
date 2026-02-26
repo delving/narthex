@@ -37,6 +37,11 @@ object GraphSaver {
 
   case class SaveGraphs(scheduledOpt: Option[Scheduled])
 
+  /** Internal messages for thread-safe Future result handling */
+  private case object RevisionReady
+  private case object ChunkSaved
+  private case class AsyncFailure(ex: Throwable)
+
   def props(datasetContext: DatasetContext, orgContext: OrgContext) =
     Props(new GraphSaver(datasetContext, orgContext))
 
@@ -166,18 +171,33 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           // IMPORTANT: Wait for increment_revision to complete before sending records.
           // Otherwise, the first batch may be indexed with the OLD revision and then
           // deleted as an orphan when clear_orphans runs.
+          // Use message-passing to avoid accessing actor state from Future thread
+          val selfRef = self
           val incrementFuture = datasetContext.dsInfo.updateDatasetRevision()
           incrementFuture.onComplete {
             case Success(_) =>
               log.info("Dataset revision incremented, starting to send graph chunks")
-              sendGraphChunkOpt()
+              selfRef ! RevisionReady
             case Failure(ex) =>
-              failure(ex)
+              selfRef ! AsyncFailure(ex)
           }
         } else {
           sendGraphChunkOpt()
         }
       }
+
+    case RevisionReady =>
+      actorWork(context) {
+        sendGraphChunkOpt()
+      }
+
+    case ChunkSaved =>
+      actorWork(context) {
+        sendGraphChunkOpt()
+      }
+
+    case AsyncFailure(ex) =>
+      failure(ex)
 
     case Some(chunk: GraphChunk) =>
       actorWork(context) {
@@ -192,24 +212,17 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         }
 
         if (!isInterrupted) {
-          if (!chunk.bulkActions.isEmpty) {
-            val update =
-              chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
-
-            update.map(_ => sendGraphChunkOpt())
-            update.onComplete {
-              case Success(_) => ()
-              case Failure(ex) => failure(ex)
-            }
+          // Use message-passing to avoid accessing actor state from Future thread
+          val selfRef = self
+          val update = if (!chunk.bulkActions.isEmpty) {
+            chunk.dsInfo.bulkApiUpdate(chunk.bulkActions)
           } else {
             log.info(s"Save a chunk of graphs")
-            val update = chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
-
-            update.map(_ => sendGraphChunkOpt())
-            update.onComplete {
-              case Success(_) => ()
-              case Failure(ex) => failure(ex)
-            }
+            chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
+          }
+          update.onComplete {
+            case Success(_) => selfRef ! ChunkSaved
+            case Failure(ex) => selfRef ! AsyncFailure(ex)
           }
         }
       }

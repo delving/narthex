@@ -55,6 +55,13 @@ object Analyzer {
     indexFile: Option[File] = None
   )
 
+  /** Result of the tree-building Future, sent back to self for thread-safe processing */
+  case class TreeBuildResult(
+    json: JsValue,
+    nodesToSort: List[TreeNode],
+    progressReporter: ProgressReporter
+  )
+
   case class AnalysisTreeComplete(json: JsValue)
 
   case class AnalysisComplete(error: Option[String], analysisType: AnalysisType)
@@ -97,27 +104,26 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
         datasetContext.dropTree()
       }
 
+      // IMPORTANT: The Future does CPU-bound tree building work. All actor state mutation
+      // (creating child actors, updating sorters/collators lists, setting progress) happens
+      // in the TreeBuildResult message handler to avoid race conditions.
+      val parentRef = context.parent  // capture immutable ref for Future
+      val selfRef = self              // capture immutable ref for Future
       Future {
         val (source, readProgress) = sourceFromFile(file)
         try {
-          val progressReporter = ProgressReporter(SPLITTING, context.parent)
+          val progressReporter = ProgressReporter(SPLITTING, parentRef)
           progressReporter.setReadProgress(readProgress)
-          progress = Some(progressReporter)
           val tree = TreeNode(source, analysisType, datasetContext, progressReporter,
                               customTreeRoot, customIndexFile)
-          progress.get.checkInterrupt()
-          tree.launchSorters { node =>
-            if (node.lengths.isEmpty) {
-              node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
-            }
-            else {
-              node.nodeRepo.setStatus(Json.obj("sorting" -> true))
-              val sorter = context.actorOf(Sorter.props(node.nodeRepo))
-              sorters = sorter :: sorters
-              sorter ! Sort(SortType.VALUE_SORT)
-            }
+          progressReporter.checkInterrupt()
+          // Collect nodes that need sorting - don't create actors from Future thread
+          val nodesToSort = {
+            val buffer = scala.collection.mutable.ListBuffer.empty[TreeNode]
+            tree.launchSorters { node => buffer += node }
+            buffer.toList
           }
-          self ! AnalysisTreeComplete(Json.toJson(tree))
+          selfRef ! TreeBuildResult(Json.toJson(tree), nodesToSort, progressReporter)
         }
         finally {
           source.close()
@@ -125,7 +131,31 @@ class Analyzer(val datasetContext: DatasetContext) extends Actor with ActorLoggi
       } onComplete {
         case Success(_) => ()
         case Failure(e) =>
-          context.parent ! WorkFailure(e.getMessage, Some(e))
+          parentRef ! WorkFailure(e.getMessage, Some(e))
+      }
+    }
+
+    // Handle tree build result on actor thread - safe to create child actors and mutate state
+    case TreeBuildResult(json, nodesToSort, progressReporter) => actorWork(context) {
+      progress = Some(progressReporter)
+      // Launch sorters for all nodes (on actor thread - thread-safe)
+      nodesToSort.foreach { node =>
+        if (node.lengths.isEmpty) {
+          node.nodeRepo.setStatus(Json.obj("uniqueCount" -> 0))
+        }
+        else {
+          node.nodeRepo.setStatus(Json.obj("sorting" -> true))
+          val sorter = context.actorOf(Sorter.props(node.nodeRepo))
+          sorters = sorter :: sorters
+          sorter ! Sort(SortType.VALUE_SORT)
+        }
+      }
+      // If no sorters were created (empty tree), complete immediately
+      if (sorters.isEmpty) {
+        log.info("No nodes to sort, analysis complete")
+        context.parent ! AnalysisComplete(None, analysisTypeOpt.get)
+      } else {
+        self ! AnalysisTreeComplete(json)
       }
     }
 

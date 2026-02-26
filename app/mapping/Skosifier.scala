@@ -44,6 +44,11 @@ object Skosifier {
     override def toString = s"$skosifiedField: $cases"
   }
 
+  /** Internal messages for thread-safe Future result handling */
+  private case class CaseCountReady(skosifiedField: SkosifiedField, count: Int, progressReporter: ProgressReporter)
+  private case class CasesReady(skosifiedField: SkosifiedField, cases: List[SkosificationCase])
+  private case class JobUpdateComplete(skosifiedField: SkosifiedField, casesProcessed: Int, previousHead: Option[SkosificationCase])
+
 }
 
 class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with ActorLogging {
@@ -60,51 +65,69 @@ class Skosifier(dsInfo: DsInfo, orgContext: OrgContext) extends Actor with Actor
 
     case skosifiedField: SkosifiedField => actorWork(context) {
       val progressReporter = ProgressReporter(ProgressState.SKOSIFYING, context.parent)
+      // Use message-passing to avoid mutating actor state from Future threads
+      val selfRef = self
+      val parentRef = context.parent
       ts.query(countSkosificationCasesQ(skosifiedField)).map(countFromResult).map { count =>
-        progressReporter.setMaximum(count)
-        log.info(s"Set progress maximum to $count")
-        progressOpt = Some(progressReporter)
-        ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { listCasesResult =>
-          self ! SkosificationJob(skosifiedField, createCasesFromQueryValues(skosifiedField, listCasesResult))
-        } onComplete {
-          case Success(_) => ()
-          case Failure(e) => context.parent ! WorkFailure("Problem listing cases", Some(e))
-        }
+        selfRef ! CaseCountReady(skosifiedField, count, progressReporter)
       } onComplete {
         case Success(_) => ()
-        case Failure(e) => context.parent ! WorkFailure("Problem counting cases", Some(e))
+        case Failure(e) => parentRef ! WorkFailure("Problem counting cases", Some(e))
+      }
+    }
+
+    case CaseCountReady(skosifiedField, count, progressReporter) => actorWork(context) {
+      progressReporter.setMaximum(count)
+      log.info(s"Set progress maximum to $count")
+      progressOpt = Some(progressReporter)
+      val selfRef = self
+      val parentRef = context.parent
+      ts.query(listSkosificationCasesQ(skosifiedField, Skosifier.chunkSize)).map { listCasesResult =>
+        selfRef ! SkosificationJob(skosifiedField, createCasesFromQueryValues(skosifiedField, listCasesResult))
+      } onComplete {
+        case Success(_) => ()
+        case Failure(e) => parentRef ! WorkFailure("Problem listing cases", Some(e))
       }
     }
 
     case job: SkosificationJob => actorWork(context) {
       log.info(s"Cases: ${job.cases.map(c => slugify(c.literalValueText))}")
+      val selfRef = self
+      val parentRef = context.parent
+      val headCase = job.cases.headOption
       ts.up.sparqlUpdate(job.ensureSkosEntries + job.changeLiteralsToUris).map { ok =>
-        progressCount += job.cases.size
-        progressOpt.get.sendValue(Some(progressCount))
-        if (job.cases.size == chunkSize) {
-          ts.query(listSkosificationCasesQ(job.skosifiedField, chunkSize)).map { listCasesResult =>
-            if (listCasesResult.nonEmpty) {
-              val skosCases: List[SkosificationCase] = createCasesFromQueryValues(job.skosifiedField, listCasesResult)
-//              log.info(s"Next cases: ${skosCases.map(c => c.literalValueText)}")
-              if (skosCases.headOption == job.cases.headOption) {
-                throw new RuntimeException(s"Done ${skosCases.headOption} already!")
-              }
-              self ! SkosificationJob(job.skosifiedField, skosCases)
-            }
-            else {
-              context.parent ! SkosificationComplete(job.skosifiedField)
-            }
-          } onComplete {
-            case Success(_) => ()
-            case Failure(e) => context.parent ! WorkFailure("Problem listing cases again", Some(e))
-          }
-        }
-        else {
-          context.parent ! SkosificationComplete(job.skosifiedField)
-        }
+        selfRef ! JobUpdateComplete(job.skosifiedField, job.cases.size, headCase)
       } onComplete {
         case Success(_) => ()
-        case Failure(e) => context.parent ! WorkFailure("Problem with skosify update", Some(e))
+        case Failure(e) => parentRef ! WorkFailure("Problem with skosify update", Some(e))
+      }
+    }
+
+    case JobUpdateComplete(skosifiedField, casesProcessed, previousHead) => actorWork(context) {
+      // Safe to access actor state here - we're on the actor thread
+      progressCount += casesProcessed
+      progressOpt.get.sendValue(Some(progressCount))
+      if (casesProcessed == chunkSize) {
+        val selfRef = self
+        val parentRef = context.parent
+        ts.query(listSkosificationCasesQ(skosifiedField, chunkSize)).map { listCasesResult =>
+          if (listCasesResult.nonEmpty) {
+            val skosCases: List[SkosificationCase] = createCasesFromQueryValues(skosifiedField, listCasesResult)
+            if (skosCases.headOption == previousHead) {
+              throw new RuntimeException(s"Done ${skosCases.headOption} already!")
+            }
+            selfRef ! SkosificationJob(skosifiedField, skosCases)
+          }
+          else {
+            parentRef ! SkosificationComplete(skosifiedField)
+          }
+        } onComplete {
+          case Success(_) => ()
+          case Failure(e) => parentRef ! WorkFailure("Problem listing cases again", Some(e))
+        }
+      }
+      else {
+        context.parent ! SkosificationComplete(skosifiedField)
       }
     }
   }
