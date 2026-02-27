@@ -20,7 +20,7 @@
                 <i class="fa fa-plus" style="margin-left: 4px;"></i> Create New Mapping
             </span>
         </div>
-        <div class="panel-body" ng-if="showCreateForm">
+        <div class="panel-body" ng-show="showCreateForm">
             <div class="row">
                 <div class="col-sm-3">
                     <div class="form-group" style="margin-bottom: 0;">
@@ -114,7 +114,7 @@
                     </div>
 
                     <!-- Mapping Body (expanded) -->
-                    <div ng-if="isMappingExpanded(prefixData.prefix, mapping.name)"
+                    <div ng-show="isMappingExpanded(prefixData.prefix, mapping.name)"
                          ng-click="$event.stopPropagation()"
                          style="padding: 12px 15px; background: #fff;">
 

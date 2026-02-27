@@ -121,7 +121,7 @@ define(["angular"], function (angular) {
                 return;
             }
 
-            defaultMappingsService.createNamedMapping(prefix, $scope.newMappingName.trim()).then(function (data) {
+            defaultMappingsService.createNamedMapping(prefix, $scope.newMappingName.trim().toLowerCase()).then(function (data) {
                 $scope.newMappingName = '';
                 // Wait for loadMappings to complete before expanding
                 return loadMappings().then(function() {
@@ -145,7 +145,7 @@ define(["angular"], function (angular) {
             }
 
             var prefix = $scope.newMappingPrefix;
-            var displayName = $scope.newMappingName.trim();
+            var displayName = $scope.newMappingName.trim().toLowerCase();
 
             // First create the named mapping, then upload the file
             defaultMappingsService.createNamedMapping(prefix, displayName).then(function (data) {

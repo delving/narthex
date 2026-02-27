@@ -312,13 +312,14 @@ class DefaultMappingRepo(orgRoot: File) {
    * Create a new named mapping under a prefix
    */
   def createMapping(prefix: String, displayName: String): NamedMapping = {
-    val name = generateSlug(displayName)
+    val normalizedDisplayName = displayName.toLowerCase.trim
+    val name = generateSlug(normalizedDisplayName)
     val finalName = ensureUniqueName(prefix, name)
 
     val mapping = NamedMapping(
       prefix = prefix,
       name = finalName,
-      displayName = displayName,
+      displayName = normalizedDisplayName,
       versions = List.empty,
       currentVersion = None
     )
