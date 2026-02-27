@@ -27,7 +27,7 @@
                         <label class="control-label" style="font-size: 12px; margin-bottom: 4px;">Prefix</label>
                         <select class="form-control input-sm" ng-model="newMappingPrefix">
                             <option value="">Select a prefix...</option>
-                            <option ng-repeat="prefix in availablePrefixes" value="{{ prefix }}">
+                            <option ng-repeat="prefix in availablePrefixes" ng-value="prefix">
                                 {{ prefix | uppercase }}
                             </option>
                         </select>

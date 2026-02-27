@@ -271,7 +271,8 @@ define(["angular"], function (angular) {
         $scope.onFileSelect = function (files) {
             if (files && files.length > 0) {
                 $scope.selectedFile = files[0];
-                $scope.$apply();  // Ensure the scope is updated
+                $scope.selectedFileName = files[0].name;
+                $scope.$apply();
             }
         };
 
