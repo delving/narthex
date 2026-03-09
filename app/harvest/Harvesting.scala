@@ -434,9 +434,21 @@ trait Harvesting {
               logger.info(s"Detected ${deletedIds.size} deleted records in OAI-PMH page")
             }
 
+            // Use the resolved URL from the response (after any redirects)
+            // This ensures subsequent paginated requests go to the correct server
+            val resolvedUrl = {
+              val respUri = new java.net.URI(sourceUri)
+              val port = if (respUri.getPort > 0 && respUri.getPort != 80 && respUri.getPort != 443)
+                s":${respUri.getPort}" else ""
+              s"${respUri.getScheme}://${respUri.getHost}$port${respUri.getPath}"
+            }
+            if (resolvedUrl != url) {
+              logger.info(s"OAI-PMH URL redirected: $url -> $resolvedUrl (using resolved URL for subsequent requests)")
+            }
+
             val harvestPage = PMHHarvestPage(
               records = xml.toString(),
-              url = url,
+              url = resolvedUrl,
               set = set,
               metadataPrefix = metadataPrefix,
               totalRecords = total,

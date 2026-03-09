@@ -337,6 +337,7 @@ class DatasetActor(val datasetContext: DatasetContext,
   when(Idle) {
 
     case Event(Command(commandName), Dormant) =>
+      var workStarted = false
       val replyTry = Try {
 
         def startHarvest(strategy: HarvestStrategy) = {
@@ -368,6 +369,7 @@ class DatasetActor(val datasetContext: DatasetContext,
               //case _ =>
             }
 
+            workStarted = true
             self ! StartHarvest(strategy)
             "harvest started"
 
@@ -436,10 +438,12 @@ class DatasetActor(val datasetContext: DatasetContext,
             startHarvest(FromScratch)
 
           case "start generating sip" =>
+            workStarted = true
             self ! GenerateSipZip
             "sip generation started"
 
           case "start processing" =>
+            workStarted = true
             self ! StartProcessing(None)
             "processing started"
 
@@ -459,6 +463,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           case "start saving" =>
             // full save, not incremental
+            workStarted = true
             self ! StartSaving(None)
             "saving started"
 
@@ -490,22 +495,26 @@ class DatasetActor(val datasetContext: DatasetContext,
                 targetState match {
                   case ANALYZED =>
                     log.info(s"Fast save from ANALYZED: Save only (${dsInfo.spec})")
+                    workStarted = true
                     self ! StartSaving(Some(scheduled))
                     "Fast save: Saving"
 
                   case PROCESSED =>
                     log.info(s"Fast save from PROCESSED: Save (${dsInfo.spec})")
+                    workStarted = true
                     self ! StartSaving(Some(scheduled))
                     "Fast save: Saving"
 
                   case PROCESSABLE =>
                     log.info(s"Fast save from PROCESSABLE: Process → Save (${dsInfo.spec})")
+                    workStarted = true
                     self ! StartProcessing(Some(scheduled))
                     "Fast save: Process → Save"
 
                   case SOURCED =>
                     log.info(s"Fast save from SOURCED: Make SIP → Process → Save (${dsInfo.spec})")
                     // Set flag to continue processing after SIP generation
+                    workStarted = true
                     fastSaveScheduledOpt = Some(scheduled)
                     self ! GenerateSipZip
                     "Fast save: Make SIP → Process → Save"
@@ -526,12 +535,14 @@ class DatasetActor(val datasetContext: DatasetContext,
             currentState match {
               case PROCESSABLE =>
                 log.info(s"Fast process from PROCESSABLE: Process only (${dsInfo.spec})")
+                workStarted = true
                 self ! StartProcessing(None)  // None = no auto-save
                 "Fast process: Processing"
 
               case SOURCED =>
                 log.info(s"Fast process from SOURCED: Make SIP → Process (${dsInfo.spec})")
                 // Set flag to continue to processing (but not save) after SIP generation
+                workStarted = true
                 fastProcessOnly = true
                 self ! GenerateSipZip
                 "Fast process: Make SIP → Process"
@@ -598,25 +609,17 @@ class DatasetActor(val datasetContext: DatasetContext,
       // The OrgActor acquires a semaphore for "heavy" commands before routing here.
       // If the handler didn't start any work (e.g. "Dataset not ready", exception),
       // we must release the semaphore to prevent leaks.
-      // Check if this command is one that would have acquired a semaphore:
+      // The workStarted flag is set explicitly in each branch that sends a work message.
       val heavyCommands = Set("start sample harvest", "start first harvest",
                               "start first harvest with auto-process",
                               "start generating sip", "start processing", "start saving")
       val isHeavyCommand = heavyCommands.contains(commandName) ||
                            commandName.startsWith("start fast save") ||
                            commandName.startsWith("start fast process")
-      if (isHeavyCommand) {
-        // Check if the handler actually sent a work message (self ! StartHarvest, etc.)
-        // by looking at whether the reply indicates work was started.
-        // If not, the semaphore must be released.
-        val workStarted = replyString.contains("started") ||
-                          replyString.startsWith("Fast save:") ||
-                          replyString.startsWith("Fast process:")
-        if (!workStarted) {
-          log.warning(s"Heavy command '$commandName' did not start work (reply: $replyString), releasing semaphore")
-          orgContext.semaphore.release(dsInfo.spec)
-          orgContext.saveSemaphore.release(dsInfo.spec)
-        }
+      if (isHeavyCommand && !workStarted) {
+        log.warning(s"Heavy command '$commandName' did not start work (reply: $replyString), releasing semaphore")
+        orgContext.semaphore.release(dsInfo.spec)
+        orgContext.saveSemaphore.release(dsInfo.spec)
       }
 
       stay()
