@@ -527,11 +527,12 @@ class OrgActor (
       val heavyCommands = Set(
         "start sample harvest",
         "start first harvest",
+        "start first harvest with auto-process",
         "start generating sip",
         "start processing",
         "start saving"
       )
-      val isFastSave = cmd.startsWith("start fast save")
+      val isFastSave = cmd.startsWith("start fast save") || cmd.startsWith("start fast process")
       heavyCommands.contains(cmd) || isFastSave
     case _ => false
   }

@@ -594,6 +594,31 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
       val replyString: String = replyTry.getOrElse(s"unrecovered exception")
       log.info(s"Command $commandName: $replyString")
+
+      // The OrgActor acquires a semaphore for "heavy" commands before routing here.
+      // If the handler didn't start any work (e.g. "Dataset not ready", exception),
+      // we must release the semaphore to prevent leaks.
+      // Check if this command is one that would have acquired a semaphore:
+      val heavyCommands = Set("start sample harvest", "start first harvest",
+                              "start first harvest with auto-process",
+                              "start generating sip", "start processing", "start saving")
+      val isHeavyCommand = heavyCommands.contains(commandName) ||
+                           commandName.startsWith("start fast save") ||
+                           commandName.startsWith("start fast process")
+      if (isHeavyCommand) {
+        // Check if the handler actually sent a work message (self ! StartHarvest, etc.)
+        // by looking at whether the reply indicates work was started.
+        // If not, the semaphore must be released.
+        val workStarted = replyString.contains("started") ||
+                          replyString.startsWith("Fast save:") ||
+                          replyString.startsWith("Fast process:")
+        if (!workStarted) {
+          log.warning(s"Heavy command '$commandName' did not start work (reply: $replyString), releasing semaphore")
+          orgContext.semaphore.release(dsInfo.spec)
+          orgContext.saveSemaphore.release(dsInfo.spec)
+        }
+      }
+
       stay()
 
     case Event(StartHarvest(strategy), Dormant) =>
@@ -1534,6 +1559,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         case Some(exception) => log.error(exception, message)
         case None            => log.error(message)
       }
+      // Release semaphores in case they were acquired before this failure
+      orgContext.semaphore.release(dsInfo.spec)
+      orgContext.saveSemaphore.release(dsInfo.spec)
       dsInfo.setError(s"While not active, failure: $message")
       goto(Idle) using InError(message)
 
