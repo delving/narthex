@@ -57,7 +57,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % "2.13.0",
-  "org.apache.jena" % "jena-arq" % "3.1.0" exclude("log4j", "log4j"),
+  "org.apache.jena" % "jena-arq" % "3.17.0",
   "org.apache.poi" % "poi" % "5.2.3",
   "org.apache.poi" % "poi-ooxml" % "5.2.3",
   "org.apache.commons" % "commons-csv" % "1.10.0",
@@ -88,6 +88,8 @@ libraryDependencies ++= Seq(
 
 // ZSTD compression for processed XML files
 libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.6-4"
+
+libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.45.1.0"
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.1.4" % Test,
