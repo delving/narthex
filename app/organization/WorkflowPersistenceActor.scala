@@ -1,50 +1,103 @@
 package organization
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{ActorLogging, Props}
+import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import services.WorkflowDatabase
-import WorkflowEvent.{WorkflowStarted, generateId}
+import WorkflowEvent.{WorkflowStarted, StepStarted, StepProgress, StepCompleted, StepFailed, WorkflowCompleted, WorkflowCancelled, generateId}
 
-class WorkflowPersistenceActor extends Actor with ActorLogging {
+class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
+  
+  override def persistenceId: String = "workflow-persistence"
   
   private var state: WorkflowState = WorkflowState()
   
-  override def receive: Receive = {
+  override def receiveCommand: Receive = {
     case WorkflowPersistenceActor.Started(spec, trigger, steps) =>
       val workflowId = generateId()
-      state = state.addWorkflow(event = WorkflowStarted(workflowId, spec, trigger, steps))
-      workflowDb.insertWorkflow(workflowId, spec, trigger)
-      workflowDb.insertStep(workflowId, steps.head)
+      val event = WorkflowStarted(workflowId, spec, trigger, steps)
+      persist(event) { persistedEvent =>
+        state = state.addWorkflow(persistedEvent)
+        workflowDb.insertWorkflow(workflowId, spec, trigger)
+        workflowDb.insertStep(workflowId, steps.head)
+      }
       sender() ! workflowId
       
-    case WorkflowPersistenceActor.StepStart(workflowId, stepName, _) =>
-      state = state.addStep(workflowId, stepName)
-      workflowDb.insertStep(workflowId, stepName)
+    case WorkflowPersistenceActor.StepStart(workflowId, stepName, config) =>
+      val event = StepStarted(workflowId, stepName, config)
+      persist(event) { persistedEvent =>
+        state = state.addStep(workflowId, stepName)
+        workflowDb.insertStep(workflowId, stepName)
+      }
       
-    case WorkflowPersistenceActor.StepProgressMsg(workflowId, stepName, records, _) =>
-      state = state.updateProgress(workflowId, stepName, records)
+    case WorkflowPersistenceActor.StepProgressMsg(workflowId, stepName, records, metadata) =>
+      val event = StepProgress(workflowId, stepName, records, metadata)
+      persist(event) { persistedEvent =>
+        state = state.updateProgress(workflowId, stepName, records)
+      }
       
     case WorkflowPersistenceActor.StepFinish(workflowId, stepName, duration, metadata) =>
-      state = state.completeStep(workflowId, stepName, metadata)
-      val metadataStr = metadata.map { case (k, v) => s"$k:$v" }.mkString(",")
-      workflowDb.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
+      val event = StepCompleted(workflowId, stepName, duration, metadata)
+      persist(event) { persistedEvent =>
+        state = state.completeStep(workflowId, stepName, metadata)
+        val metadataStr = metadata.map { case (k, v) => s"$k:$v" }.mkString(",")
+        workflowDb.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
+      }
       
-    case WorkflowPersistenceActor.StepError(workflowId, stepName, error, _) =>
-      state = state.failStep(workflowId, stepName, error)
-      workflowDb.failStep(workflowId, stepName, error)
+    case WorkflowPersistenceActor.StepError(workflowId, stepName, error, metadata) =>
+      val event = StepFailed(workflowId, stepName, error, metadata)
+      persist(event) { persistedEvent =>
+        state = state.failStep(workflowId, stepName, error)
+        workflowDb.failStep(workflowId, stepName, error)
+      }
       
     case WorkflowPersistenceActor.Finished(workflowId) =>
-      state = state.completeWorkflow(workflowId)
-      workflowDb.completeWorkflow(workflowId, "completed", None)
+      val event = WorkflowCompleted(workflowId)
+      persist(event) { persistedEvent =>
+        state = state.completeWorkflow(workflowId)
+        workflowDb.completeWorkflow(workflowId, "completed", None)
+      }
       
     case WorkflowPersistenceActor.Cancelled(workflowId) =>
-      state = state.cancelWorkflow(workflowId)
-      workflowDb.completeWorkflow(workflowId, "cancelled", None)
+      val event = WorkflowCancelled(workflowId)
+      persist(event) { persistedEvent =>
+        state = state.cancelWorkflow(workflowId)
+        workflowDb.completeWorkflow(workflowId, "cancelled", None)
+      }
       
     case WorkflowPersistenceActor.GetState =>
       sender() ! state
       
     case WorkflowPersistenceActor.GetWorkflow(workflowId) =>
       sender() ! state.getWorkflow(workflowId)
+  }
+  
+  override def receiveRecover: Receive = {
+    case event: WorkflowStarted =>
+      state = state.addWorkflow(event)
+      
+    case event: StepStarted =>
+      state = state.addStep(event.workflowId, event.stepName)
+      
+    case event: StepProgress =>
+      state = state.updateProgress(event.workflowId, event.stepName, event.recordsProcessed)
+      
+    case event: StepCompleted =>
+      state = state.completeStep(event.workflowId, event.stepName, event.metadata)
+      
+    case event: StepFailed =>
+      state = state.failStep(event.workflowId, event.stepName, event.error)
+      
+    case event: WorkflowCompleted =>
+      state = state.completeWorkflow(event.workflowId)
+      
+    case event: WorkflowCancelled =>
+      state = state.cancelWorkflow(event.workflowId)
+      
+    case SnapshotOffer(_, snapshot: WorkflowState) =>
+      state = snapshot
+      
+    case RecoveryCompleted =>
+      log.info(s"Recovery completed, state: ${state.workflows.size} workflows")
   }
   
   private def workflowDb: WorkflowDatabase = {
