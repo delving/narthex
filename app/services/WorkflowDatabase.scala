@@ -198,3 +198,16 @@ case class WorkflowStep(
   errorMessage: String,
   metadata: String
 )
+
+object GlobalWorkflowDatabase {
+  @volatile private var instance: Option[WorkflowDatabase] = None
+  
+  def init(narthexConfig: NarthexConfig): Unit = {
+    instance = Some(new WorkflowDatabase(narthexConfig))
+    instance.foreach(_.init())
+  }
+  
+  def get(): WorkflowDatabase = instance.getOrElse {
+    throw new RuntimeException("WorkflowDatabase not initialized")
+  }
+}
