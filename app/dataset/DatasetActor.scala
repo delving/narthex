@@ -36,6 +36,7 @@ import mapping.Skosifier.SkosificationComplete
 import mapping.{CategoryCounter, Skosifier}
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
+import organization.WorkflowPersistenceActor._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Logger
@@ -720,6 +721,18 @@ class DatasetActor(val datasetContext: DatasetContext,
                          orgContext.appConfig.harvestPageStallTimeoutMinutes),
           "harvester")
         harvester ! kickoff
+
+        if (currentWorkflowId.isEmpty) {
+          val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving", "Skosifying", "Categorizing")
+          orgContext.workflowActor ! Started(
+            spec = dsInfo.spec,
+            trigger = "manual",
+            steps = steps
+          )
+          currentWorkflowId = Some(java.util.UUID.randomUUID().toString)
+        }
+        workflowStartTime = Some(new DateTime())
+
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
         stay() using InError("Unable to determine harvest type")
@@ -1282,6 +1295,18 @@ class DatasetActor(val datasetContext: DatasetContext,
                          orgContext.appConfig.harvestPageStallTimeoutMinutes),
           "harvester")
         harvester ! kickoff
+
+        if (currentWorkflowId.isEmpty) {
+          val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving", "Skosifying", "Categorizing")
+          orgContext.workflowActor ! Started(
+            spec = dsInfo.spec,
+            trigger = "manual",
+            steps = steps
+          )
+          currentWorkflowId = Some(java.util.UUID.randomUUID().toString)
+        }
+        workflowStartTime = Some(new DateTime())
+
         goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
       } getOrElse {
         log.error(s"Unable to determine harvest type for retry")
