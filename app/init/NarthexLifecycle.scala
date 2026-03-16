@@ -10,16 +10,22 @@ import akka.actor.{ActorRef, ActorSystem}
 import harvest.PeriodicHarvest
 import organization.OrgContext
 import mapping.PeriodicSkosifyCheck
+import services.GlobalWorkflowDatabase
+import init.NarthexConfig
 
 @Singleton
 class NarthexLifecycle @Inject() (
     lifecycle: ApplicationLifecycle,
     actorSystem: ActorSystem,
-    orgContext: OrgContext
+    orgContext: OrgContext,
+    narthexConfig: NarthexConfig
 )(implicit ec: ExecutionContext)
     extends Logging {
 
   logger.info("Narthex starting up...")
+
+  // Initialize workflow database
+  GlobalWorkflowDatabase.init(narthexConfig)
 
   // Test that new string metrics library produces same values as previous library
   // on https://github.com/rockymadden/stringmetric
