@@ -51,6 +51,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-protobuf-v3" % "2.6.21",
   "com.typesafe.akka" %% "akka-stream" % "2.6.21",
   "com.typesafe.akka" %% "akka-serialization-jackson" % "2.6.21",
+  "com.typesafe.akka" %% "akka-persistence" % "2.6.21",
   "com.typesafe.play" %% "play-mailer" % "8.0.1",
   "com.typesafe.play" %% "play-mailer-guice" % "8.0.1",
 )
