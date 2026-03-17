@@ -325,12 +325,27 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
               catch {
                 case e: Throwable =>
-                  // Include graph name, hash, and XML snippet in error for debugging
+                  // Include graph name, hash, and XML context (5000 chars around error) for debugging
                   val recordContext = s"Graph: $graphName, Hash: $currentHash"
-                  val xmlSnippet = recordText.toString().take(1000)
+                  val xmlContext = recordText.toString()
+                  val errorLineInfo = if (e.getMessage != null && e.getMessage.contains("line:")) {
+                    // Try to extract line number from error message and show context
+                    val lineNumMatch = """line:\s*(\d+)""".r.findFirstMatchIn(e.getMessage)
+                    lineNumMatch.map { m =>
+                      val errLine = m.group(1).toInt
+                      val lines = xmlContext.split("\n")
+                      val start = math.max(0, errLine - 11)
+                      val end = math.min(lines.length, errLine + 10)
+                      s"Error at line $errLine, showing lines ${start+1} to $end:\n" + 
+                        lines.slice(start, end).mkString("\n")
+                    }.getOrElse(xmlContext.take(5000))
+                  } else {
+                    xmlContext.take(5000)
+                  }
+                  
                   logger.error(s"RDF parsing error for $recordContext: ${e.getMessage}")
-                  logger.error(s"Problematic RDF (first 2000 chars): $xmlSnippet")
-                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}. XML: $xmlSnippet", e)
+                  logger.error(s"XML context around error:\n$errorLineInfo")
+                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}\nContext:\n$errorLineInfo", e)
               }
               //val StringHandling.SubjectOfGraph(subject) = graphName
               //val subjectResource = m.getResource(subject)
