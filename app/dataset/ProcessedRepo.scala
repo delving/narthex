@@ -349,7 +349,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
                   
                   // Log detailed context for debugging
                   logger.error(s"RDF parsing error for graph [$graphShort]: $errorMsg")
-                  logger.error(s"--- XML context (lines ${math.max(1, errorLineInfo.split("\n").headOption.getOrElse("0").toInt)} to ${errorLineInfo.split("\n").lastOption.getOrElse("0").toInt}): ---\n$errorLineInfo\n---")
+                  logger.error(s"--- XML context (first 2000 chars): ---\n${errorLineInfo.take(2000)}\n---")
                   
                   // User-facing error - concise with key info
                   val userError = s"RDF error in [$graphShort]: $errorMsg"
