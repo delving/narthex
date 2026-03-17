@@ -325,11 +325,12 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
               catch {
                 case e: Throwable =>
-                  // Include graph name and hash in error for debugging
+                  // Include graph name, hash, and XML snippet in error for debugging
                   val recordContext = s"Graph: $graphName, Hash: $currentHash"
+                  val xmlSnippet = recordText.toString().take(1000)
                   logger.error(s"RDF parsing error for $recordContext: ${e.getMessage}")
-                  logger.error(s"Problematic RDF (first 2000 chars): ${recordText.toString().take(2000)}")
-                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}", e)
+                  logger.error(s"Problematic RDF (first 2000 chars): $xmlSnippet")
+                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}. XML: $xmlSnippet", e)
               }
               //val StringHandling.SubjectOfGraph(subject) = graphName
               //val subjectResource = m.getResource(subject)
