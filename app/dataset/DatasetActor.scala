@@ -1568,18 +1568,17 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       } else {
         // Non-harvest failure - use existing error handling
-        // For RDF parsing errors, extract just the key info for user display, full context goes to log
+        // For RDF parsing errors, use concise version for user display
         val enrichedMessage = exceptionOpt.collect {
           case re: RuntimeException if re.getMessage != null && re.getMessage.contains("RDF error") =>
-            // Keep user message short - graph ID and error type
-            val shortMsg = re.getMessage.replaceAll("Graph:.*?]", "graph]").take(150)
-            s"$message: $shortMsg"
+            // Shorten the message for user display
+            re.getMessage.replaceAll("Graph:.*?]", "graph]").take(200)
         }.getOrElse(message)
         
         dsInfo.setError(s"While $stateName, failure: $enrichedMessage")
         exceptionOpt match {
-          case Some(exception) => log.error(exception, message)
-          case None            => log.error(message)
+          case Some(exception) => log.error(exception, enrichedMessage)
+          case None            => log.error(enrichedMessage)
         }
         mailService.sendProcessingErrorMessage(dsInfo.spec, enrichedMessage, exceptionOpt)
         active.childOpt.foreach(_ ! PoisonPill)
