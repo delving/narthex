@@ -177,4 +177,21 @@ healthchecks {
 # the address[es] that receive a notification when dataset processing succeeds or fails
 emailReportsTo = [  ]
 
+# SQLite configuration
+narthex.db {
+  path = "data/narthex.db"
+}
+
+# Akka Persistence
+akka.persistence {
+  journal {
+    plugin = "akka.persistence.journal.file"
+    file.dir = "data/akka/journal"
+  }
+  snapshot-store {
+    plugin = "akka.persistence.snapshot.local"
+    file.dir = "data/akka/snapshots"
+  }
+}
+
 sipAppDownloadUrl = "https://github.com/delving/sip-creator/releases/download/sip-creator-v1.2.2/sip-app-1.2.2-exejar.jar"

@@ -1272,6 +1272,7 @@ define(["angular"], function () {
             }
 
             $scope.datasetBusy = false;
+            $scope.dataset.commandPending = null;
 
             $scope.$apply(function () {
                 if (message.progressState) {
@@ -1708,6 +1709,9 @@ define(["angular"], function () {
         };
 
         $scope.retryNow = function () {
+            // Immediately update UI to show retry is starting
+            $scope.dataset.inRetry = false;
+            $scope.dataset.commandPending = "Retrying...";
             command("retry now", null);
         };
 
@@ -1723,6 +1727,7 @@ define(["angular"], function () {
 
         $scope.start = function (commandMessage, question) {
             $scope.datasetBusy = true;
+            $scope.dataset.commandPending = "Starting...";
             command(commandMessage, question);
         };
 
