@@ -1568,17 +1568,23 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       } else {
         // Non-harvest failure - use existing error handling
-        dsInfo.setError(s"While $stateName, failure: $message")
+        // Include extra context from exception if available (e.g., graph name/hash from RDF parsing)
+        val enrichedMessage = exceptionOpt.collect {
+          case re: RuntimeException if re.getMessage != null && re.getMessage.contains("Graph:") =>
+            s"$message (${re.getMessage})"
+        }.getOrElse(message)
+        
+        dsInfo.setError(s"While $stateName, failure: $enrichedMessage")
         exceptionOpt match {
-          case Some(exception) => log.error(exception, message)
-          case None            => log.error(message)
+          case Some(exception) => log.error(exception, enrichedMessage)
+          case None            => log.error(enrichedMessage)
         }
-        mailService.sendProcessingErrorMessage(dsInfo.spec, message, exceptionOpt)
+        mailService.sendProcessingErrorMessage(dsInfo.spec, enrichedMessage, exceptionOpt)
         active.childOpt.foreach(_ ! PoisonPill)
         // Release semaphores since operation failed
         orgContext.semaphore.release(dsInfo.spec)
         orgContext.saveSemaphore.release(dsInfo.spec)
-        goto(Idle) using InError(message)
+        goto(Idle) using InError(enrichedMessage)
       }
 
     case Event(WorkFailure(message, exceptionOpt), _) =>
