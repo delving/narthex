@@ -325,22 +325,27 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
               catch {
                 case e: Throwable =>
-                  // Extract error info
-                  val graphShort = graphName.replaceAll(".*/", "").take(50)
-                  val errorMsg = Option(e.getMessage).getOrElse(e.getClass.getSimpleName).take(200)
-                  val xmlContext = recordText.toString().take(3000)
-                  
-                  // Log directly to stderr to ensure it's not lost
-                  System.err.println(s"[RDF ERROR] Graph: $graphName")
-                  System.err.println(s"[RDF ERROR] ${errorMsg.take(300)}")
-                  System.err.println(s"[RDF ERROR] XML context (3000 chars):\n$xmlContext")
-                  
-                  // Also log properly
-                  logger.error(s"RDF parsing error for graph [$graphShort]: $errorMsg")
-                  
-                  // User-facing error - concise
-                  val userError = s"RDF error in [$graphShort]: $errorMsg"
-                  throw new RuntimeException(userError, e)
+                  val recordContext = s"Graph: $graphName, Hash: $currentHash"
+                  val xmlContext = recordText.toString()
+                  val errorLineInfo = if (e.getMessage != null && e.getMessage.contains("line:")) {
+                    val lineNumMatch = """line:\s*(\d+)""".r.findFirstMatchIn(e.getMessage)
+                    lineNumMatch.flatMap { m =>
+                      scala.util.Try {
+                        val errLine = m.group(1).toInt
+                        val lines = xmlContext.split("\n")
+                        val start = math.max(0, errLine - 11)
+                        val end = math.min(lines.length, errLine + 10)
+                        s"Error at line $errLine, showing lines ${start+1} to $end:\n" +
+                          lines.slice(start, end).mkString("\n")
+                      }.toOption
+                    }.getOrElse(xmlContext.take(2000))
+                  } else {
+                    xmlContext.take(2000)
+                  }
+
+                  logger.error(s"RDF parsing error for $recordContext: ${e.getMessage}")
+                  logger.error(s"XML context around error:\n$errorLineInfo")
+                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}\nContext:\n$errorLineInfo", e)
               }
               //val StringHandling.SubjectOfGraph(subject) = graphName
               //val subjectResource = m.getResource(subject)
