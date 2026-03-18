@@ -201,6 +201,12 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(false)
   logger.info(s"narthex.postgres.run-migration: $runPostgresMigration")
 
+  // Whether to use PostgreSQL for dataset info reads (Phase 2 feature flag)
+  lazy val postgresReadEnabled: Boolean = configuration
+    .getOptional[Boolean]("narthex.postgres.read-enabled")
+    .getOrElse(false)
+  logger.info(s"narthex.postgres.read-enabled: $postgresReadEnabled")
+
   // Application secret for credential encryption (Play Framework's secret key)
   def appSecret: String = configuration.getOptional[String]("play.http.secret.key").getOrElse {
     // Fallback to legacy config name
