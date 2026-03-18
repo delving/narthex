@@ -14,6 +14,8 @@
 //    limitations under the License.
 //===========================================================================
 
+import scala.sys.process._
+
 name := "narthex"
 organization := "eu.delving"
 maintainer := "info@delving.eu"
@@ -30,7 +32,7 @@ lazy val root = (project in file(".")).
       version,
       scalaVersion,
       sbtVersion,
-      "commitSha" -> git.gitHeadCommit.value.getOrElse("unknown")
+      "commitSha" -> scala.util.Try("git rev-parse HEAD".!!.trim).getOrElse("unknown")
     ),
     buildInfoPackage := "buildinfo"
   )
@@ -92,11 +94,21 @@ libraryDependencies += "com.github.luben" % "zstd-jni" % "1.5.6-4"
 
 libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.45.1.0"
 
+// PostgreSQL
+libraryDependencies += "org.postgresql" % "postgresql" % "42.7.1"
+
+// Flyway for schema migrations
+libraryDependencies ++= Seq(
+  "org.flywaydb" % "flyway-core" % "10.6.0",
+  "org.flywaydb" % "flyway-database-postgresql" % "10.6.0"
+)
+
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.1.4" % Test,
   "org.scalatestplus" %% "mockito-3-4" % "3.2.10.0" % Test,
   "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
   "de.leanovate.play-mockws" %% "play-mockws" % "2.8.1" % Test,
+  "io.zonky.test" % "embedded-postgres" % "2.0.6" % Test,
 )
 
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"

@@ -182,6 +182,20 @@ narthex.db {
   path = "data/narthex.db"
 }
 
+# PostgreSQL configuration (optional - omit to skip PostgreSQL)
+# narthex.postgres {
+#   url = "jdbc:postgresql://localhost:5432/narthex"
+#   user = "narthex"
+#   password = "narthex"
+#   pool {
+#     maximum-pool-size = 10
+#     minimum-idle = 2
+#     connection-timeout = 30000
+#     idle-timeout = 600000
+#     max-lifetime = 1800000
+#   }
+# }
+
 # Akka Persistence
 akka.persistence {
   journal {

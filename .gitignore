@@ -6,7 +6,7 @@
 !.java-version
 
 # Ignore Play! working directory #
-db
+/db
 eclipse
 /lib
 log
