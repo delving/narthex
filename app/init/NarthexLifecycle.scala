@@ -10,8 +10,9 @@ import akka.actor.{ActorRef, ActorSystem}
 import harvest.PeriodicHarvest
 import organization.OrgContext
 import mapping.PeriodicSkosifyCheck
-import services.{DatabaseService, GlobalDatabaseService, GlobalWorkflowDatabase}
+import services.{DatabaseService, FusekiMigration, GlobalDatabaseService, GlobalWorkflowDatabase, PostgresDatasetRepository}
 import init.NarthexConfig
+import scala.util.{Failure, Success}
 
 @Singleton
 class NarthexLifecycle @Inject() (
@@ -30,6 +31,23 @@ class NarthexLifecycle @Inject() (
     dbService.initialize()
     GlobalDatabaseService.set(dbService)
     logger.info("PostgreSQL DatabaseService initialized")
+
+    // Run Fuseki-to-PostgreSQL migration if enabled
+    if (narthexConfig.runPostgresMigration) {
+      logger.info("Running Fuseki-to-PostgreSQL migration (narthex.postgres.run-migration = true)...")
+      implicit val ts: triplestore.TripleStore = orgContext.ts
+      val repo = new PostgresDatasetRepository(dbService)
+      val migration = new FusekiMigration(orgContext, repo, dbService)
+      migration.run().onComplete {
+        case Success(report) =>
+          logger.info(s"Fuseki-to-PostgreSQL migration finished:\n${report.summary}")
+          if (report.errors.nonEmpty) {
+            logger.warn(s"Migration encountered ${report.errors.size} error(s)")
+          }
+        case Failure(ex) =>
+          logger.error(s"Fuseki-to-PostgreSQL migration failed: ${ex.getMessage}", ex)
+      }
+    }
   }
 
   // Initialize workflow database

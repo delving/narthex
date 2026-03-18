@@ -194,6 +194,9 @@ narthex.db {
 #     idle-timeout = 600000
 #     max-lifetime = 1800000
 #   }
+#   # Set to true to run one-shot Fuseki-to-PostgreSQL migration on startup.
+#   # Idempotent (uses upserts). Disable after successful migration.
+#   # run-migration = false
 # }
 
 # Akka Persistence

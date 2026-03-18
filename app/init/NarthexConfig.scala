@@ -195,6 +195,12 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   }
   logger.info(s"narthex.postgres: ${if (postgresConfig.isDefined) "[configured]" else "[not configured]"}")
 
+  // Whether to run Fuseki-to-PostgreSQL migration on startup (requires postgres to be configured)
+  lazy val runPostgresMigration: Boolean = configuration
+    .getOptional[Boolean]("narthex.postgres.run-migration")
+    .getOrElse(false)
+  logger.info(s"narthex.postgres.run-migration: $runPostgresMigration")
+
   // Application secret for credential encryption (Play Framework's secret key)
   def appSecret: String = configuration.getOptional[String]("play.http.secret.key").getOrElse {
     // Fallback to legacy config name
