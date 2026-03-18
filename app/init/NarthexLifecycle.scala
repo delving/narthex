@@ -10,7 +10,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import harvest.PeriodicHarvest
 import organization.OrgContext
 import mapping.PeriodicSkosifyCheck
-import services.{DatabaseService, DsInfoService, FusekiMigration, GlobalDatabaseService, GlobalDsInfoService, GlobalWorkflowDatabase, PostgresDatasetRepository}
+import services.{DatabaseService, DsInfoService, FusekiMigration, GlobalDatabaseService, GlobalDsInfoService, GlobalMappingMetadataRepository, GlobalOaiSourceRepository, GlobalWorkflowDatabase, MappingMetadataRepository, OaiSourceRepository, PostgresDatasetRepository}
 import init.NarthexConfig
 import scala.util.{Failure, Success}
 
@@ -36,6 +36,16 @@ class NarthexLifecycle @Inject() (
     val pgRepo = new PostgresDatasetRepository(dbService)
     GlobalDsInfoService.set(new DsInfoService(pgRepo))
     logger.info(s"DsInfoService initialized (read-enabled: ${narthexConfig.postgresReadEnabled})")
+
+    // Create MappingMetadataRepository for PostgreSQL-backed mapping reads
+    val mappingRepo = new MappingMetadataRepository(dbService)
+    GlobalMappingMetadataRepository.set(mappingRepo)
+    logger.info("MappingMetadataRepository initialized")
+
+    // Create OaiSourceRepository for PostgreSQL-backed OAI source reads
+    val oaiSourceRepo = new OaiSourceRepository(dbService)
+    GlobalOaiSourceRepository.set(oaiSourceRepo)
+    logger.info("OaiSourceRepository initialized")
 
     // Run Fuseki-to-PostgreSQL migration if enabled
     if (narthexConfig.runPostgresMigration) {
@@ -83,6 +93,8 @@ class NarthexLifecycle @Inject() (
     logger.info("Narthex shutting down, cleaning up active threads...")
 
     harvestTicker.cancel()
+    GlobalOaiSourceRepository.clear()
+    GlobalMappingMetadataRepository.clear()
     GlobalDsInfoService.clear()
     GlobalDatabaseService.close()
     GlobalWorkflowDatabase.close()

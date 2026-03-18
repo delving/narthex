@@ -247,6 +247,18 @@ class DsInfoService(repo: DatasetRepository) {
   * Follows the same pattern as [[GlobalDatabaseService]]. Will be replaced by
   * proper Guice DI in Phase 3.
   */
+/** Source facts for a dataset — the 4 fields needed by PocketParser.
+  *
+  * Equivalent to [[dataset.SourceRepo.SourceFacts]] but read from PostgreSQL
+  * (dataset_harvest_config table) instead of source_facts.txt.
+  */
+case class SourceFactsRecord(
+    sourceType: String,
+    recordRoot: String,
+    uniqueId: String,
+    recordContainer: Option[String]
+)
+
 object GlobalDsInfoService {
   @volatile private var instance: Option[DsInfoService] = None
 
