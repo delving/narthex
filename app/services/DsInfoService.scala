@@ -45,6 +45,24 @@ class DsInfoService(repo: DatasetRepository) {
     }
   }
 
+  /** Get source facts for a dataset from PostgreSQL.
+    *
+    * Reads from the `dataset_harvest_config` table. Returns `None` if the
+    * dataset doesn't exist or if the required fields (sourceType, recordRoot,
+    * uniqueId) are not yet set.
+    *
+    * Equivalent to reading `source_facts.txt` via [[dataset.SourceRepo.SourceFacts]].
+    */
+  def getSourceFacts(spec: String): Option[SourceFactsRecord] = {
+    repo.getHarvestConfig(spec).flatMap { hc =>
+      for {
+        st <- hc.sourceType
+        rr <- hc.recordRoot
+        uid <- hc.uniqueId
+      } yield SourceFactsRecord(st, rr, uid, hc.recordContainer)
+    }
+  }
+
   /** List all active datasets with full info.
     *
     * Equivalent to calling getDatasetInfoJson for every active dataset.

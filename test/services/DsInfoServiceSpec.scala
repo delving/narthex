@@ -375,5 +375,129 @@ class DsInfoServiceSpec
       // Also the duplicate errorMessage field
       (json \ "errorMessage").asOpt[String] shouldBe defined
     }
+
+    // -------------------------------------------------------------------------
+    // getSourceFacts tests (Task 10)
+    // -------------------------------------------------------------------------
+
+    "return source facts when all required fields are present" in {
+      repo.createDataset(DatasetRecord(
+        spec = "sf-full",
+        orgId = "org-1",
+        createdAt = now,
+        updatedAt = now
+      ))
+      repo.upsertHarvestConfig(HarvestConfigRecord(
+        spec = "sf-full",
+        harvestType = Some("oai-pmh"),
+        sourceType = Some("pmh"),
+        recordRoot = Some("/OAI-PMH/ListRecords/record"),
+        uniqueId = Some("/OAI-PMH/ListRecords/record/header/identifier"),
+        recordContainer = Some("/OAI-PMH/ListRecords/record/metadata")
+      ))
+
+      val result = service.getSourceFacts("sf-full")
+      result shouldBe defined
+      result.get.sourceType shouldBe "pmh"
+      result.get.recordRoot shouldBe "/OAI-PMH/ListRecords/record"
+      result.get.uniqueId shouldBe "/OAI-PMH/ListRecords/record/header/identifier"
+      result.get.recordContainer shouldBe Some("/OAI-PMH/ListRecords/record/metadata")
+    }
+
+    "return source facts without optional recordContainer" in {
+      repo.createDataset(DatasetRecord(
+        spec = "sf-no-container",
+        orgId = "org-1",
+        createdAt = now,
+        updatedAt = now
+      ))
+      repo.upsertHarvestConfig(HarvestConfigRecord(
+        spec = "sf-no-container",
+        sourceType = Some("adlib"),
+        recordRoot = Some("/adlibXML/recordList/record"),
+        uniqueId = Some("/adlibXML/recordList/record/@priref")
+      ))
+
+      val result = service.getSourceFacts("sf-no-container")
+      result shouldBe defined
+      result.get.sourceType shouldBe "adlib"
+      result.get.recordContainer shouldBe None
+    }
+
+    "return None when sourceType is missing" in {
+      repo.createDataset(DatasetRecord(
+        spec = "sf-no-type",
+        orgId = "org-1",
+        createdAt = now,
+        updatedAt = now
+      ))
+      repo.upsertHarvestConfig(HarvestConfigRecord(
+        spec = "sf-no-type",
+        recordRoot = Some("/record"),
+        uniqueId = Some("/record/id")
+        // sourceType not set
+      ))
+
+      service.getSourceFacts("sf-no-type") shouldBe None
+    }
+
+    "return None when recordRoot is missing" in {
+      repo.createDataset(DatasetRecord(
+        spec = "sf-no-root",
+        orgId = "org-1",
+        createdAt = now,
+        updatedAt = now
+      ))
+      repo.upsertHarvestConfig(HarvestConfigRecord(
+        spec = "sf-no-root",
+        sourceType = Some("pmh"),
+        uniqueId = Some("/record/id")
+        // recordRoot not set
+      ))
+
+      service.getSourceFacts("sf-no-root") shouldBe None
+    }
+
+    "return None when uniqueId is missing" in {
+      repo.createDataset(DatasetRecord(
+        spec = "sf-no-uid",
+        orgId = "org-1",
+        createdAt = now,
+        updatedAt = now
+      ))
+      repo.upsertHarvestConfig(HarvestConfigRecord(
+        spec = "sf-no-uid",
+        sourceType = Some("pmh"),
+        recordRoot = Some("/record")
+        // uniqueId not set
+      ))
+
+      service.getSourceFacts("sf-no-uid") shouldBe None
+    }
+
+    "return None for source facts of non-existent dataset" in {
+      service.getSourceFacts("nonexistent") shouldBe None
+    }
+
+    "return source facts from full dataset setup" in {
+      // insertFullDataset sets sourceType=None but recordRoot and uniqueId
+      insertFullDataset("sf-integrated", "org-1")
+      // The insertFullDataset helper doesn't set sourceType, so this should be None
+      service.getSourceFacts("sf-integrated") shouldBe None
+
+      // Now update with sourceType
+      repo.upsertHarvestConfig(HarvestConfigRecord(
+        spec = "sf-integrated",
+        harvestType = Some("oai-pmh"),
+        harvestUrl = Some("http://oai.example.com"),
+        sourceType = Some("pmh"),
+        recordRoot = Some("/record"),
+        uniqueId = Some("/record/id")
+      ))
+
+      val result = service.getSourceFacts("sf-integrated")
+      result shouldBe defined
+      result.get.sourceType shouldBe "pmh"
+    }
   }
 }
