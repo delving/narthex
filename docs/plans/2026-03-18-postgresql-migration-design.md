@@ -294,6 +294,47 @@ CREATE TRIGGER audit_indexing
     FOR EACH ROW EXECUTE FUNCTION audit_trigger();
 ```
 
+### Trend Tables
+
+The trends subsystem currently uses JSONL files on the filesystem. Two per dataset (`trends.jsonl`, `trends-daily.jsonl`) plus one org-level cache (`trends_summary.json`). This has scaling problems: the nightly aggregation reads ALL files for ALL datasets, there is no query capability, and the summary cache is a workaround for scan performance.
+
+PostgreSQL replaces the entire JSONL system with two tables:
+
+```sql
+-- Replaces trends.jsonl (event-level, change-gated snapshots)
+CREATE TABLE trend_snapshots (
+    id               BIGSERIAL PRIMARY KEY,
+    spec             TEXT NOT NULL REFERENCES datasets(spec),
+    snapshot_type    TEXT NOT NULL,       -- 'event', 'correction'
+    source_records   INT NOT NULL DEFAULT 0,
+    acquired_records INT NOT NULL DEFAULT 0,
+    deleted_records  INT NOT NULL DEFAULT 0,
+    valid_records    INT NOT NULL DEFAULT 0,
+    invalid_records  INT NOT NULL DEFAULT 0,
+    indexed_records  INT NOT NULL DEFAULT 0,
+    captured_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Replaces trends-daily.jsonl + trends_summary.json
+CREATE TABLE trend_daily_summaries (
+    spec             TEXT NOT NULL REFERENCES datasets(spec),
+    summary_date     DATE NOT NULL,
+    source_records   INT NOT NULL DEFAULT 0,
+    acquired_records INT NOT NULL DEFAULT 0,
+    deleted_records  INT NOT NULL DEFAULT 0,
+    valid_records    INT NOT NULL DEFAULT 0,
+    invalid_records  INT NOT NULL DEFAULT 0,
+    indexed_records  INT NOT NULL DEFAULT 0,
+    delta_source     INT DEFAULT 0,
+    delta_valid      INT DEFAULT 0,
+    delta_indexed    INT DEFAULT 0,
+    event_count      INT DEFAULT 0,
+    PRIMARY KEY (spec, summary_date)
+);
+```
+
+This eliminates: `TrendTrackingService` file scanning, `trends_summary.json` cache, and enables queries impossible with the current system (e.g. "which datasets lost records this week?").
+
 ### Indexes
 
 ```sql
@@ -306,6 +347,8 @@ CREATE INDEX idx_datasets_state ON datasets(deleted_at)
     WHERE deleted_at IS NULL;
 CREATE INDEX idx_skos_mappings_vocab ON skos_mappings(vocabulary_uri)
     WHERE NOT deleted;
+CREATE INDEX idx_trend_snapshots_spec ON trend_snapshots(spec, captured_at DESC);
+CREATE INDEX idx_trend_daily_spec ON trend_daily_summaries(spec, summary_date DESC);
 ```
 
 ## What Gets Eliminated
@@ -314,9 +357,12 @@ CREATE INDEX idx_skos_mappings_vocab ON skos_mappings(vocabulary_uri)
 |--------|-------|
 | Fuseki triple store (separate service) | Gone |
 | SQLite workflow database | Gone (merged into PostgreSQL) |
+| JSONL trend files (per-dataset + org cache) | Gone (PostgreSQL tables) |
 | 102 NXProp definitions in `GraphProperties.scala` | Typed columns |
 | SPARQL queries in `Sparql.scala` | SQL queries |
 | `DsInfo` triple store caching layer | Direct SQL reads |
+| `TrendTrackingService` file I/O + full-scan aggregation | SQL INSERT + indexed queries |
+| `trends_summary.json` cache file | Unnecessary (SQL is fast enough) |
 | `setSingularLiteralProps` + `updateSyncedFalseQ` write amplification | Single `UPDATE` |
 | Retry state in triple store + FSM `InRetry` data type | `workflows.status = 'retry'` |
 | PeriodicHarvest SPARQL poll for retry datasets | `SELECT FROM workflows WHERE status='retry' AND next_retry_at < now()` |
@@ -342,7 +388,7 @@ Incremental, not big-bang. Each phase is independently deployable.
 
 **Phase 1: Add PostgreSQL alongside Fuseki.**
 - Add PostgreSQL dependency and connection pooling (HikariCP or similar).
-- Create all tables.
+- Create all tables (including trend tables).
 - New `DatasetRepository` service with SQL read/write methods.
 - Migration command that reads all NXProps from triple store and writes to PostgreSQL.
 - Run both stores in parallel, verify consistency.
@@ -357,7 +403,14 @@ Incremental, not big-bang. Each phase is independently deployable.
 - Remove SPARQL UPDATE queries.
 - Fuseki becomes read-only for any remaining SKOS data.
 
-**Phase 4: Migrate SKOS data, remove Fuseki.**
+**Phase 4: Migrate trends from JSONL to PostgreSQL.**
+- Migration command that reads existing `trends.jsonl` and `trends-daily.jsonl` files and inserts into `trend_snapshots` and `trend_daily_summaries` tables.
+- Rewrite `TrendTrackingService` to use PostgreSQL instead of file I/O.
+- Rewrite nightly aggregation to use SQL (single query replaces full filesystem scan).
+- Remove `trends_summary.json` cache (SQL queries are fast enough).
+- Remove `ActivityLogger` JSONL writing (workflow tables serve as the activity log).
+
+**Phase 5: Migrate SKOS data, remove Fuseki.**
 - Move vocabulary RDF to `vocabularies.rdf_data`.
 - Move mappings to `skos_mappings` table.
 - Remove Fuseki dependency, `TripleStore` service, `Sparql.scala`.
@@ -403,4 +456,27 @@ SELECT new_row FROM audit_history
 WHERE spec = 'museum-objects' AND table_name = 'dataset_harvest_config'
   AND changed_at <= (SELECT started_at FROM workflows WHERE id = 'wf-123')
 ORDER BY changed_at DESC LIMIT 1;
+
+-- Which datasets lost indexed records this week?
+SELECT spec, SUM(delta_indexed) AS total_drop
+FROM trend_daily_summaries
+WHERE summary_date > current_date - 7 AND delta_indexed < 0
+GROUP BY spec ORDER BY total_drop;
+
+-- 30-day trend for a dataset (replaces JSONL file read + in-memory aggregation)
+SELECT summary_date, source_records, valid_records, indexed_records,
+       delta_source, delta_valid, delta_indexed
+FROM trend_daily_summaries
+WHERE spec = 'museum-objects' AND summary_date > current_date - 30
+ORDER BY summary_date;
+
+-- Organization-level summary (replaces trends_summary.json cache file)
+SELECT
+    COUNT(*) FILTER (WHERE d24.delta_indexed > 0) AS growing,
+    COUNT(*) FILTER (WHERE d24.delta_indexed < 0) AS shrinking,
+    COUNT(*) FILTER (WHERE d24.delta_indexed = 0 OR d24.delta_indexed IS NULL) AS stable
+FROM datasets d
+LEFT JOIN trend_daily_summaries d24
+    ON d.spec = d24.spec AND d24.summary_date = current_date - 1
+WHERE d.deleted_at IS NULL;
 ```
