@@ -5,6 +5,7 @@ import java.io.File
 import scala.jdk.CollectionConverters._
 import play.api.Configuration
 import play.api.Logging
+import services.PostgresConfig
 
 @Singleton
 class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
@@ -171,6 +172,28 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   def fusekiUsername: Option[String] = configuration.getOptional[String]("fuseki-username").filter(_.nonEmpty)
   def fusekiPassword: Option[String] = configuration.getOptional[String]("fuseki-password").filter(_.nonEmpty)
   logger.info(s"fuseki authentication enabled: ${fusekiUsername.isDefined}")
+
+  // PostgreSQL configuration (optional — only used when narthex.postgres section is configured)
+  lazy val postgresConfig: Option[PostgresConfig] = {
+    if (configuration.has("narthex.postgres.url")) {
+      val pg = configuration.get[Configuration]("narthex.postgres")
+      Some(
+        PostgresConfig(
+          url = pg.get[String]("url"),
+          user = pg.get[String]("user"),
+          password = pg.get[String]("password"),
+          maxPoolSize = pg.getOptional[Int]("maxPoolSize").getOrElse(10),
+          minIdle = pg.getOptional[Int]("minIdle").getOrElse(2),
+          connectionTimeout = pg.getOptional[Long]("connectionTimeout").getOrElse(30000L),
+          idleTimeout = pg.getOptional[Long]("idleTimeout").getOrElse(600000L),
+          maxLifetime = pg.getOptional[Long]("maxLifetime").getOrElse(1800000L)
+        )
+      )
+    } else {
+      None
+    }
+  }
+  logger.info(s"narthex.postgres: ${if (postgresConfig.isDefined) "[configured]" else "[not configured]"}")
 
   // Application secret for credential encryption (Play Framework's secret key)
   def appSecret: String = configuration.getOptional[String]("play.http.secret.key").getOrElse {

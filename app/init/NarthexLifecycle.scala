@@ -10,7 +10,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import harvest.PeriodicHarvest
 import organization.OrgContext
 import mapping.PeriodicSkosifyCheck
-import services.GlobalWorkflowDatabase
+import services.{DatabaseService, GlobalDatabaseService, GlobalWorkflowDatabase}
 import init.NarthexConfig
 
 @Singleton
@@ -23,6 +23,14 @@ class NarthexLifecycle @Inject() (
     extends Logging {
 
   logger.info("Narthex starting up...")
+
+  // Initialize PostgreSQL (if configured)
+  narthexConfig.postgresConfig.foreach { pgConfig =>
+    val dbService = new DatabaseService(pgConfig)
+    dbService.initialize()
+    GlobalDatabaseService.set(dbService)
+    logger.info("PostgreSQL DatabaseService initialized")
+  }
 
   // Initialize workflow database
   GlobalWorkflowDatabase.init(narthexConfig)
@@ -53,6 +61,7 @@ class NarthexLifecycle @Inject() (
     logger.info("Narthex shutting down, cleaning up active threads...")
 
     harvestTicker.cancel()
+    GlobalDatabaseService.close()
     GlobalWorkflowDatabase.close()
 
     Future.successful(())

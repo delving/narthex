@@ -97,6 +97,9 @@ libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.45.1.0"
 // PostgreSQL
 libraryDependencies += "org.postgresql" % "postgresql" % "42.7.1"
 
+// HikariCP connection pool
+libraryDependencies += "com.zaxxer" % "HikariCP" % "5.0.1"
+
 // Flyway for schema migrations
 libraryDependencies ++= Seq(
   "org.flywaydb" % "flyway-core" % "10.6.0",
