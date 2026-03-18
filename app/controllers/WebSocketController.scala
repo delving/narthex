@@ -2,14 +2,10 @@ package controllers
 
 import javax.inject._
 import java.util.concurrent.TimeUnit
-import scala.concurrent.{ExecutionContext, Future}
-import play.api.Logger
-import services.{WorkflowDatabase, GlobalWorkflowDatabase}
-import play.api._
+import scala.concurrent.ExecutionContext
 import play.api.mvc._
 import play.api.libs.json.Json
 import play.api.libs.streams.ActorFlow
-import play.api.mvc.{BaseController, WebSocket}
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.stream.Materializer
 import akka.util.Timeout
@@ -63,32 +59,5 @@ class WebSocketController @Inject() (implicit
   def dataset: WebSocket = WebSocket.accept[String, String] { request =>
     ActorFlow.actorRef(out => DatasetSocketActor.props(out))
   }
-
-  private val logger = Logger(getClass)
-
-  def getDatasetStatus(spec: String): Future[Option[DatasetStatus]] = Future {
-    try {
-      val db = GlobalWorkflowDatabase.get()
-      db.getDatasetState(spec).map { s =>
-        DatasetStatus(
-          spec = s.spec,
-          workflowId = s.currentWorkflowId,
-          currentStep = s.currentStep,
-          lastUpdated = s.lastUpdated
-        )
-      }
-    } catch {
-      case e: Exception =>
-        logger.error(s"Error getting dataset status: ${e.getMessage}", e)
-        None
-    }
-  }
-
-  case class DatasetStatus(
-    spec: String,
-    workflowId: String,
-    currentStep: String,
-    lastUpdated: String
-  )
 
 }

@@ -1,38 +1,47 @@
 package organization
 
 import akka.actor.{ActorLogging, Props}
-import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
+import akka.persistence.{PersistentActor, RecoveryCompleted, SaveSnapshotSuccess, SaveSnapshotFailure, SnapshotOffer}
 import services.WorkflowDatabase
-import WorkflowEvent.{WorkflowStarted, StepStarted, StepProgress, StepCompleted, StepFailed, WorkflowCompleted, WorkflowCancelled, generateId}
+import WorkflowEvent.{WorkflowStarted, StepStarted, StepProgress, StepCompleted, StepFailed, WorkflowCompleted, WorkflowCancelled}
 
 class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
   
   override def persistenceId: String = "workflow-persistence"
   
   private var state: WorkflowState = WorkflowState()
+  private var eventsSinceSnapshot: Int = 0
+  private val snapshotInterval: Int = 100
+  
+  // Keep completed workflows in memory for 30 days (matches UI display window).
+  // Older ones are pruned from memory but remain queryable in SQLite.
+  private val retentionMillis: Long = 30L * 24 * 60 * 60 * 1000
   
   override def receiveCommand: Receive = {
-    case WorkflowPersistenceActor.Started(spec, trigger, steps) =>
-      val workflowId = generateId()
+    case WorkflowPersistenceActor.Started(spec, trigger, steps, workflowId) =>
       val event = WorkflowStarted(workflowId, spec, trigger, steps)
+      val replyTo = sender()
       persist(event) { persistedEvent =>
         state = state.addWorkflow(persistedEvent)
         workflowDb.insertWorkflow(workflowId, spec, trigger)
         workflowDb.insertStep(workflowId, steps.head)
+        replyTo ! workflowId
+        maybeSnapshot()
       }
-      sender() ! workflowId
       
     case WorkflowPersistenceActor.StepStart(workflowId, stepName, config) =>
       val event = StepStarted(workflowId, stepName, config)
       persist(event) { persistedEvent =>
         state = state.addStep(workflowId, stepName)
         workflowDb.insertStep(workflowId, stepName)
+        maybeSnapshot()
       }
       
     case WorkflowPersistenceActor.StepProgressMsg(workflowId, stepName, records, metadata) =>
       val event = StepProgress(workflowId, stepName, records, metadata)
       persist(event) { persistedEvent =>
         state = state.updateProgress(workflowId, stepName, records)
+        maybeSnapshot()
       }
       
     case WorkflowPersistenceActor.StepFinish(workflowId, stepName, duration, metadata) =>
@@ -41,6 +50,7 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
         state = state.completeStep(workflowId, stepName, metadata)
         val metadataStr = metadata.map { case (k, v) => s"$k:$v" }.mkString(",")
         workflowDb.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
+        maybeSnapshot()
       }
       
     case WorkflowPersistenceActor.StepError(workflowId, stepName, error, metadata) =>
@@ -48,20 +58,25 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       persist(event) { persistedEvent =>
         state = state.failStep(workflowId, stepName, error)
         workflowDb.failStep(workflowId, stepName, error)
+        maybeSnapshot()
       }
       
     case WorkflowPersistenceActor.Finished(workflowId) =>
       val event = WorkflowCompleted(workflowId)
       persist(event) { persistedEvent =>
         state = state.completeWorkflow(workflowId)
+        state = state.pruneOlderThan(retentionMillis)
         workflowDb.completeWorkflow(workflowId, "completed", None)
+        maybeSnapshot()
       }
       
     case WorkflowPersistenceActor.Cancelled(workflowId) =>
       val event = WorkflowCancelled(workflowId)
       persist(event) { persistedEvent =>
         state = state.cancelWorkflow(workflowId)
+        state = state.pruneOlderThan(retentionMillis)
         workflowDb.completeWorkflow(workflowId, "cancelled", None)
+        maybeSnapshot()
       }
       
     case WorkflowPersistenceActor.GetState =>
@@ -69,6 +84,12 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       
     case WorkflowPersistenceActor.GetWorkflow(workflowId) =>
       sender() ! state.getWorkflow(workflowId)
+
+    case SaveSnapshotSuccess(metadata) =>
+      log.debug(s"Snapshot saved: ${metadata.sequenceNr}")
+
+    case SaveSnapshotFailure(metadata, cause) =>
+      log.warning(s"Snapshot failed: ${cause.getMessage}")
   }
   
   override def receiveRecover: Receive = {
@@ -97,22 +118,33 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       state = snapshot
       
     case RecoveryCompleted =>
+      // Prune old completed workflows after recovery
+      state = state.pruneOlderThan(retentionMillis)
       log.info(s"Recovery completed, state: ${state.workflows.size} workflows")
   }
   
   private def workflowDb: WorkflowDatabase = {
     services.GlobalWorkflowDatabase.get()
   }
+
+  private def maybeSnapshot(): Unit = {
+    eventsSinceSnapshot += 1
+    if (eventsSinceSnapshot >= snapshotInterval) {
+      eventsSinceSnapshot = 0
+      saveSnapshot(state)
+    }
+  }
 }
 
 object WorkflowPersistenceActor {
   def props(): Props = Props(new WorkflowPersistenceActor())
   
-  case class Started(spec: String, trigger: String, steps: List[String])
-  case class StepStart(workflowId: String, stepName: String, config: Map[String, Any])
-  case class StepProgressMsg(workflowId: String, stepName: String, recordsProcessed: Int, metadata: Map[String, Any])
-  case class StepFinish(workflowId: String, stepName: String, duration: Long, metadata: Map[String, Any])
-  case class StepError(workflowId: String, stepName: String, error: String, metadata: Map[String, Any])
+  // workflowId is provided by the caller (DatasetActor) for correlation
+  case class Started(spec: String, trigger: String, steps: List[String], workflowId: String)
+  case class StepStart(workflowId: String, stepName: String, config: Map[String, String])
+  case class StepProgressMsg(workflowId: String, stepName: String, recordsProcessed: Int, metadata: Map[String, String])
+  case class StepFinish(workflowId: String, stepName: String, duration: Long, metadata: Map[String, String])
+  case class StepError(workflowId: String, stepName: String, error: String, metadata: Map[String, String])
   case class Finished(workflowId: String)
   case class Cancelled(workflowId: String)
   
@@ -128,7 +160,8 @@ case class WorkflowState(workflows: Map[String, Workflow] = Map.empty) {
       spec = event.spec,
       trigger = event.trigger,
       steps = event.steps,
-      status = "running"
+      status = "running",
+      createdAt = event.timestamp
     )
     copy(workflows = workflows + (event.workflowId -> workflow))
   }
@@ -188,6 +221,17 @@ case class WorkflowState(workflows: Map[String, Workflow] = Map.empty) {
   def getRecordsProcessed(workflowId: String, stepName: String): Int = {
     workflows.get(workflowId).map(_.recordsProcessed).getOrElse(0)
   }
+
+  /** Prune terminal workflows older than the retention window.
+    * Running workflows are never pruned. Pruned workflows remain in SQLite. */
+  def pruneOlderThan(retentionMillis: Long): WorkflowState = {
+    val cutoff = System.currentTimeMillis() - retentionMillis
+    val kept = workflows.filter { case (_, w) =>
+      w.status == "running" || w.createdAt >= cutoff
+    }
+    if (kept.size == workflows.size) this
+    else copy(workflows = kept)
+  }
 }
 
 case class Workflow(
@@ -199,7 +243,8 @@ case class Workflow(
   status: String = "running",
   recordsProcessed: Int = 0,
   completedSteps: List[CompletedStep] = Nil,
-  errorMessage: Option[String] = None
+  errorMessage: Option[String] = None,
+  createdAt: Long = System.currentTimeMillis()
 )
 
 case class CompletedStep(

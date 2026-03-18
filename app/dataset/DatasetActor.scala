@@ -305,6 +305,112 @@ class DatasetActor(val datasetContext: DatasetContext,
     child
   }
 
+  /** Prepare source repo, build kickoff message, create harvester actor and send kickoff.
+    * Returns Some(harvesterRef) on success, None if harvest type is unknown. */
+  private def prepareAndStartHarvest(strategy: HarvestStrategy): Option[ActorRef] = {
+    def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
+    harvestTypeFromString(prop(harvestType)).map { ht =>
+      datasetContext.dropTree()
+
+      // Prepare source repo based on strategy
+      strategy match {
+        case FromScratch =>
+          log.info("FromScratch: clearing all data")
+          datasetContext.sourceRepoOpt match {
+            case Some(sourceRepo) => sourceRepo.clearData()
+            case None => datasetContext.createSourceRepo(SourceFacts(ht))
+          }
+        case FromScratchIncremental =>
+          log.info("FromScratchIncremental: clearing data for full periodic harvest")
+          datasetContext.sourceRepoOpt match {
+            case Some(sourceRepo) => sourceRepo.clearData()
+            case None => datasetContext.createSourceRepo(SourceFacts(ht))
+          }
+        case _ =>
+          log.info(s"Strategy $strategy: checking source repo")
+          datasetContext.sourceRepoOpt match {
+            case None => datasetContext.createSourceRepo(SourceFacts(ht))
+            case Some(_) => log.debug("Source repo exists, keeping data")
+          }
+      }
+
+      val (url, ds, pre, se, recordId, downloadLink) = (prop(harvestURL),
+        prop(harvestDataset),
+        prop(harvestPrefix),
+        prop(harvestSearch),
+        prop(harvestRecord),
+        prop(harvestDownloadURL))
+
+      val credentials: Option[(String, String)] = {
+        val username = prop(harvestUsername)
+        val encryptedPassword = prop(harvestPassword)
+        if (username.nonEmpty && encryptedPassword.nonEmpty) {
+          val password = CredentialEncryption.decrypt(encryptedPassword, orgContext.appConfig.appSecret)
+          Some((username, password))
+        } else {
+          None
+        }
+      }
+
+      val apiKey: Option[(String, String)] = {
+        val paramName = prop(harvestApiKeyParam)
+        val encryptedKey = prop(harvestApiKey)
+        if (paramName.nonEmpty && encryptedKey.nonEmpty) {
+          val keyValue = CredentialEncryption.decrypt(encryptedKey, orgContext.appConfig.appSecret)
+          Some((paramName, keyValue))
+        } else {
+          None
+        }
+      }
+
+      val kickoff = ht match {
+        case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
+        case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
+        case ADLIB => HarvestAdLib(strategy, url, ds, se, credentials)
+        case JSON =>
+          val jsonConfig = JsonHarvestConfig(
+            itemsPath = prop(harvestJsonItemsPath),
+            idPath = prop(harvestJsonIdPath),
+            totalPath = Option(prop(harvestJsonTotalPath)).filter(_.nonEmpty),
+            pageParam = Option(prop(harvestJsonPageParam)).filter(_.nonEmpty).getOrElse("page"),
+            pageSizeParam = Option(prop(harvestJsonPageSizeParam)).filter(_.nonEmpty).getOrElse("pagesize"),
+            pageSize = Try(prop(harvestJsonPageSize).toInt).getOrElse(50),
+            detailPath = Option(prop(harvestJsonDetailPath)).filter(_.nonEmpty),
+            skipDetail = prop(harvestJsonSkipDetail) == "true",
+            xmlRoot = Option(prop(harvestJsonXmlRoot)).filter(_.nonEmpty).getOrElse("records"),
+            xmlRecord = Option(prop(harvestJsonXmlRecord)).filter(_.nonEmpty).getOrElse("record")
+          )
+          HarvestJSON(strategy, url, jsonConfig, credentials, apiKey)
+      }
+
+      val harvester = createChildActor(
+        Harvester.props(datasetContext,
+                       orgContext.appConfig.harvestTimeOut,
+                       orgContext.wsApi,
+                       harvestingExecutionContext,
+                       orgContext.appConfig.harvestPageStallTimeoutMinutes),
+        "harvester")
+      harvester ! kickoff
+      harvester
+    }
+  }
+
+  /** Start workflow tracking if not already tracking one. Returns the workflow ID. */
+  private def ensureWorkflowTracking(trigger: String): String = {
+    currentWorkflowId.getOrElse {
+      val workflowId = java.util.UUID.randomUUID().toString
+      val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving", "Skosifying", "Categorizing")
+      orgContext.workflowActor ! Started(
+        spec = dsInfo.spec,
+        trigger = trigger,
+        steps = steps,
+        workflowId = workflowId
+      )
+      currentWorkflowId = Some(workflowId)
+      workflowId
+    }
+  }
+
   private def isHarvestFailure(active: Active): Boolean = {
     active.progressState == HARVESTING
   }
@@ -343,45 +449,17 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         def startHarvest(strategy: HarvestStrategy) = {
           val harvestTypeStringOpt = dsInfo.getLiteralProp(harvestType)
-
           log.info(s"Start harvest $strategy, type is $harvestTypeStringOpt")
-          val harvestTypeOpt =
-            harvestTypeStringOpt.flatMap(harvestTypeFromString)
-          harvestTypeOpt.map { harvestType =>
-            log.info(s"Starting harvest $strategy with type $harvestType")
-            strategy match {
-              case FromScratch =>
-                datasetContext.sourceRepoOpt match {
-                  case Some(sourceRepo) =>
-                    sourceRepo.clearData()
-                  case None =>
-                    // no source repo, use the default for the harvest type
-                    datasetContext.createSourceRepo(SourceFacts(harvestType))
-                }
-              case _ =>
-                //case FromScratchIncremental =>
-                datasetContext.sourceRepoOpt match {
-                  case Some(sourceRepo) =>
-                    sourceRepo.clearData()
-                  case None =>
-                    // no source repo, use the default for the harvest type
-                    datasetContext.createSourceRepo(SourceFacts(harvestType))
-                }
-              //case _ =>
-            }
-
+          harvestTypeStringOpt.flatMap(harvestTypeFromString).map { _ =>
             workStarted = true
             self ! StartHarvest(strategy)
             "harvest started"
-
-
           } getOrElse {
             val message =
               s"Unable to harvest $datasetContext: unknown harvest type [$harvestTypeStringOpt]"
             self ! WorkFailure(message, None)
             message
           }
-
         }
 
         commandName match {
@@ -628,114 +706,13 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartHarvest(strategy), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
-      datasetContext.dropTree()
-      def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
-      harvestTypeFromString(prop(harvestType)).map { harvestType =>
-        log.info(s"Starting harvest $strategy with type $harvestType")
-        strategy match {
-          case FromScratch =>
-            log.info("FromScratch: clearing all data")
-            datasetContext.sourceRepoOpt match {
-              case Some(sourceRepo) =>
-                sourceRepo.clearData()
-              case None =>
-                // no source repo, use the default for the harvest type
-                datasetContext.createSourceRepo(SourceFacts(harvestType))
-            }
-          case FromScratchIncremental =>
-            log.info("FromScratchIncremental: clearing data for full periodic harvest")
-            // Clear data like FromScratch - this is a FULL harvest, but uses incremental processing path
-            datasetContext.sourceRepoOpt match {
-              case Some(sourceRepo) =>
-                sourceRepo.clearData()
-              case None =>
-                // no source repo, use the default for the harvest type
-                datasetContext.createSourceRepo(SourceFacts(harvestType))
-            }
-          case _ =>
-            // For other strategies like ModifiedAfter, Sample, etc
-            log.info(s"Strategy $strategy: checking source repo")
-            datasetContext.sourceRepoOpt match {
-              case None =>
-                datasetContext.createSourceRepo(SourceFacts(harvestType))
-              case Some(_) =>
-                // Keep existing data for incremental strategies
-                log.debug("Source repo exists, keeping data")
-            }
-        }
-        val (url, ds, pre, se, recordId, downloadLink) = (prop(harvestURL),
-          prop(harvestDataset),
-          prop(harvestPrefix),
-          prop(harvestSearch),
-          prop(harvestRecord),
-          prop(harvestDownloadURL))
-
-        // Get Basic Auth credentials if configured
-        val credentials: Option[(String, String)] = {
-          val username = prop(harvestUsername)
-          val encryptedPassword = prop(harvestPassword)
-          if (username.nonEmpty && encryptedPassword.nonEmpty) {
-            val password = CredentialEncryption.decrypt(encryptedPassword, orgContext.appConfig.appSecret)
-            Some((username, password))
-          } else {
-            None
-          }
-        }
-
-        // Get API key if configured (for JSON harvest)
-        val apiKey: Option[(String, String)] = {
-          val paramName = prop(harvestApiKeyParam)
-          val encryptedKey = prop(harvestApiKey)
-          if (paramName.nonEmpty && encryptedKey.nonEmpty) {
-            val keyValue = CredentialEncryption.decrypt(encryptedKey, orgContext.appConfig.appSecret)
-            Some((paramName, keyValue))
-          } else {
-            None
-          }
-        }
-
-        val kickoff = harvestType match {
-          case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
-          case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
-          case ADLIB => HarvestAdLib(strategy, url, ds, se, credentials)
-          case JSON =>
-            val jsonConfig = JsonHarvestConfig(
-              itemsPath = prop(harvestJsonItemsPath),
-              idPath = prop(harvestJsonIdPath),
-              totalPath = Option(prop(harvestJsonTotalPath)).filter(_.nonEmpty),
-              pageParam = Option(prop(harvestJsonPageParam)).filter(_.nonEmpty).getOrElse("page"),
-              pageSizeParam = Option(prop(harvestJsonPageSizeParam)).filter(_.nonEmpty).getOrElse("pagesize"),
-              pageSize = Try(prop(harvestJsonPageSize).toInt).getOrElse(50),
-              detailPath = Option(prop(harvestJsonDetailPath)).filter(_.nonEmpty),
-              skipDetail = prop(harvestJsonSkipDetail) == "true",
-              xmlRoot = Option(prop(harvestJsonXmlRoot)).filter(_.nonEmpty).getOrElse("records"),
-              xmlRecord = Option(prop(harvestJsonXmlRecord)).filter(_.nonEmpty).getOrElse("record")
-            )
-            HarvestJSON(strategy, url, jsonConfig, credentials, apiKey)
-        }
-        val harvester = createChildActor(
-          Harvester.props(datasetContext,
-                         orgContext.appConfig.harvestTimeOut,
-                         orgContext.wsApi,
-                         harvestingExecutionContext,
-                         orgContext.appConfig.harvestPageStallTimeoutMinutes),
-          "harvester")
-        harvester ! kickoff
-
-        if (currentWorkflowId.isEmpty) {
-          val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving", "Skosifying", "Categorizing")
-          orgContext.workflowActor ! Started(
-            spec = dsInfo.spec,
-            trigger = "manual",
-            steps = steps
-          )
-          currentWorkflowId = Some(java.util.UUID.randomUUID().toString)
-        }
-        workflowStartTime = Some(new DateTime())
-
-        goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
-      } getOrElse {
-        stay() using InError("Unable to determine harvest type")
+      prepareAndStartHarvest(strategy) match {
+        case Some(harvester) =>
+          ensureWorkflowTracking("manual")
+          workflowStartTime = Some(new DateTime())
+          goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
+        case None =>
+          stay() using InError("Unable to determine harvest type")
       }
 
     // Handle StartHarvest when not in Dormant state (e.g., after previous harvest completed and dataset is in PROCESSED state)
@@ -1210,107 +1187,14 @@ class DatasetActor(val datasetContext: DatasetContext,
       // Increment retry count
       val newCount = dsInfo.incrementRetryCount()
 
-      // Start harvest (reuse existing harvest startup logic)
-      def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
-      harvestTypeFromString(prop(harvestType)).map { harvestType =>
-        datasetContext.dropTree()
-
-        // Prepare source repo based on strategy
-        strategy match {
-          case FromScratch =>
-            log.info("FromScratch: clearing all data")
-            datasetContext.sourceRepoOpt match {
-              case Some(sourceRepo) => sourceRepo.clearData()
-              case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
-            }
-          case FromScratchIncremental =>
-            log.info("FromScratchIncremental: clearing data for full periodic harvest")
-            datasetContext.sourceRepoOpt match {
-              case Some(sourceRepo) => sourceRepo.clearData()
-              case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
-            }
-          case _ =>
-            log.info(s"Strategy $strategy: checking source repo")
-            datasetContext.sourceRepoOpt match {
-              case None => datasetContext.createSourceRepo(SourceFacts(harvestType))
-              case Some(_) => log.debug("Source repo exists, keeping data")
-            }
-        }
-
-        val (url, ds, pre, se, recordId, downloadLink) = (prop(harvestURL),
-          prop(harvestDataset),
-          prop(harvestPrefix),
-          prop(harvestSearch),
-          prop(harvestRecord),
-          prop(harvestDownloadURL))
-
-        // Get Basic Auth credentials if configured
-        val credentials: Option[(String, String)] = {
-          val username = prop(harvestUsername)
-          val encryptedPassword = prop(harvestPassword)
-          if (username.nonEmpty && encryptedPassword.nonEmpty) {
-            val password = CredentialEncryption.decrypt(encryptedPassword, orgContext.appConfig.appSecret)
-            Some((username, password))
-          } else {
-            None
-          }
-        }
-
-        // Get API key if configured (for JSON harvest)
-        val apiKey: Option[(String, String)] = {
-          val paramName = prop(harvestApiKeyParam)
-          val encryptedKey = prop(harvestApiKey)
-          if (paramName.nonEmpty && encryptedKey.nonEmpty) {
-            val keyValue = CredentialEncryption.decrypt(encryptedKey, orgContext.appConfig.appSecret)
-            Some((paramName, keyValue))
-          } else {
-            None
-          }
-        }
-
-        val kickoff = harvestType match {
-          case DOWNLOAD => HarvestDownloadLink(strategy, downloadLink, dsInfo)
-          case PMH   => HarvestPMH(strategy, url, ds, pre, recordId)
-          case ADLIB => HarvestAdLib(strategy, url, ds, se, credentials)
-          case JSON =>
-            val jsonConfig = JsonHarvestConfig(
-              itemsPath = prop(harvestJsonItemsPath),
-              idPath = prop(harvestJsonIdPath),
-              totalPath = Option(prop(harvestJsonTotalPath)).filter(_.nonEmpty),
-              pageParam = Option(prop(harvestJsonPageParam)).filter(_.nonEmpty).getOrElse("page"),
-              pageSizeParam = Option(prop(harvestJsonPageSizeParam)).filter(_.nonEmpty).getOrElse("pagesize"),
-              pageSize = Try(prop(harvestJsonPageSize).toInt).getOrElse(50),
-              detailPath = Option(prop(harvestJsonDetailPath)).filter(_.nonEmpty),
-              skipDetail = prop(harvestJsonSkipDetail) == "true",
-              xmlRoot = Option(prop(harvestJsonXmlRoot)).filter(_.nonEmpty).getOrElse("records"),
-              xmlRecord = Option(prop(harvestJsonXmlRecord)).filter(_.nonEmpty).getOrElse("record")
-            )
-            HarvestJSON(strategy, url, jsonConfig, credentials, apiKey)
-        }
-        val harvester = createChildActor(
-          Harvester.props(datasetContext,
-                         orgContext.appConfig.harvestTimeOut,
-                         orgContext.wsApi,
-                         harvestingExecutionContext,
-                         orgContext.appConfig.harvestPageStallTimeoutMinutes),
-          "harvester")
-        harvester ! kickoff
-
-        if (currentWorkflowId.isEmpty) {
-          val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving", "Skosifying", "Categorizing")
-          orgContext.workflowActor ! Started(
-            spec = dsInfo.spec,
-            trigger = "manual",
-            steps = steps
-          )
-          currentWorkflowId = Some(java.util.UUID.randomUUID().toString)
-        }
-        workflowStartTime = Some(new DateTime())
-
-        goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
-      } getOrElse {
-        log.error(s"Unable to determine harvest type for retry")
-        stay() using InRetry(message, newCount)
+      prepareAndStartHarvest(strategy) match {
+        case Some(harvester) =>
+          ensureWorkflowTracking("retry")
+          workflowStartTime = Some(new DateTime())
+          goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
+        case None =>
+          log.error(s"Unable to determine harvest type for retry")
+          stay() using InRetry(message, newCount)
       }
 
     // Handle another failure while already in retry mode

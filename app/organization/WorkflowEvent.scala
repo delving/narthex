@@ -12,7 +12,7 @@ object WorkflowEvent {
   }
   
   case class WorkflowStarted(
-    workflowId: String = generateId(),
+    workflowId: String,
     spec: String,
     trigger: String,
     steps: List[String]
@@ -21,28 +21,28 @@ object WorkflowEvent {
   case class StepStarted(
     workflowId: String,
     stepName: String,
-    config: Map[String, Any]
+    config: Map[String, String]
   ) extends WorkflowEvent
   
   case class StepProgress(
     workflowId: String,
     stepName: String,
     recordsProcessed: Int,
-    metadata: Map[String, Any]
+    metadata: Map[String, String]
   ) extends WorkflowEvent
   
   case class StepCompleted(
     workflowId: String,
     stepName: String,
     duration: Long,
-    metadata: Map[String, Any]
+    metadata: Map[String, String]
   ) extends WorkflowEvent
   
   case class StepFailed(
     workflowId: String,
     stepName: String,
     error: String,
-    metadata: Map[String, Any]
+    metadata: Map[String, String]
   ) extends WorkflowEvent
   
   case class WorkflowCompleted(workflowId: String) extends WorkflowEvent

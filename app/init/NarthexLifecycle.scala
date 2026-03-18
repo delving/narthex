@@ -53,6 +53,7 @@ class NarthexLifecycle @Inject() (
     logger.info("Narthex shutting down, cleaning up active threads...")
 
     harvestTicker.cancel()
+    GlobalWorkflowDatabase.close()
 
     Future.successful(())
   }
