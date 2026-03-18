@@ -42,6 +42,39 @@ object ProcessedRepo {
   val chunkSize = 250
   val chunkMaxBytes = 6388608
 
+  /** Format an RDF parsing error with line context, matching sip-creator's approach.
+    * Shows 10 lines before/after the error with a >>> marker on the error line.
+    */
+  def formatRDFError(e: Throwable, rdf: String): String = {
+    val message = Option(e.getMessage).getOrElse(e.getClass.getSimpleName)
+    val errorLine = extractLineNumber(message)
+    if (errorLine < 0) return rdf.take(2000)
+
+    val lines = rdf.split("\n")
+    val contextRadius = 10
+    val start = math.max(0, errorLine - 1 - contextRadius)
+    val end = math.min(lines.length, errorLine - 1 + contextRadius + 1)
+
+    val context = new StringBuilder
+    context.append(s"RDF parsing error at line $errorLine:\n")
+    context.append(s"$message\n\n")
+    context.append("Context:\n")
+    for (i <- start until end) {
+      val marker = if (i == errorLine - 1) ">>> " else "    "
+      context.append(f"$marker${i + 1}%4d: ${lines(i)}\n")
+    }
+    context.toString()
+  }
+
+  /** Extract line number from Jena error messages.
+    * Handles both "[line: 67, col: 26]" and "(line 67 column 26)" formats.
+    */
+  private def extractLineNumber(message: String): Int = {
+    if (message == null) return -1
+    val m = """line[: ]+(\d+)""".r.findFirstMatchIn(message)
+    m.flatMap(mat => scala.util.Try(mat.group(1).toInt).toOption).getOrElse(-1)
+  }
+
   case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {
 
     def bulkAPIQ(orgId: String): String = {
@@ -325,8 +358,12 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
               catch {
                 case e: Throwable =>
-                  logger.error(recordText.toString())
-                  throw e
+                  val recordContext = s"Graph: $graphName, Hash: $currentHash"
+                  val errorLineInfo = formatRDFError(e, recordText.toString())
+
+                  logger.error(s"RDF parsing error for $recordContext: ${e.getMessage}")
+                  logger.error(s"XML context around error:\n$errorLineInfo")
+                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}\nContext:\n$errorLineInfo", e)
               }
               //val StringHandling.SubjectOfGraph(subject) = graphName
               //val subjectResource = m.getResource(subject)

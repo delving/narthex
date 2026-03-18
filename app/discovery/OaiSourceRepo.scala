@@ -157,15 +157,26 @@ class OaiSourceRepo(orgRoot: File) {
 
   /**
    * Load cached record counts for a source.
+   * Returns None if cache is expired (default 24 hours).
    */
-  def loadCountsCache(sourceId: String): Option[SetCountCache] = {
+  def loadCountsCache(sourceId: String, ttlHours: Int = 24): Option[SetCountCache] = {
     val cacheFile = new File(sourcesDir, s"$sourceId-counts.json")
     if (!cacheFile.exists()) {
       None
     } else {
       try {
         val content = FileUtils.readFileToString(cacheFile, "UTF-8")
-        Some(Json.parse(content).as[SetCountCache])
+        val cache = Json.parse(content).as[SetCountCache]
+
+        // Check if cache is expired
+        val ageHours = (DateTime.now.getMillis - cache.lastVerified.getMillis) / 3600000.0
+        if (ageHours > ttlHours) {
+          logger.debug(s"Counts cache for $sourceId expired (${ageHours.toInt}h old)")
+          cacheFile.delete()
+          None
+        } else {
+          Some(cache)
+        }
       } catch {
         case e: Exception =>
           logger.error(s"Error reading counts cache for $sourceId: ${e.getMessage}", e)

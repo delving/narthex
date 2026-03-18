@@ -3,11 +3,9 @@ package controllers
 import javax.inject._
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
-import play.api._
 import play.api.mvc._
 import play.api.libs.json.Json
 import play.api.libs.streams.ActorFlow
-import play.api.mvc.{BaseController, WebSocket}
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.stream.Materializer
 import akka.util.Timeout

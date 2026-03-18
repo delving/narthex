@@ -9,11 +9,12 @@ class Semaphore (val permits: Int) {
 
   private val semaphores = new ConcurrentHashMap[String, String]()
 
-  def tryAcquire(spec: String): Boolean = {
-    if ( semaphores.containsKey(spec) ) {
+  def tryAcquire(spec: String): Boolean = synchronized {
+    if (semaphores.containsKey(spec)) {
       logger.info(s"semaphore for $spec is still active or has not been released")
+      return false
     }
-    if (semaphores.size() < permits && !semaphores.containsKey(spec)) {
+    if (semaphores.size() < permits) {
       semaphores.put(spec, "")
       true
     } else {

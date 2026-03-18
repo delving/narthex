@@ -1,19 +1,34 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Primary Play code sits in `app/`, with `controllers/`, `services/`, and domain packages (`harvest/`, `mapping/`, `triplestore/`). Views live in `app/views/`, and web assets in `app/assets/` with compiled bundles in `public/`. Configuration (including `application.conf` and `routes`) is under `conf/`. Tests mirror the runtime packages inside `test/`; shared fixtures reside in `test/resources/`. Legacy Scala 2.11 sources are parked in `app-2.11/` and `test-2.11/` for compatibility fixes only.
+- Primary Play code lives in `app/` with `controllers/`, `services/`, and domain packages (`harvest/`, `mapping/`, `triplestore/`).
+- Views reside in `app/views/`; client assets are in `app/assets/` and compile to `public/`.
+- Configuration and routing stay under `conf/` (notably `application.conf` and `routes`).
+- Tests mirror runtime packages in `test/`; shared fixtures belong in `test/resources/`.
+- Legacy Scala 2.11 compatibility work is isolated to `app-2.11/` and `test-2.11/`.
+- Deployment and tooling scripts live in `deploy/`, `deployment/`, and `scripts/`; packaging targets are in the `Makefile`.
 
 ## Build, Test, and Development Commands
-Use sbt for the full lifecycle. `sbt compile` checks sources and regenerates routes. `sbt run` (or `make run`) launches the dev server on port 9000. Execute `sbt test` before every PR, and focus runs with `sbt "testOnly services.MailServiceSpec"`. `make dist` assembles the distributable ZIP, while `make package` builds the library JAR.
+- `sbt compile` — compiles sources and regenerates routes.
+- `sbt run` or `make run` — starts the dev server on port 9000.
+- `sbt test` — runs the full suite; use `sbt "testOnly services.MailServiceSpec"` for focused specs.
+- `make dist` — assembles the distributable ZIP; `make package` — builds the library JAR.
+- `sbt scalafmtAll` — enforces formatting across Scala sources.
 
 ## Coding Style & Naming Conventions
-Formatting is enforced through Scalafmt (`sbt scalafmtAll`). Stick to two-space indentation, meaningful package names, and Play’s dependency injection via `app/init` modules. Specs follow the existing patterns (`MailServiceSpec.scala`, `TestSourceRepo.scala`). Keep Scala filenames in PascalCase that mirrors the primary class or object.
+- Use Scalafmt with two-space indentation; keep Scala filenames in PascalCase matching the primary class or object.
+- Prefer meaningful package names and Play dependency injection via modules in `app/init`.
+- Mirror existing spec naming patterns such as `MailServiceSpec.scala` and `TestSourceRepo.scala`.
+- Avoid committing secrets; rely on `conf/overrides.conf` or deployment manifests for environment-specific settings.
 
 ## Testing Guidelines
-ScalaTest with Mockito underpins the suite. Place new specs beside their production package and store JSON/RDF fixtures in `test/resources/`. Favour deterministic tests and keep FakeApplication setup inside individual specs. Run the full suite locally; treat failures as blockers.
+- ScalaTest with Mockito is standard; keep suites deterministic and isolated.
+- Place specs beside their production packages; store JSON/RDF fixtures in `test/resources/`.
+- Configure FakeApplication within each spec rather than globally to avoid shared state.
+- Run targeted suites during development and the full `sbt test` before opening PRs.
 
 ## Commit & Pull Request Guidelines
-Commits use Conventional Commits (`feat:`, `fix:`, `chore:`) with concise subject lines under 72 characters. Each PR should summarise the change, note tests executed or new fixtures added, and link the relevant ticket. Include screenshots or curl snippets when altering HTTP endpoints or UI behaviour. Confirm CI passes before requesting review.
-
-## Security & Configuration Tips
-Never commit secrets; reference environment overrides in `conf/overrides.conf` or deployment manifests. Review `docker-compose.yml` and the Docker entrypoint flags when modifying runtime configuration. Coordinate changes to triplestore schemas with the data team before editing `app/triplestore/` resources.
+- Use Conventional Commits (e.g., `feat:`, `fix:`, `chore:`) with subjects under 72 characters.
+- PRs should summarise changes, list tests run or fixtures added, and link the relevant ticket.
+- Include screenshots or curl snippets for HTTP endpoint or UI changes when helpful.
+- Ensure CI is green before requesting review; coordinate schema updates with the data team when altering `app/triplestore/` resources.
