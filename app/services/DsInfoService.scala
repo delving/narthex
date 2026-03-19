@@ -38,12 +38,93 @@ class DsInfoService(repo: DatasetRepository) {
     * recordCount, and harvestType.
     */
   def listDatasetsJson(orgId: String): List[JsValue] = {
+    val harvestable = repo.listHarvestableDatasets(orgId)
+    val harvestableMap = harvestable.map(h => h.spec -> h).toMap
     repo.listActiveDatasets(orgId).map { ds =>
       val state = repo.getState(ds.spec)
       val harvestConfig = repo.getHarvestConfig(ds.spec)
-      buildLightJson(ds, state, harvestConfig)
+      val mappingConfig = repo.getMappingConfig(ds.spec)
+      val baseJson = buildLightJsonFull(ds, state, harvestConfig, mappingConfig)
+      val extra = harvestableMap.get(ds.spec) match {
+        case Some(h) if h.errorMessage.isDefined =>
+          val retryTime: JsValue = h.nextRetryAt
+            .map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t)))
+            .getOrElse(JsNull)
+          Json.obj(
+            "harvestInRetry" -> true,
+            "harvestRetryCount" -> h.retryCount,
+            "harvestLastRetryTime" -> retryTime,
+            "harvestRetryMessage" -> h.errorMessage.get
+          )
+        case _ =>
+          Json.obj("harvestInRetry" -> false)
+      }
+      JsObject(baseJson.as[JsObject].fields ++ extra.fields).as[JsObject]
     }
   }
+
+  /** Full list JSON matching DsInfoLight JSON shape exactly.
+    *
+    * Includes all state timestamp fields (stateSaved, stateRaw, etc.),
+    * harvest credentials flags, mapping fields, and retry status.
+    */
+  def listDatasetsLightJson(orgId: String): List[JsValue] = {
+    val harvestable = repo.listHarvestableDatasets(orgId)
+    val harvestableMap = harvestable.map(h => h.spec -> h).toMap
+    repo.listActiveDatasets(orgId).map { ds =>
+      val state = repo.getState(ds.spec)
+      val harvestConfig = repo.getHarvestConfig(ds.spec)
+      val mappingConfig = repo.getMappingConfig(ds.spec)
+      val baseJson = buildLightJsonFull(ds, state, harvestConfig, mappingConfig)
+      val extra = harvestableMap.get(ds.spec) match {
+        case Some(h) if h.errorMessage.isDefined =>
+          val retryTime: JsValue = h.nextRetryAt
+            .map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t)))
+            .getOrElse(JsNull)
+          Json.obj(
+            "harvestInRetry" -> true,
+            "harvestRetryCount" -> h.retryCount,
+            "harvestLastRetryTime" -> retryTime,
+            "harvestRetryMessage" -> h.errorMessage.get
+          )
+        case _ =>
+          Json.obj("harvestInRetry" -> false)
+      }
+      JsObject(baseJson.as[JsObject].fields ++ extra.fields).as[JsObject]
+    }
+  }
+
+  /** List all datasets (including deleted) with full light JSON shape. */
+  def listAllDatasetsLightJson(orgId: String): List[JsValue] = {
+    repo.listDatasets(orgId).map { ds =>
+      val state = repo.getState(ds.spec)
+      val harvestConfig = repo.getHarvestConfig(ds.spec)
+      val mappingConfig = repo.getMappingConfig(ds.spec)
+      buildLightJsonFull(ds, state, harvestConfig, mappingConfig)
+    }
+  }
+
+  /** List active datasets (non-deleted) matching listDatasetsLightJson shape. */
+  def listActiveDatasetsLightJson(orgId: String): List[JsValue] =
+    listDatasetsLightJson(orgId)
+
+  /** Datasets ready for periodic harvest scheduling.
+    *
+    * Replaces DsInfo.listDsInfoWithStateFilter. One SQL query — no RDF reads.
+    * Only datasets where:
+    * - state is SAVED or INCREMENTAL_SAVED
+    * - no active workflow (running/pending/retry)
+    * - schedule interval has passed
+    */
+  def listHarvestableNow(orgId: String): List[HarvestableDataset] =
+    repo.listHarvestableDatasets(orgId)
+
+  /** Datasets in error state eligible for retry.
+    *
+    * Replaces DsInfo.listDsInfoInRetry. One SQL query.
+    */
+  def listRetryableNow(orgId: String, retryIntervalMinutes: Int): List[HarvestableDataset] =
+    repo.listRetryableDatasets(orgId, retryIntervalMinutes)
 
   // ==========================================================================
   // Write methods — Phase 3: PostgreSQL as primary store for state, errors,
@@ -517,6 +598,96 @@ class DsInfoService(repo: DatasetRepository) {
     val harvestFields = harvestConfig.map(buildHarvestConfigFields).getOrElse(Nil)
 
     JsObject(core ++ datasetFields ++ stateFields ++ harvestFields)
+  }
+
+  /** Full light JSON matching DsInfoLight output exactly.
+    *
+    * Includes all per-state timestamp fields (stateSaved, stateRaw, etc.),
+    * full harvest config fields, and mapping config fields.
+    */
+  private def buildLightJsonFull(
+      ds: DatasetRecord,
+      state: Option[DatasetStateRecord],
+      harvestConfig: Option[HarvestConfigRecord],
+      mappingConfig: Option[MappingConfigRecord]
+  ): JsValue = {
+    val core: Seq[(String, JsValue)] = Seq(
+      "spec" -> JsString(ds.spec),
+      "name" -> ds.name.map(JsString).getOrElse(JsNull)
+    )
+
+    val stateFields = state.map(s => buildStateFieldsFull(s)).getOrElse(Nil)
+    val harvestFields = harvestConfig.flatMap(h => state.map(s => buildHarvestConfigFieldsFull(h, s))).getOrElse(Nil)
+    val mappingFields = mappingConfig.map(buildMappingConfigFieldsFull).getOrElse(Nil)
+
+    JsObject(core ++ stateFields ++ harvestFields ++ mappingFields)
+  }
+
+  /** State fields matching DsInfoLight exactly — includes per-state timestamp fields. */
+  private def buildStateFieldsFull(state: DatasetStateRecord): Seq[(String, JsValue)] = {
+    val changedAtVal: JsValue = JsString(DateTimeFormatter.ISO_INSTANT.format(state.stateChangedAt))
+    val allStates = List(
+      "stateDisabled", "stateRaw", "stateRawAnalyzed", "stateSourced",
+      "stateMappable", "stateProcessable", "stateAnalyzed", "stateProcessed",
+      "stateSaved", "stateIncrementalSaved"
+    )
+    val stateTimestampFields: Seq[(String, JsValue)] = allStates.flatMap { fieldName =>
+      if (stateTimestampMatches(state, fieldName))
+        Seq(fieldName -> changedAtVal)
+      else
+        Nil
+    }
+    val counters: Seq[(String, JsValue)] = Seq(
+      "recordCount" -> JsNumber(state.recordCount),
+      "processedValid" -> JsNumber(state.processedValid),
+      "processedInvalid" -> JsNumber(state.processedInvalid),
+      "acquiredRecordCount" -> JsNumber(state.acquiredCount),
+      "deletedRecordCount" -> JsNumber(state.deletedCount),
+      "sourceRecordCount" -> JsNumber(state.sourceCount),
+      "acquisitionMethod" -> state.acquisitionMethod.map(JsString).getOrElse(JsNull),
+      "processedIncrementalValid" -> JsNumber(state.processedIncrementalValid),
+      "processedIncrementalInvalid" -> JsNumber(state.processedIncrementalInvalid)
+    )
+    val errorFields: Seq[(String, JsValue)] = Seq(
+      "errorMessage" -> state.errorMessage.map(JsString).getOrElse(JsNull),
+      "errorTime" -> state.errorTime.map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t))).getOrElse(JsNull)
+    )
+    val operationFields: Seq[(String, JsValue)] = Seq(
+      "currentOperation" -> state.currentOperation.map(JsString).getOrElse(JsNull),
+      "operationStatus" -> JsNull,
+      "currentState" -> JsString(state.state)
+    )
+    stateTimestampFields ++ counters ++ errorFields ++ operationFields
+  }
+
+  private def stateTimestampMatches(state: DatasetStateRecord, stateField: String): Boolean = {
+    val stateName = stateField.stripPrefix("state")
+    state.state == s"state${stateName.capitalize}" ||
+    state.state == stateField
+  }
+
+  /** Full harvest config fields matching DsInfoLight exactly. */
+  private def buildHarvestConfigFieldsFull(hc: HarvestConfigRecord, state: DatasetStateRecord): Seq[(String, JsValue)] = {
+    Seq(
+      "harvestType" -> hc.harvestType.map(JsString).getOrElse(JsNull),
+      "harvestDownloadURL" -> hc.harvestDownloadUrl.map(JsString).getOrElse(JsNull),
+      "harvestIncrementalMode" -> JsNull,
+      "delimitersSet" -> state.delimiterSet.map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t))).getOrElse(JsNull),
+      "recordRoot" -> hc.recordRoot.map(JsString).getOrElse(JsNull),
+      "uniqueId" -> hc.uniqueId.map(JsString).getOrElse(JsNull),
+      "harvestUsername" -> JsNull,
+      "harvestPasswordSet" -> JsBoolean(false),
+      "harvestApiKeySet" -> JsBoolean(false)
+    )
+  }
+
+  /** Full mapping config fields matching DsInfoLight exactly. */
+  private def buildMappingConfigFieldsFull(mc: MappingConfigRecord): Seq[(String, JsValue)] = {
+    Seq(
+      "mappingSource" -> mc.mappingSource.map(JsString).getOrElse(JsNull),
+      "defaultMappingPrefix" -> mc.defaultMappingPrefix.map(JsString).getOrElse(JsNull),
+      "defaultMappingName" -> mc.defaultMappingName.map(JsString).getOrElse(JsNull)
+    )
   }
 
   // ---------------------------------------------------------------------------
