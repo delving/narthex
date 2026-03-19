@@ -49,6 +49,8 @@ class DatabaseService(config: PostgresConfig) extends Logging {
     val flyway = Flyway.configure()
       .dataSource(config.url, config.user, config.password)
       .locations("classpath:db/migration")
+      .baselineOnMigrate(true)
+      .baselineVersion("0")
       .load()
     val result = flyway.migrate()
     logger.info(

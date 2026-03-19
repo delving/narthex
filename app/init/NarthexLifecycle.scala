@@ -26,41 +26,49 @@ class NarthexLifecycle @Inject() (
   logger.info("Narthex starting up...")
 
   // Initialize PostgreSQL (if configured)
+  // Wrapped in try/catch so a PostgreSQL failure cannot prevent the app from starting.
+  // The app will continue to work with Fuseki; the /non-public/monitoring/postgres-status
+  // endpoint will report the error.
   narthexConfig.postgresConfig.foreach { pgConfig =>
-    val dbService = new DatabaseService(pgConfig)
-    dbService.initialize()
-    GlobalDatabaseService.set(dbService)
-    logger.info("PostgreSQL DatabaseService initialized")
+    try {
+      val dbService = new DatabaseService(pgConfig)
+      dbService.initialize()
+      GlobalDatabaseService.set(dbService)
+      logger.info("PostgreSQL DatabaseService initialized")
 
-    // Create DsInfoService for PostgreSQL-backed reads
-    val pgRepo = new PostgresDatasetRepository(dbService)
-    GlobalDsInfoService.set(new DsInfoService(pgRepo))
-    logger.info(s"DsInfoService initialized (read-enabled: ${narthexConfig.postgresReadEnabled})")
+      // Create DsInfoService for PostgreSQL-backed reads
+      val pgRepo = new PostgresDatasetRepository(dbService)
+      GlobalDsInfoService.set(new DsInfoService(pgRepo))
+      logger.info(s"DsInfoService initialized (read-enabled: ${narthexConfig.postgresReadEnabled})")
 
-    // Create MappingMetadataRepository for PostgreSQL-backed mapping reads
-    val mappingRepo = new MappingMetadataRepository(dbService)
-    GlobalMappingMetadataRepository.set(mappingRepo)
-    logger.info("MappingMetadataRepository initialized")
+      // Create MappingMetadataRepository for PostgreSQL-backed mapping reads
+      val mappingRepo = new MappingMetadataRepository(dbService)
+      GlobalMappingMetadataRepository.set(mappingRepo)
+      logger.info("MappingMetadataRepository initialized")
 
-    // Create OaiSourceRepository for PostgreSQL-backed OAI source reads
-    val oaiSourceRepo = new OaiSourceRepository(dbService)
-    GlobalOaiSourceRepository.set(oaiSourceRepo)
-    logger.info("OaiSourceRepository initialized")
+      // Create OaiSourceRepository for PostgreSQL-backed OAI source reads
+      val oaiSourceRepo = new OaiSourceRepository(dbService)
+      GlobalOaiSourceRepository.set(oaiSourceRepo)
+      logger.info("OaiSourceRepository initialized")
 
-    // Run Fuseki-to-PostgreSQL migration if enabled
-    if (narthexConfig.runPostgresMigration) {
-      logger.info("Running Fuseki-to-PostgreSQL migration (narthex.postgres.run-migration = true)...")
-      implicit val ts: triplestore.TripleStore = orgContext.ts
-      val migration = new FusekiMigration(orgContext, pgRepo, dbService)
-      migration.run().onComplete {
-        case Success(report) =>
-          logger.info(s"Fuseki-to-PostgreSQL migration finished:\n${report.summary}")
-          if (report.errors.nonEmpty) {
-            logger.warn(s"Migration encountered ${report.errors.size} error(s)")
-          }
-        case Failure(ex) =>
-          logger.error(s"Fuseki-to-PostgreSQL migration failed: ${ex.getMessage}", ex)
+      // Run Fuseki-to-PostgreSQL migration if enabled
+      if (narthexConfig.runPostgresMigration) {
+        logger.info("Running Fuseki-to-PostgreSQL migration (narthex.postgres.run-migration = true)...")
+        implicit val ts: triplestore.TripleStore = orgContext.ts
+        val migration = new FusekiMigration(orgContext, pgRepo, dbService)
+        migration.run().onComplete {
+          case Success(report) =>
+            logger.info(s"Fuseki-to-PostgreSQL migration finished:\n${report.summary}")
+            if (report.errors.nonEmpty) {
+              logger.warn(s"Migration encountered ${report.errors.size} error(s)")
+            }
+          case Failure(ex) =>
+            logger.error(s"Fuseki-to-PostgreSQL migration failed: ${ex.getMessage}", ex)
+        }
       }
+    } catch {
+      case ex: Exception =>
+        logger.error(s"PostgreSQL initialization failed — app will continue with Fuseki only: ${ex.getMessage}", ex)
     }
   }
 
