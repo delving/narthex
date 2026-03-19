@@ -68,7 +68,6 @@ class InfoController @Inject() (
       case None =>
         Ok(Json.prettyPrint(Json.obj(
           "configured" -> false,
-          "readEnabled" -> narthexConfig.postgresReadEnabled,
           "message" -> "narthex.postgres section not present in configuration"
         ))).as(ContentTypes.JSON)
 
@@ -141,7 +140,6 @@ class InfoController @Inject() (
             Json.obj(
               "configured" -> true,
               "healthy" -> healthy,
-              "readEnabled" -> narthexConfig.postgresReadEnabled,
               "runMigration" -> narthexConfig.runPostgresMigration,
               "schema" -> schemaVersion,
               "connectionPool" -> poolStats,
@@ -158,7 +156,6 @@ class InfoController @Inject() (
             Ok(Json.prettyPrint(Json.obj(
               "configured" -> true,
               "healthy" -> false,
-              "readEnabled" -> narthexConfig.postgresReadEnabled,
               "error" -> ex.getMessage
             ))).as(ContentTypes.JSON)
         }

@@ -22,6 +22,7 @@ import play.api.mvc._
 import play.api.libs.json._
 import discovery._
 import discovery.OaiSourceConfig._
+import services.GlobalOaiSourceRepository
 
 /**
  * Controller for OAI-PMH Dataset Discovery API endpoints.
@@ -30,10 +31,36 @@ import discovery.OaiSourceConfig._
 class DiscoveryController @Inject()(
   cc: ControllerComponents,
   discoveryService: DatasetDiscoveryService,
-  setCountVerifier: SetCountVerifier
+  setCountVerifier: SetCountVerifier,
+  orgContext: organization.OrgContext
 )(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
-  private val sourceRepo = discoveryService.sourceRepo
+  private def oaiSourceRepo = GlobalOaiSourceRepository.get()
+
+  private def getOaiSourceRecord(id: String) =
+    oaiSourceRepo.flatMap(_.getSource(id))
+
+  private def listOaiSourceRecords(orgId: String) =
+    oaiSourceRepo.map(_.listSources(orgId)).getOrElse(Nil)
+
+  private def enrichSource(source: OaiSource): JsObject = {
+    val cache = oaiSourceRepo.flatMap(_.loadCountsCache(source.id))
+    val sourceJson = Json.toJson(source).as[JsObject]
+    cache match {
+      case Some(c) =>
+        sourceJson ++ Json.obj(
+          "newSetCount" -> c.summary.newWithRecords,
+          "emptySetCount" -> c.summary.empty,
+          "countsLastVerified" -> Json.toJson(c.lastVerified)
+        )
+      case None =>
+        sourceJson ++ Json.obj(
+          "newSetCount" -> JsNull,
+          "emptySetCount" -> JsNull,
+          "countsLastVerified" -> JsNull
+        )
+    }
+  }
 
   // --- Source CRUD ---
 
@@ -41,36 +68,21 @@ class DiscoveryController @Inject()(
    * List all OAI sources.
    */
   def listSources: Action[AnyContent] = Action { request =>
-    val sources = sourceRepo.listSources()
-
-    val enrichedSources = sources.map { source =>
-      val cache = sourceRepo.loadCountsCache(source.id)
-      val sourceJson = Json.toJson(source).as[JsObject]
-
-      cache match {
-        case Some(c) =>
-          sourceJson ++ Json.obj(
-            "newSetCount" -> c.summary.newWithRecords,
-            "emptySetCount" -> c.summary.empty,
-            "countsLastVerified" -> Json.toJson(c.lastVerified)
-          )
-        case None =>
-          sourceJson ++ Json.obj(
-            "newSetCount" -> JsNull,
-            "emptySetCount" -> JsNull,
-            "countsLastVerified" -> JsNull
-          )
-      }
+    val orgId = orgContext.appConfig.orgId
+    val sources = oaiSourceRepo match {
+      case Some(repo) =>
+        repo.listSourcesAsOaiSource(orgId)
+      case None =>
+        List.empty
     }
-
-    Ok(JsArray(enrichedSources))
+    Ok(JsArray(sources.map(enrichSource)))
   }
 
   /**
    * Get a single source by ID.
    */
   def getSource(id: String): Action[AnyContent] = Action { request =>
-    sourceRepo.getSource(id) match {
+    oaiSourceRepo.flatMap(_.getOaiSource(id)) match {
       case Some(source) => Ok(Json.toJson(source))
       case None => NotFound(Json.obj("error" -> s"Source not found: $id"))
     }
@@ -82,8 +94,14 @@ class DiscoveryController @Inject()(
   def createSource: Action[JsValue] = Action(parse.json) { request =>
     request.body.validate[OaiSource] match {
       case JsSuccess(source, _) =>
-        val created = sourceRepo.createSource(source)
-        Created(Json.toJson(created))
+        oaiSourceRepo match {
+          case Some(repo) =>
+            val orgId = orgContext.appConfig.orgId
+            val created = repo.createOaiSource(orgId, source)
+            Created(Json.toJson(created))
+          case None =>
+            BadRequest(Json.obj("error" -> "PostgreSQL not configured"))
+        }
       case JsError(errors) =>
         BadRequest(Json.obj(
           "error" -> "Invalid source data",
@@ -98,9 +116,15 @@ class DiscoveryController @Inject()(
   def updateSource(id: String): Action[JsValue] = Action(parse.json) { request =>
     request.body.validate[OaiSource] match {
       case JsSuccess(source, _) =>
-        sourceRepo.updateSource(id, source) match {
-          case Some(updated) => Ok(Json.toJson(updated))
-          case None => NotFound(Json.obj("error" -> s"Source not found: $id"))
+        oaiSourceRepo match {
+          case Some(repo) =>
+            val orgId = orgContext.appConfig.orgId
+            repo.updateOaiSource(orgId, id, source) match {
+              case Some(updated) => Ok(Json.toJson(updated))
+              case None => NotFound(Json.obj("error" -> s"Source not found: $id"))
+            }
+          case None =>
+            BadRequest(Json.obj("error" -> "PostgreSQL not configured"))
         }
       case JsError(errors) =>
         BadRequest(Json.obj(
@@ -114,10 +138,12 @@ class DiscoveryController @Inject()(
    * Delete a source.
    */
   def deleteSource(id: String): Action[AnyContent] = Action { request =>
-    if (sourceRepo.deleteSource(id)) {
-      Ok(Json.obj("deleted" -> id))
-    } else {
-      NotFound(Json.obj("error" -> s"Source not found: $id"))
+    oaiSourceRepo match {
+      case Some(repo) =>
+        repo.deleteSource(id)
+        Ok(Json.obj("deleted" -> id))
+      case None =>
+        NotFound(Json.obj("error" -> s"Source not found: $id"))
     }
   }
 
@@ -141,12 +167,18 @@ class DiscoveryController @Inject()(
   def ignoreSets(id: String): Action[JsValue] = Action(parse.json) { request =>
     request.body.validate[IgnoreRequest] match {
       case JsSuccess(req, _) =>
-        sourceRepo.addIgnoredSets(id, req.setSpecs) match {
-          case Some(updated) =>
-            Ok(Json.obj(
-              "ignored" -> req.setSpecs,
-              "totalIgnored" -> updated.ignoredSets.length
-            ))
+        oaiSourceRepo match {
+          case Some(repo) =>
+            repo.addIgnoredSets(id, req.setSpecs)
+            repo.getSource(id) match {
+              case Some(updated) =>
+                Ok(Json.obj(
+                  "ignored" -> req.setSpecs,
+                  "totalIgnored" -> updated.ignoredSets.size
+                ))
+              case None =>
+                NotFound(Json.obj("error" -> s"Source not found: $id"))
+            }
           case None =>
             NotFound(Json.obj("error" -> s"Source not found: $id"))
         }
@@ -161,12 +193,18 @@ class DiscoveryController @Inject()(
   def unignoreSets(id: String): Action[JsValue] = Action(parse.json) { request =>
     request.body.validate[IgnoreRequest] match {
       case JsSuccess(req, _) =>
-        sourceRepo.removeIgnoredSets(id, req.setSpecs) match {
-          case Some(updated) =>
-            Ok(Json.obj(
-              "unignored" -> req.setSpecs,
-              "totalIgnored" -> updated.ignoredSets.length
-            ))
+        oaiSourceRepo match {
+          case Some(repo) =>
+            repo.removeIgnoredSets(id, req.setSpecs)
+            repo.getSource(id) match {
+              case Some(updated) =>
+                Ok(Json.obj(
+                  "unignored" -> req.setSpecs,
+                  "totalIgnored" -> updated.ignoredSets.size
+                ))
+              case None =>
+                NotFound(Json.obj("error" -> s"Source not found: $id"))
+            }
           case None =>
             NotFound(Json.obj("error" -> s"Source not found: $id"))
         }
@@ -211,7 +249,7 @@ class DiscoveryController @Inject()(
   def previewSpecTransform: Action[JsValue] = Action(parse.json) { request =>
     (request.body \ "setSpec").asOpt[String] match {
       case Some(setSpec) =>
-        val normalized = sourceRepo.normalizeSetSpec(setSpec)
+        val normalized = oaiSourceRepo.map(_.normalizeSetSpec(setSpec)).getOrElse(setSpec)
         Ok(Json.obj(
           "original" -> setSpec,
           "normalized" -> normalized
@@ -227,7 +265,7 @@ class DiscoveryController @Inject()(
    * Start background record count verification for a source.
    */
   def startVerification(id: String): Action[AnyContent] = Action.async { request =>
-    sourceRepo.getSource(id) match {
+    oaiSourceRepo.flatMap(_.getOaiSource(id)) match {
       case None =>
         Future.successful(NotFound(Json.obj("error" -> s"Source not found: $id")))
       case Some(source) =>
@@ -236,12 +274,10 @@ class DiscoveryController @Inject()(
         } else {
           discoveryService.discoverSets(id).map {
             case Right(result) =>
-              // Check all non-existing, non-ignored sets (both new and previously empty)
               val setsToCheck = (result.newSets ++ result.emptySets).map(_.setSpec)
               if (setsToCheck.isEmpty) {
                 Ok(Json.obj("status" -> "complete", "totalToCheck" -> 0))
               } else {
-                // Fire and forget — verification runs in background, saves cache only when complete
                 setCountVerifier.verify(
                   sourceId = id,
                   baseUrl = source.url,
@@ -251,13 +287,13 @@ class DiscoveryController @Inject()(
                 ).foreach { case (counts, errors) =>
                   val withRecords = counts.values.count(_ > 0)
                   val emptyCount = counts.values.count(_ == 0)
-                  sourceRepo.saveCountsCache(OaiSourceConfig.SetCountCache(
+                  oaiSourceRepo.foreach(_.saveCountsCache(SetCountCache(
                     sourceId = id,
                     lastVerified = org.joda.time.DateTime.now(),
                     counts = counts,
                     errors = errors,
-                    summary = OaiSourceConfig.CountSummary(counts.size + errors.size, withRecords, emptyCount)
-                  ))
+                    summary = CountSummary(counts.size + errors.size, withRecords, emptyCount)
+                  )))
                 }
                 Ok(Json.obj("status" -> "started", "totalToCheck" -> setsToCheck.size))
               }

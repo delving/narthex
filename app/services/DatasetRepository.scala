@@ -22,6 +22,31 @@ case class DatasetRecord(
     deletedAt: Option[Instant] = None
 )
 
+/** Minimal info needed to decide if and when to schedule a harvest.
+  *
+  * Denormalized: last_full_harvest and last_incremental_harvest are updated
+  * from workflow_steps when a harvest completes. The workflow audit log
+  * (workflows + workflow_steps) is the source of truth. This record is
+  * materialized for fast scheduling queries.
+  */
+case class HarvestableDataset(
+    spec: String,
+    state: String,
+    stateChangedAt: Instant,
+    delay: Option[String],
+    delayUnit: Option[String],
+    incremental: Boolean,
+    previousTime: Option[Instant],
+    lastFullHarvest: Option[Instant],
+    lastIncrementalHarvest: Option[Instant],
+    activeWorkflowId: Option[String],
+    activeWorkflowStatus: Option[String],
+    workflowTrigger: Option[String],
+    errorMessage: Option[String],
+    retryCount: Int = 0,
+    nextRetryAt: Option[Instant] = None
+)
+
 /** Dataset FSM state and counters. */
 case class DatasetStateRecord(
     spec: String,
@@ -153,6 +178,7 @@ trait DatasetRepository {
   // Datasets
   def createDataset(ds: DatasetRecord): Unit
   def getDataset(spec: String): Option[DatasetRecord]
+  def listDatasets(orgId: String): List[DatasetRecord]
   def listActiveDatasets(orgId: String): List[DatasetRecord]
   def updateDataset(ds: DatasetRecord): Unit
   def softDeleteDataset(spec: String): Unit
@@ -198,6 +224,11 @@ trait DatasetRepository {
       errorMessage: Option[String] = None,
       completedAt: Option[Instant] = None
   ): Unit
+  def getWorkflowSteps(workflowId: String): List[WorkflowStepRecord]
+
+  // Scheduling
+  def listHarvestableDatasets(orgId: String): List[HarvestableDataset]
+  def listRetryableDatasets(orgId: String, retryIntervalMinutes: Int): List[HarvestableDataset]
 
   // Audit
   def getAuditHistory(spec: String, tableName: String, limit: Int = 50): List[AuditRecord]

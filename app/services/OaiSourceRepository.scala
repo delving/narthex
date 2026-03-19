@@ -2,7 +2,10 @@ package services
 
 import java.sql.{Connection, PreparedStatement, ResultSet, Timestamp, Types}
 import java.time.Instant
+import org.joda.time.DateTime
 import play.api.Logging
+import play.api.libs.json.Json
+import discovery.OaiSourceConfig.{MappingRule, SetCountCache, CountSummary, OaiSource}
 
 /** OAI-PMH source record stored in PostgreSQL.
   *
@@ -118,6 +121,9 @@ class OaiSourceRepository(db: DatabaseService) extends Logging {
     } finally ps.close()
   }
 
+  /** Retrieve a single source as OaiSource (with parsed mapping rules). */
+  def getOaiSource(id: String): Option[OaiSource] = getSource(id).map(toOaiSource)
+
   /** Insert a new OAI source. */
   def createSource(source: OaiSourceRecord): Unit = withConnection { conn =>
     val sql =
@@ -149,8 +155,8 @@ class OaiSourceRepository(db: DatabaseService) extends Logging {
     } finally ps.close()
   }
 
-  /** Update an existing OAI source (all fields except id and created_at). */
-  def updateSource(source: OaiSourceRecord): Unit = withConnection { conn =>
+  /** Update an existing OAI source. */
+  def updateSource(source: OaiSourceRecord): Option[OaiSourceRecord] = withConnection { conn =>
     val sql =
       """UPDATE oai_sources SET
         |  org_id = ?, name = ?, url = ?, default_metadata_prefix = ?,
@@ -176,16 +182,63 @@ class OaiSourceRepository(db: DatabaseService) extends Logging {
       setOptTimestamp(ps, 14, source.lastChecked)
       ps.setString(15, source.id)
       ps.executeUpdate()
+      getSource(source.id)
     } finally ps.close()
   }
 
-  /** Delete a source (cascades to set counts via FK). */
-  def deleteSource(id: String): Unit = withConnection { conn =>
+  /** Delete a source. */
+  def deleteSource(id: String): Boolean = withConnection { conn =>
     val ps = conn.prepareStatement("DELETE FROM oai_sources WHERE id = ?")
     try {
       ps.setString(1, id)
       ps.executeUpdate()
+      true
     } finally ps.close()
+  }
+
+  def toOaiSource(record: OaiSourceRecord): OaiSource = {
+    val mappingRules = try {
+      Json.parse(record.mappingRules).as[List[MappingRule]]
+    } catch {
+      case _: Exception => List.empty[MappingRule]
+    }
+    OaiSource(
+      id = record.id,
+      name = record.name,
+      url = record.url,
+      defaultMetadataPrefix = record.defaultMetadataPrefix,
+      defaultAggregator = record.defaultAggregator.getOrElse(""),
+      defaultPrefix = record.defaultPrefix,
+      defaultEdmType = record.defaultEdmType,
+      harvestDelay = record.harvestDelay,
+      harvestDelayUnit = record.harvestDelayUnit,
+      harvestIncremental = record.harvestIncremental,
+      mappingRules = mappingRules,
+      ignoredSets = record.ignoredSets,
+      enabled = record.enabled,
+      lastChecked = record.lastChecked.map(i => new DateTime(i.toEpochMilli)),
+      createdAt = new DateTime(record.createdAt.toEpochMilli)
+    )
+  }
+
+  def normalizeSetSpec(setSpec: String): String = {
+    setSpec
+      .replace(".", "-")
+      .replace("_", "-")
+      .replaceAll("[^a-zA-Z0-9-]", "-")
+      .replaceAll("-+", "-")
+      .replaceAll("^-|-$", "")
+      .toLowerCase
+  }
+
+  def matchMappingRule(normalizedSpec: String, rules: List[MappingRule]): Option[MappingRule] = {
+    rules.find { rule =>
+      try {
+        normalizedSpec.matches(rule.pattern)
+      } catch {
+        case _: Exception => false
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -282,9 +335,88 @@ class OaiSourceRepository(db: DatabaseService) extends Logging {
     } finally ps.close()
   }
 
+  def loadCountsCache(sourceId: String, ttlHours: Int = 24): Option[SetCountCache] = {
+    val records = getSetCounts(sourceId)
+    if (records.isEmpty) return None
+
+    val now = Instant.now()
+    val ageHours = java.time.Duration.between(
+      records.head.verifiedAt, now
+    ).toHours
+
+    if (ageHours > ttlHours) {
+      clearSetCounts(sourceId)
+      None
+    } else {
+      val counts = records.flatMap(r => r.recordCount.map(c => r.setSpec -> c)).toMap
+      val errors = records.flatMap(r => r.error.map(e => r.setSpec -> e)).toMap
+      val totalSets = records.size
+      val newWithRecords = counts.count(_._2 > 0)
+      val empty = counts.count(_._2 == 0)
+      Some(SetCountCache(
+        sourceId = sourceId,
+        lastVerified = new DateTime(records.head.verifiedAt.toEpochMilli),
+        counts = counts,
+        errors = errors,
+        summary = CountSummary(
+          totalSets = totalSets,
+          newWithRecords = newWithRecords,
+          empty = empty
+        )
+      ))
+    }
+  }
+
+  def saveCountsCache(cache: SetCountCache): Unit = {
+    val records = cache.counts.map { case (setSpec, count) =>
+      SetCountRecord(
+        sourceId = cache.sourceId,
+        setSpec = setSpec,
+        recordCount = Some(count),
+        error = cache.errors.get(setSpec),
+        verifiedAt = Instant.ofEpochMilli(cache.lastVerified.getMillis)
+      )
+    }.toList
+    saveSetCounts(records)
+  }
+
   // ---------------------------------------------------------------------------
-  // ResultSet readers
+  // DiscoveryController helpers — OaiSource (not OaiSourceRecord)
   // ---------------------------------------------------------------------------
+
+  private def toOaiSourceRecord(orgId: String)(source: OaiSource): OaiSourceRecord = {
+    val mappingRulesJson = Json.stringify(Json.toJson(source.mappingRules))
+    OaiSourceRecord(
+      id = source.id,
+      orgId = orgId,
+      name = source.name,
+      url = source.url,
+      defaultMetadataPrefix = source.defaultMetadataPrefix,
+      defaultAggregator = Option(source.defaultAggregator).filter(_.nonEmpty),
+      defaultPrefix = source.defaultPrefix,
+      defaultEdmType = source.defaultEdmType,
+      harvestDelay = source.harvestDelay,
+      harvestDelayUnit = source.harvestDelayUnit,
+      harvestIncremental = source.harvestIncremental,
+      mappingRules = mappingRulesJson,
+      ignoredSets = source.ignoredSets,
+      enabled = source.enabled,
+      lastChecked = source.lastChecked.map(dt => Instant.ofEpochMilli(dt.getMillis)),
+      createdAt = Instant.ofEpochMilli(source.createdAt.getMillis)
+    )
+  }
+
+  def listSourcesAsOaiSource(orgId: String): List[OaiSource] =
+    listSources(orgId).map(toOaiSource)
+
+  def createOaiSource(orgId: String, source: OaiSource): OaiSource = {
+    createSource(toOaiSourceRecord(orgId)(source))
+    source
+  }
+
+  def updateOaiSource(orgId: String, id: String, source: OaiSource): Option[OaiSource] = {
+    updateSource(toOaiSourceRecord(orgId)(source)).map(_ => source)
+  }
 
   private def readSource(rs: ResultSet): OaiSourceRecord = {
     val ignoredArray = Option(rs.getArray("ignored_sets"))

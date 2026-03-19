@@ -10,7 +10,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import harvest.PeriodicHarvest
 import organization.OrgContext
 import mapping.PeriodicSkosifyCheck
-import services.{DatabaseService, DsInfoService, FusekiMigration, GlobalDatabaseService, GlobalDsInfoService, GlobalMappingMetadataRepository, GlobalOaiSourceRepository, GlobalWorkflowDatabase, MappingMetadataRepository, OaiSourceRepository, PostgresDatasetRepository}
+import services.{DatabaseService, DsInfoService, FusekiMigration, GlobalDatabaseService, GlobalDsInfoService, GlobalMappingMetadataRepository, GlobalOaiSourceRepository, GlobalWorkflowRepository, MappingMetadataRepository, OaiSourceRepository, PostgresDatasetRepository, WorkflowRepository}
 import init.NarthexConfig
 import scala.util.{Failure, Success}
 
@@ -39,7 +39,7 @@ class NarthexLifecycle @Inject() (
       // Create DsInfoService for PostgreSQL-backed reads
       val pgRepo = new PostgresDatasetRepository(dbService)
       GlobalDsInfoService.set(new DsInfoService(pgRepo))
-      logger.info(s"DsInfoService initialized (read-enabled: ${narthexConfig.postgresReadEnabled})")
+      logger.info("DsInfoService initialized")
 
       // Create MappingMetadataRepository for PostgreSQL-backed mapping reads
       val mappingRepo = new MappingMetadataRepository(dbService)
@@ -50,6 +50,11 @@ class NarthexLifecycle @Inject() (
       val oaiSourceRepo = new OaiSourceRepository(dbService)
       GlobalOaiSourceRepository.set(oaiSourceRepo)
       logger.info("OaiSourceRepository initialized")
+
+      // Create WorkflowRepository for PostgreSQL-backed workflow persistence
+      val workflowRepo = new WorkflowRepository(pgRepo)
+      GlobalWorkflowRepository.set(workflowRepo)
+      logger.info("WorkflowRepository initialized")
 
       // Run Fuseki-to-PostgreSQL migration if enabled
       if (narthexConfig.runPostgresMigration) {
@@ -71,9 +76,6 @@ class NarthexLifecycle @Inject() (
         logger.error(s"PostgreSQL initialization failed — app will continue with Fuseki only: ${ex.getMessage}", ex)
     }
   }
-
-  // Initialize workflow database
-  GlobalWorkflowDatabase.init(narthexConfig)
 
   // Test that new string metrics library produces same values as previous library
   // on https://github.com/rockymadden/stringmetric
@@ -104,8 +106,8 @@ class NarthexLifecycle @Inject() (
     GlobalOaiSourceRepository.clear()
     GlobalMappingMetadataRepository.clear()
     GlobalDsInfoService.clear()
+    GlobalWorkflowRepository.clear()
     GlobalDatabaseService.close()
-    GlobalWorkflowDatabase.close()
 
     Future.successful(())
   }

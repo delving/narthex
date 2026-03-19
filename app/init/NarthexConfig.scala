@@ -147,6 +147,8 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   logger.info(s"triple-store: $tripleStoreUrl")
   def tripleStoreLog = configFlag("triple-store-log")
   logger.info(s"triple-store-log: $tripleStoreLog")
+  def logFusekiReads: Boolean = configFlag("narthex.triple-store.log-reads")
+  logger.info(s"narthex.triple-store.log-reads: $logFusekiReads")
   def sparqlQueryPath: String = configStringNoSlash("sparql-query-path")
   logger.info(s"sparql-query-path: $sparqlQueryPath")
   def sparqlUpdatePath: String = configStringNoSlash("sparql-update-path")
@@ -200,12 +202,6 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOptional[Boolean]("narthex.postgres.run-migration")
     .getOrElse(false)
   logger.info(s"narthex.postgres.run-migration: $runPostgresMigration")
-
-  // Whether to use PostgreSQL for dataset info reads (Phase 2 feature flag)
-  lazy val postgresReadEnabled: Boolean = configuration
-    .getOptional[Boolean]("narthex.postgres.read-enabled")
-    .getOrElse(false)
-  logger.info(s"narthex.postgres.read-enabled: $postgresReadEnabled")
 
   // Application secret for credential encryption (Play Framework's secret key)
   def appSecret: String = configuration.getOptional[String]("play.http.secret.key").getOrElse {

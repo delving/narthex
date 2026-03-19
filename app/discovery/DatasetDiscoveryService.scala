@@ -28,6 +28,7 @@ import triplestore.GraphProperties._
 import triplestore.TripleStore
 import discovery.OaiSourceConfig._
 import services.Temporal._
+import services.GlobalOaiSourceRepository
 
 /**
  * Service for OAI-PMH dataset discovery and import.
@@ -43,8 +44,29 @@ class DatasetDiscoveryService @Inject()(
 
   private val logger = Logger(getClass)
 
-  // Lazy init the source repo
-  lazy val sourceRepo = new OaiSourceRepo(orgContext.orgRoot)
+  private def oaiSourceRepo = GlobalOaiSourceRepository.get()
+
+  private def fallbackFileRepo = new OaiSourceRepo(orgContext.orgRoot)
+
+  private def getSource(id: String): Option[OaiSource] = {
+    oaiSourceRepo.flatMap(_.getOaiSource(id)).orElse {
+      logger.debug(s"OAI source $id not in PostgreSQL, falling back to file")
+      fallbackFileRepo.getSource(id)
+    }
+  }
+
+  private def listSources(): List[OaiSource] = {
+    oaiSourceRepo match {
+      case Some(repo) =>
+        val pgSources = repo.listSources(orgContext.appConfig.orgId).map(r =>
+          repo.toOaiSource(r)
+        )
+        val fileSources = fallbackFileRepo.listSources()
+        (pgSources ++ fileSources).distinctBy(_.id)
+      case None =>
+        fallbackFileRepo.listSources()
+    }
+  }
 
   /**
    * Discover sets from an OAI-PMH source.
@@ -53,7 +75,7 @@ class DatasetDiscoveryService @Inject()(
    * applies ignore list, and matches mapping rules.
    */
   def discoverSets(sourceId: String): Future[Either[String, DiscoveryResult]] = {
-    sourceRepo.getSource(sourceId) match {
+    getSource(sourceId) match {
       case None =>
         Future.successful(Left(s"Source not found: $sourceId"))
 
@@ -83,7 +105,7 @@ class DatasetDiscoveryService @Inject()(
 
               // Process each raw set
               val discoveredSets = rawSets.map { raw =>
-                val normalizedSpec = sourceRepo.normalizeSetSpec(raw.setSpec)
+                val normalizedSpec = oaiSourceRepo.map(_.normalizeSetSpec(raw.setSpec)).getOrElse(fallbackFileRepo.normalizeSetSpec(raw.setSpec))
 
                 // Determine status - check both normalized spec AND original setSpec in harvestDataset
                 val status = if (source.ignoredSets.contains(raw.setSpec)) {
@@ -96,7 +118,9 @@ class DatasetDiscoveryService @Inject()(
 
                 // Match mapping rules
                 val matchedRule = if (status == "new") {
-                  sourceRepo.matchMappingRule(normalizedSpec, source.mappingRules)
+                  oaiSourceRepo.flatMap(r => r.matchMappingRule(normalizedSpec, source.mappingRules)).orElse(
+                    fallbackFileRepo.matchMappingRule(normalizedSpec, source.mappingRules)
+                  )
                 } else {
                   None
                 }
@@ -113,7 +137,7 @@ class DatasetDiscoveryService @Inject()(
               }
 
               // Update last checked timestamp
-              sourceRepo.updateLastChecked(sourceId)
+              oaiSourceRepo.foreach(_.updateLastChecked(sourceId))
 
               // Group by status
               val (newSets, existing, ignored) = discoveredSets.foldLeft(
@@ -129,7 +153,9 @@ class DatasetDiscoveryService @Inject()(
               }
 
               // Load cached counts
-              val countsCache = sourceRepo.loadCountsCache(sourceId)
+              val countsCache = oaiSourceRepo.flatMap(_.loadCountsCache(sourceId)).orElse(
+                fallbackFileRepo.loadCountsCache(sourceId)
+              )
               val cachedCounts = countsCache.map(_.counts).getOrElse(Map.empty)
               val countsVerifiedAt = countsCache.map(_.lastVerified)
 
@@ -177,7 +203,7 @@ class DatasetDiscoveryService @Inject()(
    * Import a single set as a new dataset.
    */
   def importSet(request: SetImportRequest): Future[ImportResult] = {
-    sourceRepo.getSource(request.sourceId) match {
+    getSource(request.sourceId) match {
       case None =>
         Future.successful(ImportResult(request.normalizedSpec, success = false, Some(s"Source not found: ${request.sourceId}")))
 

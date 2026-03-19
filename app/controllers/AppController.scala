@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
 import organization.OrgContext
-import services.{CredentialEncryption, IndexStatsService, IndexStatsResponse, MemoryMonitorService, QualitySummaryService, Temporal, TrendTrackingService, ViolationRecordService}
+import services.{CredentialEncryption, DsInfoService, GlobalDsInfoService, IndexStatsService, IndexStatsResponse, MemoryMonitorService, QualitySummaryService, Temporal, TrendTrackingService, ViolationRecordService}
 import services.Temporal._
 import triplestore.GraphProperties._
 import triplestore.{Sparql, TripleStore}
@@ -74,6 +74,10 @@ class AppController @Inject() (
    ts: TripleStore
 ) extends InjectedController with Logging with DefaultInstrumented {
 
+  private def dsInfoService: DsInfoService = GlobalDsInfoService.get().getOrElse(
+    throw new RuntimeException("DsInfoService not initialized — is PostgreSQL configured?")
+  )
+
   implicit val timeout: Timeout = Timeout(500, TimeUnit.MILLISECONDS)
 
   val getListDsTimer = metrics.timer("list.datasets")
@@ -87,8 +91,8 @@ class AppController @Inject() (
   def sendRefresh(spec: String) = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
   def listDatasets = Action.async { request =>
-    getListDsTimer.timeFuture(listDsInfo(orgContext)).map(list => {
-
+    Future.successful {
+      val list = dsInfoService.listDatasetsJson(orgContext.appConfig.orgId)
       val jsonBytes: Array[Byte] = Json.toJson(list).toString().getBytes("UTF-8")
       val bos = new ByteArrayOutputStream(jsonBytes.length)
       val gzip = new GZIPOutputStream(bos)
@@ -99,7 +103,7 @@ class AppController @Inject() (
       Ok(compressed).withHeaders(
         CONTENT_ENCODING -> "gzip"
       ).as("application/json; charset=utf-8")
-    })
+    }
   }
 
   /**
@@ -108,9 +112,8 @@ class AppController @Inject() (
    * Also includes retry status for datasets in retry mode (fetched via separate query).
    */
   def listDatasetsLight = Action.async { request =>
-    import dataset.DsInfo.listDsInfoLightWithRetry
-
-    getListDsTimer.timeFuture(listDsInfoLightWithRetry(orgContext)).map(list => {
+    Future.successful {
+      val list = dsInfoService.listDatasetsLightJson(orgContext.appConfig.orgId)
       val jsonBytes: Array[Byte] = Json.toJson(list).toString().getBytes("UTF-8")
       val bos = new ByteArrayOutputStream(jsonBytes.length)
       val gzip = new GZIPOutputStream(bos)
@@ -121,7 +124,7 @@ class AppController @Inject() (
       Ok(compressed).withHeaders(
         CONTENT_ENCODING -> "gzip"
       ).as("application/json; charset=utf-8")
-    })
+    }
   }
 
   def listActiveDatasets = Action.async { request =>
@@ -683,7 +686,10 @@ class AppController @Inject() (
   }
 
   def datasetInfo(spec: String) = Action { request =>
-    withDsInfo(spec, orgContext)(dsInfo => Ok(Json.toJson(dsInfo)))
+    dsInfoService.getDatasetInfoJson(spec) match {
+      case Some(json) => Ok(json)
+      case None => NotFound(Json.obj("error" -> s"Dataset not found: $spec"))
+    }
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = Action.async { request =>

@@ -97,6 +97,19 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
     } finally ps.close()
   }
 
+  override def listDatasets(orgId: String): List[DatasetRecord] = withConnection { conn =>
+    val ps = conn.prepareStatement(
+      "SELECT * FROM datasets WHERE org_id = ? ORDER BY spec"
+    )
+    try {
+      ps.setString(1, orgId)
+      val rs = ps.executeQuery()
+      try {
+        readList(rs)(readDataset)
+      } finally rs.close()
+    } finally ps.close()
+  }
+
   override def listActiveDatasets(orgId: String): List[DatasetRecord] = withConnection { conn =>
     val ps = conn.prepareStatement(
       "SELECT * FROM datasets WHERE org_id = ? AND deleted_at IS NULL ORDER BY spec"
@@ -676,6 +689,31 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
     } finally ps.close()
   }
 
+  override def getWorkflowSteps(workflowId: String): List[WorkflowStepRecord] = withConnection { conn =>
+    val ps = conn.prepareStatement(
+      "SELECT * FROM workflow_steps WHERE workflow_id = ? ORDER BY started_at"
+    )
+    try {
+      ps.setString(1, workflowId)
+      val rs = ps.executeQuery()
+      try readList(rs)(readWorkflowStep)
+      finally rs.close()
+    } finally ps.close()
+  }
+
+  private def readWorkflowStep(rs: java.sql.ResultSet): WorkflowStepRecord =
+    WorkflowStepRecord(
+      id = Some(rs.getInt("id")),
+      workflowId = rs.getString("workflow_id"),
+      stepName = rs.getString("step_name"),
+      status = rs.getString("status"),
+      recordsProcessed = rs.getInt("records_processed"),
+      errorMessage = getOptString(rs, "error_message"),
+      metadata = getOptString(rs, "metadata"),
+      startedAt = rs.getTimestamp("started_at").toInstant,
+      completedAt = getOptInstant(rs, "completed_at")
+    )
+
   // ---------------------------------------------------------------------------
   // Audit
   // ---------------------------------------------------------------------------
@@ -707,6 +745,128 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       newRow = getOptString(rs, "new_row"),
       changedAt = rs.getTimestamp("changed_at").toInstant,
       changedBy = getOptString(rs, "changed_by")
+    )
+
+  // ---------------------------------------------------------------------------
+  // Scheduling queries
+  // ---------------------------------------------------------------------------
+
+  override def listHarvestableDatasets(orgId: String): List[HarvestableDataset] = withConnection { conn =>
+    val sql =
+      """SELECT
+        |  ds.spec,
+        |  st.state,
+        |  st.state_changed_at,
+        |  hs.delay,
+        |  hs.delay_unit,
+        |  hs.incremental,
+        |  hs.previous_time,
+        |  hs.last_full_harvest,
+        |  hs.last_incremental_harvest,
+        |  wf.id AS active_workflow_id,
+        |  wf.status AS active_workflow_status,
+        |  wf.trigger AS workflow_trigger,
+        |  st.error_message,
+        |  rw.retry_count,
+        |  rw.next_retry_at
+        |FROM datasets ds
+        |JOIN dataset_state st ON ds.spec = st.spec
+        |LEFT JOIN dataset_harvest_schedule hs ON ds.spec = hs.spec
+        |LEFT JOIN LATERAL (
+        |  SELECT id, status, trigger
+        |  FROM workflows w
+        |  WHERE w.spec = ds.spec AND w.status IN ('running', 'pending', 'retry')
+        |  LIMIT 1
+        |) wf ON true
+        |LEFT JOIN LATERAL (
+        |  SELECT retry_count, next_retry_at
+        |  FROM workflows w
+        |  WHERE w.spec = ds.spec AND w.status = 'retry'
+        |  LIMIT 1
+        |) rw ON true
+        |WHERE ds.org_id = ?
+        |  AND ds.deleted_at IS NULL
+        |  AND st.state IN ('stateSaved', 'stateIncrementalSaved')
+        |  AND hs.delay IS NOT NULL
+        |  AND hs.delay_unit IS NOT NULL
+        |ORDER BY ds.spec"""
+        .stripMargin
+    val ps = conn.prepareStatement(sql)
+    try {
+      ps.setString(1, orgId)
+      val rs = ps.executeQuery()
+      try readList(rs)(readHarvestableDataset)
+      finally rs.close()
+    } finally ps.close()
+  }
+
+  override def listRetryableDatasets(orgId: String, retryIntervalMinutes: Int): List[HarvestableDataset] = withConnection { conn =>
+    val sql =
+      """SELECT
+        |  ds.spec,
+        |  st.state,
+        |  st.state_changed_at,
+        |  hs.delay,
+        |  hs.delay_unit,
+        |  hs.incremental,
+        |  hs.previous_time,
+        |  hs.last_full_harvest,
+        |  hs.last_incremental_harvest,
+        |  wf.id AS active_workflow_id,
+        |  wf.status AS active_workflow_status,
+        |  wf.trigger AS workflow_trigger,
+        |  st.error_message,
+        |  rw.retry_count,
+        |  rw.next_retry_at
+        |FROM datasets ds
+        |JOIN dataset_state st ON ds.spec = st.spec
+        |LEFT JOIN dataset_harvest_schedule hs ON ds.spec = hs.spec
+        |LEFT JOIN LATERAL (
+        |  SELECT id, status, trigger
+        |  FROM workflows w
+        |  WHERE w.spec = ds.spec AND w.status IN ('running', 'pending', 'retry')
+        |  LIMIT 1
+        |) wf ON true
+        |LEFT JOIN LATERAL (
+        |  SELECT retry_count, next_retry_at
+        |  FROM workflows w
+        |  WHERE w.spec = ds.spec AND w.status = 'retry'
+        |  LIMIT 1
+        |) rw ON true
+        |WHERE ds.org_id = ?
+        |  AND ds.deleted_at IS NULL
+        |  AND st.error_message IS NOT NULL
+        |  AND st.current_operation = 'HARVEST'
+        |  AND st.operation_start <= NOW() - INTERVAL '1 minute' * ?
+        |ORDER BY ds.spec"""
+        .stripMargin
+    val ps = conn.prepareStatement(sql)
+    try {
+      ps.setString(1, orgId)
+      ps.setInt(2, retryIntervalMinutes)
+      val rs = ps.executeQuery()
+      try readList(rs)(readHarvestableDataset)
+      finally rs.close()
+    } finally ps.close()
+  }
+
+  private def readHarvestableDataset(rs: ResultSet): HarvestableDataset =
+    HarvestableDataset(
+      spec = rs.getString("spec"),
+      state = rs.getString("state"),
+      stateChangedAt = rs.getTimestamp("state_changed_at").toInstant,
+      delay = getOptString(rs, "delay"),
+      delayUnit = getOptString(rs, "delay_unit"),
+      incremental = rs.getBoolean("incremental"),
+      previousTime = getOptInstant(rs, "previous_time"),
+      lastFullHarvest = getOptInstant(rs, "last_full_harvest"),
+      lastIncrementalHarvest = getOptInstant(rs, "last_incremental_harvest"),
+      activeWorkflowId = getOptString(rs, "active_workflow_id"),
+      activeWorkflowStatus = getOptString(rs, "active_workflow_status"),
+      workflowTrigger = getOptString(rs, "workflow_trigger"),
+      errorMessage = getOptString(rs, "error_message"),
+      retryCount = Option(rs.getInt("retry_count")).filter(_ != 0).getOrElse(0),
+      nextRetryAt = getOptInstant(rs, "next_retry_at")
     )
 
   // ---------------------------------------------------------------------------

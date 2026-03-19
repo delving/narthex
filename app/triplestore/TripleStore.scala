@@ -103,6 +103,7 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
   var graphStorePath: String = narthexConfig.graphStorePath
   var graphStoreParam: String = narthexConfig.graphStoreParam
   var logQueries: Boolean = narthexConfig.tripleStoreLog
+  var logReads: Boolean = narthexConfig.logFusekiReads
 
   var queryIndex = 0
 
@@ -179,6 +180,7 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
   def getConnectionStats: (Int, Int, Int) = (activeConnections.get(), totalRequests.get(), failedRequests.get())
 
   override def ask(sparqlQuery: String): Future[Boolean] = {
+    if (logReads) logger.info(s"[FUSEKI READ] ASK: ${sparqlQuery.replaceAll("\\s+", " ").take(200)}")
     logSparql(sparqlQuery)
     executeWithMetrics("ASK query") {
       val request = queryRequest(sparqlQuery)
@@ -201,6 +203,7 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
   }
 
   override def query(sparqlQuery: String): Future[List[Map[String, QueryValue]]] = {
+    if (logReads) logger.info(s"[FUSEKI READ] SELECT: ${sparqlQuery.replaceAll("\\s+", " ").take(200)}")
     logSparql(sparqlQuery)
     executeWithMetrics("SELECT query") {
       val request = queryRequest(sparqlQuery)
@@ -233,6 +236,7 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
   }
 
   override def dataGet(graphName: String): Future[Model] = {
+    if (logReads) logger.info(s"[FUSEKI READ] GET GRAPH: $graphName")
     executeWithMetrics(s"GET graph $graphName") {
       dataRequest(graphName).withHeaders(
         "Accept" -> "text/turtle"
@@ -265,6 +269,7 @@ class Fuseki @Inject() (wsApi: WSClient, narthexConfig: NarthexConfig) (implicit
         |}
       """.stripMargin
       
+      if (logReads) logger.info(s"[FUSEKI READ] BATCH EXISTENCE: ${graphUris.length} graphs — ${graphUris.take(3).mkString(", ")}${if (graphUris.length > 3) ", ..." else ""}")
       executeWithMetrics(s"Batch existence check for ${graphUris.length} graphs") {
         val request = queryRequest(batchQuery)
         request.get().map { response =>
