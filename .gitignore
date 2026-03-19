@@ -32,6 +32,7 @@ tags
 
 # Config files with credentials
 conf/brabantcloud.conf
+conf/overrides.conf
 GEMINI.md
 
 # Node.js

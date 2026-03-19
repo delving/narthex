@@ -182,7 +182,9 @@ narthex.db {
   path = "data/narthex.db"
 }
 
-# PostgreSQL configuration (optional - omit to skip PostgreSQL)
+# PostgreSQL configuration (optional - omit section to skip PostgreSQL entirely)
+# To enable: add narthex.postgres section to conf/overrides.conf (gitignored).
+# Example:
 # narthex.postgres {
 #   url = "jdbc:postgresql://localhost:5432/narthex"
 #   user = "narthex"
@@ -198,6 +200,10 @@ narthex.db {
 #   # Idempotent (uses upserts). Disable after successful migration.
 #   # run-migration = false
 # }
+
+# Local overrides (credentials, environment-specific config)
+# Create conf/overrides.conf (gitignored) to override any settings above.
+include "overrides"
 
 # Akka Persistence
 akka.persistence {
