@@ -28,6 +28,7 @@ import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.joda.time.{DateTime, Minutes}
 import organization.OrgContext
+import services.GlobalDsInfoService
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsValue, Json, Writes}
 import play.api.libs.ws.WSResponse
@@ -628,7 +629,8 @@ object DsInfo {
             orgContext.appConfig.naveApiAuthToken,
             orgContext.appConfig.naveApiUrl,
             orgContext,
-            orgContext.appConfig.mockBulkApi
+            orgContext.appConfig.mockBulkApi,
+            GlobalDsInfoService.get()
           )
 
           // Cache the existence result to avoid individual dataGet() calls
@@ -682,7 +684,8 @@ object DsInfo {
           orgContext.appConfig.naveApiAuthToken,
           orgContext.appConfig.naveApiUrl,
           orgContext,
-          orgContext.appConfig.mockBulkApi
+          orgContext.appConfig.mockBulkApi,
+          GlobalDsInfoService.get()
         )
         orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
         dsInfo
@@ -705,7 +708,8 @@ object DsInfo {
             orgContext.appConfig.naveApiAuthToken,
             orgContext.appConfig.naveApiUrl,
             orgContext,
-            orgContext.appConfig.mockBulkApi
+            orgContext.appConfig.mockBulkApi,
+            GlobalDsInfoService.get()
           )
           dsInfo.cacheDataExists(exists)
           Future.successful(Some(dsInfo))
@@ -725,7 +729,8 @@ object DsInfo {
                 orgContext.appConfig.naveApiAuthToken,
                 orgContext.appConfig.naveApiUrl,
                 orgContext,
-                orgContext.appConfig.mockBulkApi
+                orgContext.appConfig.mockBulkApi,
+                GlobalDsInfoService.get()
               )
               // Cache this result for future use
               orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
@@ -758,7 +763,8 @@ object DsInfo {
       orgContext.appConfig.naveApiAuthToken,
       orgContext.appConfig.naveApiUrl,
       orgContext,
-      orgContext.appConfig.mockBulkApi
+      orgContext.appConfig.mockBulkApi,
+      GlobalDsInfoService.get()
     )
   }
 }
@@ -769,7 +775,9 @@ class DsInfo(
     val naveApiAuthToken: String,
     val naveApiUrl: String,
     val orgContext: OrgContext,
-    val mockBulkApi: Boolean)(implicit ec: ExecutionContext, ts: TripleStore)
+    val mockBulkApi: Boolean,
+    private val writeService: Option[services.DsInfoService] = None)(
+    implicit ec: ExecutionContext, ts: TripleStore)
     extends SkosGraph {
 
   import dataset.DsInfo._
@@ -811,6 +819,16 @@ class DsInfo(
   def invalidateCachedModel(): Unit = {
     cachedModel = None
     logger.debug(s"Invalidated cached model for dataset $spec")
+  }
+
+  /** Route a write to PostgreSQL when available, with SPARQL as fallback.
+    *
+    * Phase 3: PostgreSQL is the primary store. Falls back to SPARQL when
+    * GlobalDsInfoService is not initialized (e.g., narthex.postgres not configured).
+    */
+  private def pgWrite(block: services.DsInfoService => Unit): Unit = {
+    val svc = writeService.orElse(GlobalDsInfoService.get())
+    svc.foreach(block)
   }
 
   // Initialize cache on construction
@@ -932,6 +950,16 @@ class DsInfo(
       case None => baseProps
     }
 
+    pgWrite(ws => ws.upsertIndexing(
+      spec,
+      recordsIndexed = Some(recordsIndexed),
+      recordsExpected = Some(recordsExpected),
+      orphansDeleted = Some(orphansDeleted),
+      errorCount = Some(errorCount),
+      lastStatus = Some(status),
+      lastMessage = message,
+      lastRevision = Some(revision)
+    ))
     setSingularLiteralProps(allProps: _*)
   }
 
@@ -1010,8 +1038,8 @@ class DsInfo(
     source match {
       case "manual" =>
         // Clear default mapping settings when switching to manual
+        pgWrite(ws => ws.upsertMappingConfig(spec, mappingSource = Some("manual")))
         setSingularLiteralProps(datasetMappingSource -> "manual")
-        // Remove default mapping properties by setting empty strings
         setSingularLiteralProps(
           datasetDefaultMappingPrefix -> "",
           datasetDefaultMappingName -> "",
@@ -1021,6 +1049,13 @@ class DsInfo(
         val actualPrefix = prefix.getOrElse("")
         val actualName = name.getOrElse("default")
         val actualVersion = version.getOrElse("latest")
+        pgWrite(ws => ws.upsertMappingConfig(
+          spec,
+          mappingSource = Some("default"),
+          defaultMappingPrefix = Some(actualPrefix),
+          defaultMappingName = Some(actualName),
+          defaultMappingVersion = Some(actualVersion)
+        ))
         setSingularLiteralProps(
           datasetMappingSource -> "default",
           datasetDefaultMappingPrefix -> actualPrefix,
@@ -1029,6 +1064,7 @@ class DsInfo(
         )
       case _ =>
         logger.warn(s"Unknown mapping source: $source, defaulting to manual")
+        pgWrite(ws => ws.upsertMappingConfig(spec, mappingSource = Some("manual")))
         setSingularLiteralProps(datasetMappingSource -> "manual")
     }
   }
@@ -1056,6 +1092,7 @@ class DsInfo(
   }
 
   def setState(state: DsState.Value) = {
+    pgWrite(_.setState(spec, state.toString))
     setSingularLiteralProps(
       NXProp(state.toString, GraphProperties.timeProp) -> now)
 
@@ -1137,6 +1174,7 @@ class DsInfo(
   }
 
   def clearError(): Unit = {
+    pgWrite(_.clearError(spec))
     removeLiteralProp(datasetErrorMessage)
     removeLiteralProp(datasetErrorTime)
   }
@@ -1145,6 +1183,7 @@ class DsInfo(
     if (message.isEmpty) {
       clearError()
     } else {
+      pgWrite(_.setError(spec, message))
       setSingularLiteralProps(
         datasetErrorMessage -> message,
         datasetErrorTime -> now
@@ -1188,6 +1227,7 @@ class DsInfo(
    * Clear all retry state. Called on successful harvest or manual stop.
    */
   def clearRetryState(): Unit = {
+    pgWrite(_.clearRetryState(spec))
     removeLiteralProp(harvestInRetry)
     removeLiteralProp(harvestRetryCount)
     removeLiteralProp(harvestLastRetryTime)
@@ -1216,6 +1256,7 @@ class DsInfo(
    * Set the current operation for restart recovery tracking.
    */
   def setCurrentOperation(operation: String, trigger: String = "automatic"): Unit = {
+    pgWrite(ws => ws.setCurrentOperation(spec, operation, trigger))
     setSingularLiteralProps(
       datasetCurrentOperation -> operation,
       datasetOperationStartTime -> now,
@@ -1228,6 +1269,7 @@ class DsInfo(
    * Mark current operation as completed.
    */
   def completeOperation(): Unit = {
+    pgWrite(ws => ws.setState(spec, "OPERATION_COMPLETE"))
     setSingularLiteralProps(datasetOperationStatus -> "completed")
   }
 
@@ -1235,6 +1277,7 @@ class DsInfo(
    * Clear operation tracking (called when returning to Idle).
    */
   def clearOperation(): Unit = {
+    pgWrite(_.clearOperation(spec))
     removeLiteralProp(datasetCurrentOperation)
     removeLiteralProp(datasetOperationStartTime)
     removeLiteralProp(datasetOperationTrigger)
@@ -1385,20 +1428,26 @@ class DsInfo(
     (invalid, valid, total)
   }
 
-  def setRecordCount(count: Int) =
+  def setRecordCount(count: Int) = {
+    pgWrite(_.setRecordCounts(spec, count, 0, 0, 0, "unknown"))
     setSingularLiteralProps(datasetRecordCount -> count.toString)
+  }
 
-  def setProcessedRecordCounts(validCount: Int, invalidCount: Int) =
+  def setProcessedRecordCounts(validCount: Int, invalidCount: Int) = {
+    pgWrite(_.setProcessedCounts(spec, validCount, invalidCount))
     setSingularLiteralProps(
       processedValid -> validCount.toString,
       processedInvalid -> invalidCount.toString
     )
+  }
 
-  def setIncrementalProcessedRecordCounts(validCount: Int, invalidCount: Int) =
+  def setIncrementalProcessedRecordCounts(validCount: Int, invalidCount: Int) = {
+    pgWrite(_.setIncrementalProcessedCounts(spec, validCount, invalidCount))
     setSingularLiteralProps(
       processedIncrementalValid -> validCount.toString,
       processedIncrementalInvalid -> invalidCount.toString
     )
+  }
 
   /**
    * Set acquisition counts for tracking record pipeline from harvest/upload to source.
@@ -1409,6 +1458,8 @@ class DsInfo(
    */
   def setAcquisitionCounts(acquired: Int, deleted: Int, source: Int, method: String): Unit = {
     logger.info(s"[$spec] Setting acquisition counts: acquired=$acquired, deleted=$deleted, source=$source, method=$method")
+
+    pgWrite(ws => ws.setRecordCounts(spec, source, acquired, deleted, source, method))
 
     setSingularLiteralProps(
       acquiredRecordCount -> acquired.toString,
@@ -1439,26 +1490,45 @@ class DsInfo(
                      url: String,
                      dataset: String,
                      prefix: String,
-                     recordId: String) = setSingularLiteralProps(
-    harvestType -> harvestTypeEnum.name,
-    harvestURL -> url,
-    harvestDataset -> dataset,
-    harvestRecord -> recordId,
-    harvestPrefix -> prefix
-  )
+                     recordId: String) = {
+    pgWrite(ws => ws.upsertHarvestConfig(
+      spec,
+      harvestType = Some(harvestTypeEnum.name),
+      harvestUrl = Some(url),
+      harvestDataset = Some(dataset),
+      harvestPrefix = Some(prefix),
+      harvestRecord = Some(recordId)
+    ))
+    setSingularLiteralProps(
+      harvestType -> harvestTypeEnum.name,
+      harvestURL -> url,
+      harvestDataset -> dataset,
+      harvestRecord -> recordId,
+      harvestPrefix -> prefix
+    )
+  }
 
-  def setDelimiters(recordRootValue: String, uniqueIdValue: String) = setSingularLiteralProps(
-    recordRoot -> recordRootValue,
-    uniqueId -> uniqueIdValue,
-    delimitersSet -> timeToLocalString(DateTime.now())
-  )
+  def setDelimiters(recordRootValue: String, uniqueIdValue: String) = {
+    pgWrite(ws => ws.setDelimiters(spec, recordRootValue, uniqueIdValue))
+    setSingularLiteralProps(
+      recordRoot -> recordRootValue,
+      uniqueId -> uniqueIdValue,
+      delimitersSet -> timeToLocalString(DateTime.now())
+    )
+  }
 
-  def setHarvestCron(harvestCron: HarvestCron = currentHarvestCron) =
+  def setHarvestCron(harvestCron: HarvestCron = currentHarvestCron) = {
+    pgWrite(ws => ws.upsertHarvestSchedule(
+      spec,
+      delay = Some(harvestCron.delay.toString),
+      delayUnit = Some(harvestCron.unit.toString)
+    ))
     setSingularLiteralProps(
       harvestPreviousTime -> timeToLocalString(harvestCron.previous),
       harvestDelay -> harvestCron.delay.toString,
       harvestDelayUnit -> harvestCron.unit.toString
     )
+  }
 
   def setMetadata(metadata: DsMetadata) = setSingularLiteralProps(
     datasetName -> metadata.name,

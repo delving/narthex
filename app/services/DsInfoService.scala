@@ -45,6 +45,396 @@ class DsInfoService(repo: DatasetRepository) {
     }
   }
 
+  // ==========================================================================
+  // Write methods — Phase 3: PostgreSQL as primary store for state, errors,
+  // operation tracking, record counts, and sync flags.
+  // All writes go to PostgreSQL via the repository's upsert methods.
+  // ==========================================================================
+
+  /** Update the dataset state (e.g. "SOURCED", "PROCESSED", "SAVED").
+    *
+    * Equivalent to DsInfo.setState().
+    */
+  def setState(spec: String, state: String): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          state = state,
+          stateChangedAt = Instant.now()
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          state = state,
+          stateChangedAt = Instant.now()
+        ))
+    }
+  }
+
+  /** Clear any error state on a dataset.
+    *
+    * Equivalent to DsInfo.clearError().
+    */
+  def clearError(spec: String): Unit = {
+    repo.getState(spec).foreach { existing =>
+      repo.upsertState(existing.copy(
+        errorMessage = None,
+        errorTime = None
+      ))
+    }
+  }
+
+  /** Set an error message on a dataset.
+    *
+    * Equivalent to DsInfo.setError().
+    */
+  def setError(spec: String, message: String): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          errorMessage = Some(message),
+          errorTime = Some(Instant.now())
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          errorMessage = Some(message),
+          errorTime = Some(Instant.now())
+        ))
+    }
+  }
+
+  /** Clear retry state — called when a retry succeeds or is abandoned.
+    *
+    * Clears the inRetry flag and resets retry counters.
+    */
+  def clearRetryState(spec: String): Unit = {
+    repo.getState(spec).foreach { existing =>
+      repo.upsertState(existing.copy(
+        currentOperation = None,
+        operationStart = None
+      ))
+    }
+  }
+
+  /** Set the current operation (e.g. "HARVEST", "ANALYZE", "SAVE").
+    *
+    * Equivalent to DsInfo.setCurrentOperation().
+    */
+  def setCurrentOperation(spec: String, operation: String, trigger: String): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          currentOperation = Some(operation),
+          operationStart = Some(Instant.now()),
+          operationTrigger = Some(trigger)
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          currentOperation = Some(operation),
+          operationStart = Some(Instant.now()),
+          operationTrigger = Some(trigger)
+        ))
+    }
+  }
+
+  /** Clear the current operation — called when a step completes.
+    *
+    * Equivalent to DsInfo.completeOperation() and clearOperation().
+    */
+  def clearOperation(spec: String): Unit = {
+    repo.getState(spec).foreach { existing =>
+      repo.upsertState(existing.copy(
+        currentOperation = None,
+        operationStart = None,
+        operationTrigger = None
+      ))
+    }
+  }
+
+  /** Set record counts after processing.
+    *
+    * Equivalent to DsInfo.setRecordCount() and setAcquisitionCounts().
+    */
+  def setRecordCounts(
+      spec: String,
+      recordCount: Int,
+      acquiredCount: Int,
+      deletedCount: Int,
+      sourceCount: Int,
+      acquisitionMethod: String
+  ): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          recordCount = recordCount,
+          acquiredCount = acquiredCount,
+          deletedCount = deletedCount,
+          sourceCount = sourceCount,
+          acquisitionMethod = Some(acquisitionMethod)
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          recordCount = recordCount,
+          acquiredCount = acquiredCount,
+          deletedCount = deletedCount,
+          sourceCount = sourceCount,
+          acquisitionMethod = Some(acquisitionMethod)
+        ))
+    }
+  }
+
+  /** Set processed record counts (valid/invalid).
+    *
+    * Equivalent to DsInfo.setProcessedRecordCounts().
+    */
+  def setProcessedCounts(spec: String, valid: Int, invalid: Int): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          processedValid = valid,
+          processedInvalid = invalid
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          processedValid = valid,
+          processedInvalid = invalid
+        ))
+    }
+  }
+
+  /** Set incremental processed record counts.
+    *
+    * Equivalent to DsInfo.setIncrementalProcessedRecordCounts().
+    */
+  def setIncrementalProcessedCounts(spec: String, valid: Int, invalid: Int): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          processedIncrementalValid = valid,
+          processedIncrementalInvalid = invalid
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          processedIncrementalValid = valid,
+          processedIncrementalInvalid = invalid
+        ))
+    }
+  }
+
+  // ==========================================================================
+  // Harvest config write methods
+  // ==========================================================================
+
+  /** Set harvest source configuration.
+    *
+    * Equivalent to DsInfo.setHarvestInfo() and setDelimiters().
+    */
+  def upsertHarvestConfig(
+      spec: String,
+      harvestType: Option[String] = None,
+      harvestUrl: Option[String] = None,
+      harvestDataset: Option[String] = None,
+      harvestPrefix: Option[String] = None,
+      harvestRecord: Option[String] = None,
+      harvestDownloadUrl: Option[String] = None,
+      recordRoot: Option[String] = None,
+      uniqueId: Option[String] = None,
+      recordContainer: Option[String] = None,
+      sourceType: Option[String] = None,
+      oaiSourceId: Option[String] = None,
+      continueOnError: Boolean = false,
+      errorThreshold: Option[Int] = None
+  ): Unit = {
+    repo.getHarvestConfig(spec) match {
+      case Some(existing) =>
+        repo.upsertHarvestConfig(existing.copy(
+          harvestType = harvestType.orElse(existing.harvestType),
+          harvestUrl = harvestUrl.orElse(existing.harvestUrl),
+          harvestDataset = harvestDataset.orElse(existing.harvestDataset),
+          harvestPrefix = harvestPrefix.orElse(existing.harvestPrefix),
+          harvestRecord = harvestRecord.orElse(existing.harvestRecord),
+          harvestDownloadUrl = harvestDownloadUrl.orElse(existing.harvestDownloadUrl),
+          recordRoot = recordRoot.orElse(existing.recordRoot),
+          uniqueId = uniqueId.orElse(existing.uniqueId),
+          recordContainer = recordContainer.orElse(existing.recordContainer),
+          sourceType = sourceType.orElse(existing.sourceType),
+          oaiSourceId = oaiSourceId.orElse(existing.oaiSourceId),
+          continueOnError = if (continueOnError) true else existing.continueOnError,
+          errorThreshold = errorThreshold.orElse(existing.errorThreshold)
+        ))
+      case None =>
+        repo.upsertHarvestConfig(HarvestConfigRecord(
+          spec = spec,
+          harvestType = harvestType,
+          harvestUrl = harvestUrl,
+          harvestDataset = harvestDataset,
+          harvestPrefix = harvestPrefix,
+          harvestRecord = harvestRecord,
+          harvestDownloadUrl = harvestDownloadUrl,
+          recordRoot = recordRoot,
+          uniqueId = uniqueId,
+          recordContainer = recordContainer,
+          sourceType = sourceType,
+          oaiSourceId = oaiSourceId,
+          continueOnError = continueOnError,
+          errorThreshold = errorThreshold
+        ))
+    }
+  }
+
+  /** Mark delimiters as set (recordRoot and uniqueId configured).
+    *
+    * Sets the delimiterSet timestamp.
+    */
+  def setDelimiters(spec: String, recordRoot: String, uniqueId: String, recordContainer: Option[String] = None): Unit = {
+    upsertHarvestConfig(spec, recordRoot = Some(recordRoot), uniqueId = Some(uniqueId), recordContainer = recordContainer)
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(delimiterSet = Some(Instant.now())))
+      case None =>
+        repo.upsertState(DatasetStateRecord(spec = spec, delimiterSet = Some(Instant.now())))
+    }
+  }
+
+  // ==========================================================================
+  // Harvest schedule write methods
+  // ==========================================================================
+
+  /** Update harvest schedule.
+    *
+    * Equivalent to DsInfo.setHarvestCron() and setLastHarvestTime().
+    */
+  def upsertHarvestSchedule(
+      spec: String,
+      delay: Option[String] = None,
+      delayUnit: Option[String] = None,
+      incremental: Boolean = false,
+      previousTime: Option[Instant] = None,
+      lastFullHarvest: Option[Instant] = None,
+      lastIncrementalHarvest: Option[Instant] = None
+  ): Unit = {
+    repo.getHarvestSchedule(spec) match {
+      case Some(existing) =>
+        repo.upsertHarvestSchedule(existing.copy(
+          delay = delay.orElse(existing.delay),
+          delayUnit = delayUnit.orElse(existing.delayUnit),
+          incremental = if (incremental) true else existing.incremental,
+          previousTime = previousTime.orElse(existing.previousTime),
+          lastFullHarvest = lastFullHarvest.orElse(existing.lastFullHarvest),
+          lastIncrementalHarvest = lastIncrementalHarvest.orElse(existing.lastIncrementalHarvest)
+        ))
+      case None =>
+        repo.upsertHarvestSchedule(HarvestScheduleRecord(
+          spec = spec,
+          delay = delay,
+          delayUnit = delayUnit,
+          incremental = incremental,
+          previousTime = previousTime,
+          lastFullHarvest = lastFullHarvest,
+          lastIncrementalHarvest = lastIncrementalHarvest
+        ))
+    }
+  }
+
+  // ==========================================================================
+  // Mapping config write methods
+  // ==========================================================================
+
+  /** Update mapping and publish configuration.
+    *
+    * Equivalent to DsInfo.setMappingSource() and setMetadata().
+    */
+  def upsertMappingConfig(
+      spec: String,
+      mappingSource: Option[String] = None,
+      defaultMappingPrefix: Option[String] = None,
+      defaultMappingName: Option[String] = None,
+      defaultMappingVersion: Option[String] = None,
+      mapToPrefix: Option[String] = None,
+      publishOaipmh: Option[Boolean] = None,
+      publishIndex: Option[Boolean] = None,
+      publishLod: Option[Boolean] = None,
+      categoriesInclude: Option[Boolean] = None
+  ): Unit = {
+    repo.getMappingConfig(spec) match {
+      case Some(existing) =>
+        repo.upsertMappingConfig(existing.copy(
+          mappingSource = mappingSource.orElse(existing.mappingSource),
+          defaultMappingPrefix = defaultMappingPrefix.orElse(existing.defaultMappingPrefix),
+          defaultMappingName = defaultMappingName.orElse(existing.defaultMappingName),
+          defaultMappingVersion = defaultMappingVersion.orElse(existing.defaultMappingVersion),
+          mapToPrefix = mapToPrefix.orElse(existing.mapToPrefix),
+          publishOaipmh = publishOaipmh.getOrElse(existing.publishOaipmh),
+          publishIndex = publishIndex.getOrElse(existing.publishIndex),
+          publishLod = publishLod.getOrElse(existing.publishLod),
+          categoriesInclude = categoriesInclude.getOrElse(existing.categoriesInclude)
+        ))
+      case None =>
+        repo.upsertMappingConfig(MappingConfigRecord(
+          spec = spec,
+          mappingSource = mappingSource,
+          defaultMappingPrefix = defaultMappingPrefix,
+          defaultMappingName = defaultMappingName,
+          defaultMappingVersion = defaultMappingVersion,
+          mapToPrefix = mapToPrefix,
+          publishOaipmh = publishOaipmh.getOrElse(true),
+          publishIndex = publishIndex.getOrElse(true),
+          publishLod = publishLod.getOrElse(true),
+          categoriesInclude = categoriesInclude.getOrElse(false)
+        ))
+    }
+  }
+
+  // ==========================================================================
+  // Indexing write methods
+  // ==========================================================================
+
+  /** Update indexing result from Hub3 webhook.
+    *
+    * Equivalent to DsInfo.setIndexingResults().
+    */
+  def upsertIndexing(
+      spec: String,
+      recordsIndexed: Option[Int] = None,
+      recordsExpected: Option[Int] = None,
+      orphansDeleted: Option[Int] = None,
+      errorCount: Option[Int] = None,
+      lastStatus: Option[String] = None,
+      lastMessage: Option[String] = None,
+      lastRevision: Option[Int] = None
+  ): Unit = {
+    repo.getIndexing(spec) match {
+      case Some(existing) =>
+        repo.upsertIndexing(existing.copy(
+          recordsIndexed = recordsIndexed.orElse(existing.recordsIndexed),
+          recordsExpected = recordsExpected.orElse(existing.recordsExpected),
+          orphansDeleted = orphansDeleted.orElse(existing.orphansDeleted),
+          errorCount = errorCount.orElse(existing.errorCount),
+          lastStatus = lastStatus.orElse(existing.lastStatus),
+          lastMessage = lastMessage.orElse(existing.lastMessage),
+          lastTimestamp = Some(Instant.now()),
+          lastRevision = lastRevision.orElse(existing.lastRevision)
+        ))
+      case None =>
+        repo.upsertIndexing(IndexingRecord(
+          spec = spec,
+          recordsIndexed = recordsIndexed,
+          recordsExpected = recordsExpected,
+          orphansDeleted = orphansDeleted,
+          errorCount = errorCount,
+          lastStatus = lastStatus,
+          lastMessage = lastMessage,
+          lastTimestamp = Some(Instant.now()),
+          lastRevision = lastRevision
+        ))
+    }
+  }
+
   /** Get source facts for a dataset from PostgreSQL.
     *
     * Reads from the `dataset_harvest_config` table. Returns `None` if the
