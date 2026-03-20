@@ -234,6 +234,13 @@ class DsInfoService(repo: DatasetRepository) {
     }
   }
 
+  /** Datasets with active (non-completed) operations — replaces
+    * DsInfo.listDsInfoWithIncompleteOperations. Reads from PostgreSQL
+    * instead of SPARQL. Used by OrgActor.performStartupRecovery().
+    */
+  def listDatasetsWithActiveOperation(orgId: String): List[ActiveOperationRecord] =
+    repo.listDatasetsWithActiveOperation(orgId)
+
   /** Set record counts after processing.
     *
     * Equivalent to DsInfo.setRecordCount() and setAcquisitionCounts().

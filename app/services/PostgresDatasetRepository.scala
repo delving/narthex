@@ -272,6 +272,35 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       delimiterSet = getOptInstant(rs, "delimiters_set")
     )
 
+  override def listDatasetsWithActiveOperation(orgId: String): List[ActiveOperationRecord] =
+    withConnection { conn =>
+      val sql =
+        """SELECT ds.spec, ds.current_operation, ds.operation_start, ds.operation_trigger
+          |FROM dataset_state ds
+          |JOIN datasets d ON ds.spec = d.spec
+          |WHERE d.org_id = ?
+          |  AND d.deleted_at IS NULL
+          |  AND ds.current_operation IS NOT NULL
+          |ORDER BY ds.operation_start ASC NULLS LAST""".stripMargin
+      val ps = conn.prepareStatement(sql)
+      try {
+        ps.setString(1, orgId)
+        val rs = ps.executeQuery()
+        try {
+          val buf = List.newBuilder[ActiveOperationRecord]
+          while (rs.next()) {
+            buf += ActiveOperationRecord(
+              spec = rs.getString("spec"),
+              currentOperation = rs.getString("current_operation"),
+              operationStart = getOptInstant(rs, "operation_start"),
+              operationTrigger = getOptString(rs, "operation_trigger")
+            )
+          }
+          buf.result()
+        } finally rs.close()
+      } finally ps.close()
+    }
+
   // ---------------------------------------------------------------------------
   // Harvest Config
   // ---------------------------------------------------------------------------

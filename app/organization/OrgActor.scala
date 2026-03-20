@@ -25,10 +25,10 @@ import organization.OrgActor._
 import play.api.libs.json._
 
 
+import java.time.Instant
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Success, Failure}
 
 /*
  * @author Gerald de Jong <gerald@delving.eu>
@@ -155,51 +155,56 @@ class OrgActor (
 
   def performStartupRecovery(): Unit = {
     import scala.concurrent.duration._
-    import dataset.DsInfo.listDsInfoWithIncompleteOperations
     import dataset.DatasetActor.{StartSaving, StartProcessing}
+    import services.GlobalDsInfoService
     implicit val ec: ExecutionContext = context.dispatcher
-    implicit val ts: triplestore.TripleStore = orgContext.ts
 
     log.info("Checking for incomplete operations from previous session...")
 
-    listDsInfoWithIncompleteOperations(orgContext).onComplete {
-      case Success(incompleteList) =>
-        if (incompleteList.nonEmpty) {
-          log.info(s"Found ${incompleteList.length} datasets with incomplete operations")
+    val svc = GlobalDsInfoService.get().getOrElse {
+      log.error("DsInfoService not available, skipping startup recovery")
+      return
+    }
 
-          incompleteList.foreach { dsInfo =>
-            val operation = dsInfo.getCurrentOperation.getOrElse("UNKNOWN")
-            val trigger = dsInfo.getOperationTrigger.getOrElse("unknown")
-            val stale = dsInfo.isOperationStale(30) // 30 minutes threshold
+    val orgId = orgContext.narthexConfig.orgId
+    val now = Instant.now()
+    val staleThreshold = java.time.Duration.ofMinutes(30)
+    val incompleteOps = svc.listDatasetsWithActiveOperation(orgId)
 
-            log.info(s"Dataset ${dsInfo.spec}: operation=$operation, trigger=$trigger, stale=$stale")
+    if (incompleteOps.isEmpty) {
+      log.info("No incomplete operations found - clean startup")
+    } else {
+      log.info(s"Found ${incompleteOps.size} datasets with incomplete operations")
 
-            // Hybrid recovery strategy - use queue to respect concurrency limits
-            (operation, stale) match {
-              case ("SAVING", false) =>
-                // Queue SAVING operation for recovery (respects concurrency limit)
-                log.info(s"Queuing SAVING operation for ${dsInfo.spec} (recovery)")
-                self ! EnqueueOperation(dsInfo.spec, StartSaving(None), "recovery")
+      incompleteOps.foreach { op =>
+        val isStale = op.operationStart.exists(start =>
+          !java.time.Duration.between(start, now).minus(staleThreshold).isNegative
+        )
 
-              case ("PROCESSING", false) =>
-                // Queue PROCESSING operation for recovery (respects concurrency limit)
-                log.info(s"Queuing PROCESSING operation for ${dsInfo.spec} (recovery)")
-                self ! EnqueueOperation(dsInfo.spec, StartProcessing(None), "recovery")
+        log.info(s"Dataset ${op.spec}: operation=${op.currentOperation}, trigger=${op.operationTrigger.getOrElse("unknown")}, stale=$isStale")
 
-              case _ =>
-                // Flag stale or risky operations for manual review
-                log.warning(s"Dataset ${dsInfo.spec} has stale/risky operation $operation (started ${dsInfo.getOperationStartTime})")
-                log.warning(s"Setting error state to flag for manual review")
-                dsInfo.setError(s"Operation '$operation' interrupted during restart. Manual review recommended. Trigger: $trigger")
-                dsInfo.clearOperation()
-            }
+        if (!isStale) {
+          (op.currentOperation: String) match {
+            case "SAVING" =>
+              log.info(s"Queuing SAVING operation for ${op.spec} (recovery)")
+              self ! EnqueueOperation(op.spec, StartSaving(None), op.operationTrigger.getOrElse("recovery"))
+
+            case "PROCESSING" | "ANALYZING" =>
+              log.info(s"Queuing PROCESSING operation for ${op.spec} (recovery)")
+              self ! EnqueueOperation(op.spec, StartProcessing(None), op.operationTrigger.getOrElse("recovery"))
+
+            case _ =>
+              log.warning(s"Dataset ${op.spec} has unhandled operation ${op.currentOperation} — flagging for manual review")
+              svc.setError(op.spec, s"Operation '${op.currentOperation}' interrupted during restart. Manual review recommended. Trigger: ${op.operationTrigger.getOrElse("unknown")}")
+              svc.clearOperation(op.spec)
           }
         } else {
-          log.info("No incomplete operations found - clean startup")
+          log.warning(s"Dataset ${op.spec} has stale operation ${op.currentOperation} (started ${op.operationStart})")
+          log.warning(s"Setting error state to flag for manual review")
+          svc.setError(op.spec, s"Operation '${op.currentOperation}' interrupted during restart. Manual review recommended. Trigger: ${op.operationTrigger.getOrElse("unknown")}")
+          svc.clearOperation(op.spec)
         }
-
-      case Failure(e) =>
-        log.error(e, "Error checking for incomplete operations during startup")
+      }
     }
   }
 

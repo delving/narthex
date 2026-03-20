@@ -142,6 +142,46 @@ class PostgresDatasetRepositorySpec
       s.acquisitionMethod shouldBe Some("oai-pmh")
     }
 
+    "list datasets with active operation" in {
+      repo.createDataset(DatasetRecord(spec = "active-op-1", orgId = "org-1", createdAt = now, updatedAt = now))
+      repo.createDataset(DatasetRecord(spec = "active-op-2", orgId = "org-1", createdAt = now, updatedAt = now))
+      repo.createDataset(DatasetRecord(spec = "no-op", orgId = "org-1", createdAt = now, updatedAt = now))
+      repo.createDataset(DatasetRecord(spec = "other-org", orgId = "org-2", createdAt = now, updatedAt = now))
+
+      repo.upsertState(DatasetStateRecord(
+        spec = "active-op-1",
+        state = "HARVESTING",
+        stateChangedAt = now,
+        currentOperation = Some("HARVESTING"),
+        operationStart = Some(now),
+        operationTrigger = Some("automatic")
+      ))
+      repo.upsertState(DatasetStateRecord(
+        spec = "active-op-2",
+        state = "PROCESSING",
+        stateChangedAt = now,
+        currentOperation = Some("PROCESSING"),
+        operationStart = Some(now),
+        operationTrigger = Some("manual")
+      ))
+      repo.upsertState(DatasetStateRecord(
+        spec = "no-op",
+        state = "SAVED",
+        stateChangedAt = now,
+        currentOperation = None
+      ))
+
+      val active = repo.listDatasetsWithActiveOperation("org-1")
+      active should have size 2
+      active.map(_.spec).toSet shouldBe Set("active-op-1", "active-op-2")
+      active.find(_.spec == "active-op-1").get.currentOperation shouldBe "HARVESTING"
+      active.find(_.spec == "active-op-1").get.operationTrigger shouldBe Some("automatic")
+      active.find(_.spec == "active-op-2").get.currentOperation shouldBe "PROCESSING"
+
+      val otherOrg = repo.listDatasetsWithActiveOperation("org-2")
+      otherOrg should have size 0
+    }
+
     "upsert and retrieve harvest config" in {
       repo.createDataset(DatasetRecord(spec = "harvest-spec", orgId = "org-1", createdAt = now, updatedAt = now))
 
