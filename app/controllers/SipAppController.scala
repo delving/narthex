@@ -22,10 +22,11 @@ import scala.io.Source
 import play.api._
 import play.api.mvc._
 
-import dataset.DsInfo
+
 import dataset.SipRepo.AvailableSip
 import mapping.DefaultMappingRepo
 import organization.OrgContext
+import services.GlobalDsInfoService
 import triplestore.TripleStore
 import web.Utils
 
@@ -122,15 +123,12 @@ class SipAppController @Inject() (
           val repo = datasetContext.datasetMappingRepo
           repo.saveFromSipUpload(mappingXml, prefix, Some(s"Uploaded via SIP-Creator"))
 
-          // Check if dataset uses default mapping and if hash differs
-          DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
-            if (dsInfo.usesDefaultMapping) {
-              val defaultPrefix = dsInfo.getDefaultMappingPrefix
-              val defaultVersion = dsInfo.getDefaultMappingVersion
-
-              // Only check if the prefixes match
+          val mc = GlobalDsInfoService.get().flatMap(svc => svc.getMappingConfig(spec))
+          mc.foreach { mappingConfig =>
+            if (mappingConfig.mappingSource.contains("default")) {
+              val defaultPrefix = mappingConfig.defaultMappingPrefix
+              val defaultVersion = mappingConfig.defaultMappingVersion
               if (defaultPrefix.contains(prefix)) {
-                // Get the default mapping hash
                 val defaultMappingRepo = new DefaultMappingRepo(orgContext.orgRoot)
                 val targetVersion = defaultVersion.getOrElse("latest")
                 val defaultHash = if (targetVersion == "latest") {
@@ -138,12 +136,12 @@ class SipAppController @Inject() (
                 } else {
                   Some(targetVersion)
                 }
-
-                // If hashes differ, auto-switch to manual mode
                 defaultHash.foreach { dHash =>
                   if (dHash != uploadedHash) {
                     logger.info(s"Dataset $spec: Uploaded mapping hash ($uploadedHash) differs from default mapping hash ($dHash). Auto-switching to manual mode.")
-                    dsInfo.setMappingSource("manual", None, None)
+                    GlobalDsInfoService.get().foreach { svc =>
+                      svc.upsertMappingConfig(spec, mappingSource = Some("manual"))
+                    }
                   }
                 }
               }

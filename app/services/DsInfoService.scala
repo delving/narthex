@@ -523,6 +523,13 @@ class DsInfoService(repo: DatasetRepository) {
     }
   }
 
+  /** Get mapping configuration for a dataset from PostgreSQL.
+    *
+    * Equivalent to DsInfo.getMappingSource(), getDefaultMappingPrefix/Name/Version().
+    */
+  def getMappingConfig(spec: String): Option[MappingConfigRecord] =
+    repo.getMappingConfig(spec)
+
   /** Get source facts for a dataset from PostgreSQL.
     *
     * Reads from the `dataset_harvest_config` table. Returns `None` if the

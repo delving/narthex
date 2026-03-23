@@ -1394,28 +1394,34 @@ class AppController @Inject() (
     val name = (request.body \ "name").asOpt[String]
     val version = (request.body \ "version").asOpt[String]
 
-    DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
-      dsInfo.setMappingSource(source, prefix, name, version)
-      Ok(Json.obj(
-        "success" -> true,
-        "mappingSource" -> dsInfo.getMappingSource,
-        "defaultMappingPrefix" -> dsInfo.getDefaultMappingPrefix,
-        "defaultMappingName" -> dsInfo.getDefaultMappingName,
-        "defaultMappingVersion" -> dsInfo.getDefaultMappingVersion
-      ))
-    }
+    dsInfoService.upsertMappingConfig(
+      spec,
+      mappingSource = Some(source),
+      defaultMappingPrefix = prefix,
+      defaultMappingName = name,
+      defaultMappingVersion = version
+    )
+    val mc = dsInfoService.getMappingConfig(spec)
+    val mappingSource: String = mc.flatMap(_.mappingSource).getOrElse("manual")
+    val defaultMappingPrefix: String = mc.flatMap(_.defaultMappingPrefix).getOrElse("")
+    val defaultMappingName: String = mc.flatMap(_.defaultMappingName).getOrElse("")
+    val defaultMappingVersion: String = mc.flatMap(_.defaultMappingVersion).getOrElse("")
+    Ok(Json.obj(
+      "success" -> true,
+      "mappingSource" -> mappingSource,
+      "defaultMappingPrefix" -> defaultMappingPrefix,
+      "defaultMappingName" -> defaultMappingName,
+      "defaultMappingVersion" -> defaultMappingVersion
+    ))
   }
 
   def rollbackDatasetMapping(spec: String, hash: String) = Action { request =>
     val datasetContext = orgContext.datasetContext(spec)
     val repo = datasetContext.datasetMappingRepo
 
-    repo.rollbackTo(hash) match {
+      repo.rollbackTo(hash) match {
       case Some(newVersion) =>
-        // Also switch to manual mapping source since we're using a specific dataset version
-        DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
-          dsInfo.setMappingSource("manual", None, None)
-        }
+        dsInfoService.upsertMappingConfig(spec, mappingSource = Some("manual"))
         Ok(Json.obj(
           "success" -> true,
           "newVersion" -> Json.obj(
@@ -1454,9 +1460,7 @@ class AppController @Inject() (
       val version = repo.saveFromEditor(mappingXml, prefix, description)
 
       // Switch to manual mapping source since we're editing directly
-      DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
-        dsInfo.setMappingSource("manual", None, None)
-      }
+      dsInfoService.upsertMappingConfig(spec, mappingSource = Some("manual"))
 
       Ok(Json.obj(
         "success" -> true,
