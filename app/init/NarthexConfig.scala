@@ -39,6 +39,14 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     configuration.getOptional[Boolean]("mockBulkApi").getOrElse(false)
   logger.info(s"mockBulkApi: $mockBulkApi")
 
+  def fusekiReadsEnabled: Boolean =
+    configuration.getOptional[Boolean]("narthex.fuseki.reads-enabled").getOrElse(true)
+  logger.info(s"narthex.fuseki.reads-enabled: $fusekiReadsEnabled")
+
+  def fusekiWritesEnabled: Boolean =
+    configuration.getOptional[Boolean]("narthex.fuseki.writes-enabled").getOrElse(true)
+  logger.info(s"narthex.fuseki.writes-enabled: $fusekiWritesEnabled")
+
   // Webhook configuration for receiving notifications from Hub3
   def webhookApiKey: String = configuration
     .getOptional[String]("webhook.apiKey")

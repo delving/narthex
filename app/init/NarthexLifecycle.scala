@@ -10,7 +10,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import harvest.PeriodicHarvest
 import organization.OrgContext
 import mapping.PeriodicSkosifyCheck
-import services.{DatabaseService, DsInfoService, FusekiMigration, GlobalDatabaseService, GlobalDsInfoService, GlobalMappingMetadataRepository, GlobalOaiSourceRepository, GlobalWorkflowRepository, MappingMetadataRepository, OaiSourceRepository, PostgresDatasetRepository, WorkflowRepository}
+import services.{DatabaseService, DsInfoService, FusekiMigration, GlobalDatabaseService, GlobalDsInfoService, GlobalFusekiWrites, GlobalMappingMetadataRepository, GlobalOaiSourceRepository, GlobalWorkflowRepository, MappingMetadataRepository, OaiSourceRepository, PostgresDatasetRepository, WorkflowRepository}
 import init.NarthexConfig
 import scala.util.{Failure, Success}
 
@@ -24,6 +24,10 @@ class NarthexLifecycle @Inject() (
     extends Logging {
 
   logger.info("Narthex starting up...")
+
+  // Set Fuseki read/write policy from config
+  GlobalFusekiWrites.setReads(narthexConfig.fusekiReadsEnabled)
+  GlobalFusekiWrites.setWrites(narthexConfig.fusekiWritesEnabled)
 
   // Initialize PostgreSQL (if configured)
   // Wrapped in try/catch so a PostgreSQL failure cannot prevent the app from starting.

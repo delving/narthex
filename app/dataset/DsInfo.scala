@@ -719,8 +719,12 @@ object DsInfo {
 
       case None =>
         // Fallback to original ASK query if no cache available
-        logger.debug(s"No cached existence for $spec, using ASK query")
-        ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)))
+        if (!services.GlobalFusekiWrites.isReadEnabled) {
+          logger.debug(s"[Fuseki reads disabled] Skipping ASK query for $spec")
+          Future.successful(None)
+        } else {
+          logger.debug(s"No cached existence for $spec, using ASK query")
+          ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)))
           .map { answer =>
             if (answer) {
               val dsInfo = new DsInfo(
@@ -741,6 +745,7 @@ object DsInfo {
               None
             }
           }
+        }
     }
   }
 
@@ -884,6 +889,11 @@ class DsInfo(
     getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Unit = {
+    if (!services.GlobalFusekiWrites.isWriteEnabled) {
+      val propNames = propVals.map(_._1.name).mkString(", ")
+      logger.debug(s"[Fuseki writes disabled] Would update properties [$propNames] for $spec")
+      return
+    }
     val sparqlPerPropQ =
       propVals.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2)).toList
     val withSynced = updateSyncedFalseQ(graphName, uri) :: sparqlPerPropQ
@@ -902,6 +912,10 @@ class DsInfo(
   }
 
   def removeLiteralProp(prop: NXProp): Unit = {
+    if (!services.GlobalFusekiWrites.isWriteEnabled) {
+      logger.debug(s"[Fuseki writes disabled] Would remove property ${prop.name} for $spec")
+      return
+    }
     val futureUpdate =
       ts.up.sparqlUpdate(removeLiteralPropertyQ(graphName, uri, prop))
     try {
@@ -971,6 +985,10 @@ class DsInfo(
   }
 
   def addLiteralPropToList(prop: NXProp, uriValueString: String): Unit = {
+    if (!services.GlobalFusekiWrites.isWriteEnabled) {
+      logger.debug(s"[Fuseki writes disabled] Would add list property ${prop.name} for $spec")
+      return
+    }
     val futureUpdate = ts.up.sparqlUpdate(
       addLiteralPropertyToListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
@@ -979,6 +997,10 @@ class DsInfo(
   }
 
   def removeLiteralPropFromList(prop: NXProp, uriValueString: String): Unit = {
+    if (!services.GlobalFusekiWrites.isWriteEnabled) {
+      logger.debug(s"[Fuseki writes disabled] Would remove list property ${prop.name} for $spec")
+      return
+    }
     val futureUpdate = ts.up.sparqlUpdate(
       deleteLiteralPropertyFromListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
@@ -996,13 +1018,23 @@ class DsInfo(
 
   def dropDataset = {
     removeNaveDataSet()
-    ts.up
-      .sparqlUpdate(deleteDatasetQ(graphName, uri, skosGraphName))
-      .map(ok => true)
+    if (!services.GlobalFusekiWrites.isWriteEnabled) {
+      logger.debug(s"[Fuseki writes disabled] Would drop dataset $spec")
+      Future.successful(())
+    } else {
+      ts.up
+        .sparqlUpdate(deleteDatasetQ(graphName, uri, skosGraphName))
+        .map(ok => true)
+    }
   }
 
   def dropDatasetRecords = {
-    ts.up.sparqlUpdate(deleteDatasetRecordsQ(uri)).map(ok => true)
+    if (!services.GlobalFusekiWrites.isWriteEnabled) {
+      logger.debug(s"[Fuseki writes disabled] Would drop dataset records for $spec")
+      Future.successful(true)
+    } else {
+      ts.up.sparqlUpdate(deleteDatasetRecordsQ(uri)).map(ok => true)
+    }
   }
 
   def dropDatasetIndex = {
