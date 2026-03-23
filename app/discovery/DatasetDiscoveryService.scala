@@ -315,23 +315,14 @@ class DatasetDiscoveryService @Inject()(
    * This prevents importing a set that's already configured under a different spec.
    */
   private def getExistingHarvestDatasets(): Future[Set[String]] = {
-    val query = s"""
-      |PREFIX nx: <${triplestore.GraphProperties.NX_NAMESPACE}>
-      |SELECT DISTINCT ?harvestDataset
-      |WHERE {
-      |  GRAPH ?g {
-      |    ?s nx:datasetSpec ?spec .
-      |    ?s nx:harvestDataset ?harvestDataset .
-      |  }
-      |}
-    """.stripMargin
-
-    ts.query(query).map { results =>
-      results.flatMap(_.get("harvestDataset").map(_.text)).toSet
-    }.recover {
-      case e: Exception =>
-        logger.warn(s"Failed to query existing harvestDatasets: ${e.getMessage}")
-        Set.empty[String]
+    Future.successful {
+      GlobalDsInfoService.get() match {
+        case Some(svc) =>
+          svc.listAllHarvestDatasets(orgContext.narthexConfig.orgId).toSet
+        case None =>
+          logger.warn("GlobalDsInfoService not available")
+          Set.empty[String]
+      }
     }
   }
 

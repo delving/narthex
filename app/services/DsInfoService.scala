@@ -126,6 +126,21 @@ class DsInfoService(repo: DatasetRepository) {
   def listRetryableNow(orgId: String, retryIntervalMinutes: Int): List[HarvestableDataset] =
     repo.listRetryableDatasets(orgId, retryIntervalMinutes)
 
+  /** List all datasets with state for index statistics.
+    *
+    * Replaces IndexStatsService.fetchNarthexDatasets which used SPARQL.
+    * Returns all datasets (including deleted) with their state, counts, and deleted flag.
+    */
+  def listDatasetsWithState(orgId: String): List[DatasetWithState] =
+    repo.listDatasetsWithState(orgId)
+
+  /** List all distinct harvest dataset identifiers.
+    *
+    * Replaces DatasetDiscoveryService.getExistingHarvestDatasets which used SPARQL.
+    */
+  def listAllHarvestDatasets(orgId: String): List[String] =
+    repo.listAllHarvestDatasets(orgId)
+
   // ==========================================================================
   // Write methods — Phase 3: PostgreSQL as primary store for state, errors,
   // operation tracking, record counts, and sync flags.

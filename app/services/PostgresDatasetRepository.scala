@@ -400,6 +400,22 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       idFilterExpression = getOptString(rs, "id_filter_expression")
     )
 
+  override def listAllHarvestDatasets(orgId: String): List[String] = withConnection { conn =>
+    val sql =
+      """SELECT DISTINCT hc.harvest_dataset
+        |FROM dataset_harvest_config hc
+        |JOIN datasets ds ON hc.spec = ds.spec
+        |WHERE ds.org_id = ? AND hc.harvest_dataset IS NOT NULL AND hc.harvest_dataset <> ''
+      """.stripMargin
+    val ps = conn.prepareStatement(sql)
+    try {
+      ps.setString(1, orgId)
+      val rs = ps.executeQuery()
+      try readList(rs)(rs => rs.getString("harvest_dataset"))
+      finally rs.close()
+    } finally ps.close()
+  }
+
   // ---------------------------------------------------------------------------
   // Harvest Schedule
   // ---------------------------------------------------------------------------
@@ -896,6 +912,52 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       errorMessage = getOptString(rs, "error_message"),
       retryCount = Option(rs.getInt("retry_count")).filter(_ != 0).getOrElse(0),
       nextRetryAt = getOptInstant(rs, "next_retry_at")
+    )
+
+  // ---------------------------------------------------------------------------
+  // Index Stats
+  // ---------------------------------------------------------------------------
+
+  override def listDatasetsWithState(orgId: String): List[DatasetWithState] = withConnection { conn =>
+    val sql =
+      """SELECT
+        |  ds.spec,
+        |  COALESCE(st.state, 'CREATED') as state,
+        |  COALESCE(st.record_count, 0) as record_count,
+        |  COALESCE(st.processed_valid, 0) as processed_valid,
+        |  COALESCE(st.processed_invalid, 0) as processed_invalid,
+        |  COALESCE(st.acquired_count, 0) as acquired_count,
+        |  COALESCE(st.deleted_count, 0) as deleted_count,
+        |  COALESCE(st.source_count, 0) as source_count,
+        |  st.acquisition_method,
+        |  COALESCE(st.state_changed_at, ds.updated_at) as state_changed_at,
+        |  (ds.deleted_at IS NOT NULL) as deleted
+        |FROM datasets ds
+        |LEFT JOIN dataset_state st ON ds.spec = st.spec
+        |WHERE ds.org_id = ?
+        |ORDER BY ds.spec""".stripMargin
+    val ps = conn.prepareStatement(sql)
+    try {
+      ps.setString(1, orgId)
+      val rs = ps.executeQuery()
+      try readList(rs)(readDatasetWithState)
+      finally rs.close()
+    } finally ps.close()
+  }
+
+  private def readDatasetWithState(rs: ResultSet): DatasetWithState =
+    DatasetWithState(
+      spec = rs.getString("spec"),
+      state = rs.getString("state"),
+      recordCount = rs.getInt("record_count"),
+      processedValid = rs.getInt("processed_valid"),
+      processedInvalid = rs.getInt("processed_invalid"),
+      acquiredCount = rs.getInt("acquired_count"),
+      deletedCount = rs.getInt("deleted_count"),
+      sourceCount = rs.getInt("source_count"),
+      acquisitionMethod = getOptString(rs, "acquisition_method"),
+      stateChangedAt = rs.getTimestamp("state_changed_at").toInstant,
+      deleted = rs.getBoolean("deleted")
     )
 
   // ---------------------------------------------------------------------------

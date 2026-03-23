@@ -47,6 +47,21 @@ case class HarvestableDataset(
     nextRetryAt: Option[Instant] = None
 )
 
+/** Minimal dataset with state for index stats. */
+case class DatasetWithState(
+    spec: String,
+    state: String,
+    recordCount: Int,
+    processedValid: Int,
+    processedInvalid: Int,
+    acquiredCount: Int,
+    deletedCount: Int,
+    sourceCount: Int,
+    acquisitionMethod: Option[String],
+    stateChangedAt: Instant,
+    deleted: Boolean  // true if deleted_at IS NOT NULL
+)
+
 /** Dataset FSM state and counters. */
 case class DatasetStateRecord(
     spec: String,
@@ -199,6 +214,7 @@ trait DatasetRepository {
   // Harvest Config
   def upsertHarvestConfig(config: HarvestConfigRecord): Unit
   def getHarvestConfig(spec: String): Option[HarvestConfigRecord]
+  def listAllHarvestDatasets(orgId: String): List[String]
 
   // Harvest Schedule
   def upsertHarvestSchedule(schedule: HarvestScheduleRecord): Unit
@@ -238,6 +254,9 @@ trait DatasetRepository {
   // Scheduling
   def listHarvestableDatasets(orgId: String): List[HarvestableDataset]
   def listRetryableDatasets(orgId: String, retryIntervalMinutes: Int): List[HarvestableDataset]
+
+  // Index Stats
+  def listDatasetsWithState(orgId: String): List[DatasetWithState]
 
   // Audit
   def getAuditHistory(spec: String, tableName: String, limit: Int = 50): List[AuditRecord]

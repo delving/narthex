@@ -22,7 +22,6 @@ import play.api.Logging
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import triplestore.TripleStore
-import triplestore.Sparql.selectIndexStatsQ
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -152,64 +151,32 @@ class IndexStatsService @Inject()(
   }
 
   /**
-   * Fetch dataset metadata from SPARQL triplestore
+   * Fetch dataset metadata from PostgreSQL
    * @return List of dataset stats from Narthex
    */
   def fetchNarthexDatasets(): Future[List[DatasetIndexStats]] = {
-    ts.query(selectIndexStatsQ).map { results =>
-      results.map { row =>
-        // Parse state timestamps to detect "stale disabled" datasets
-        // A dataset is considered re-enabled if any workflow state is >1 day newer than stateDisabled
-        val stateDisabledOpt = row.get("stateDisabled").map(_.text).filter(_.nonEmpty)
-        val stateSavedOpt = row.get("stateSaved").map(_.text).filter(_.nonEmpty)
-        val stateProcessedOpt = row.get("stateProcessed").map(_.text).filter(_.nonEmpty)
-        val stateAnalyzedOpt = row.get("stateAnalyzed").map(_.text).filter(_.nonEmpty)
-        val stateIncrementalSavedOpt = row.get("stateIncrementalSaved").map(_.text).filter(_.nonEmpty)
-
-        val isDisabled = stateDisabledOpt.exists { disabledTime =>
-          val disabledMillis = parseTimestamp(disabledTime)
-          val oneDayMs = 24 * 60 * 60 * 1000L
-
-          // Check if any other state is >1 day newer than disabled
-          val otherStates = List(stateSavedOpt, stateProcessedOpt, stateAnalyzedOpt, stateIncrementalSavedOpt).flatten
-          val isStaleDisabled = otherStates.exists { stateTime =>
-            parseTimestamp(stateTime) > (disabledMillis + oneDayMs)
+    Future.successful {
+      GlobalDsInfoService.get() match {
+        case Some(svc) =>
+          svc.listDatasetsWithState(narthexConfig.orgId).map { ds =>
+            DatasetIndexStats(
+              spec = ds.spec,
+              recordCount = if (ds.recordCount > 0) Some(ds.recordCount) else None,
+              processedValid = if (ds.processedValid > 0) Some(ds.processedValid) else None,
+              processedInvalid = if (ds.processedInvalid > 0) Some(ds.processedInvalid) else None,
+              acquiredRecordCount = if (ds.acquiredCount > 0) Some(ds.acquiredCount) else None,
+              deletedRecordCount = if (ds.deletedCount > 0) Some(ds.deletedCount) else None,
+              sourceRecordCount = if (ds.sourceCount > 0) Some(ds.sourceCount) else None,
+              acquisitionMethod = ds.acquisitionMethod,
+              indexCount = 0, // Will be filled in later
+              deleted = ds.deleted,
+              disabled = ds.state == "DISABLED"
+            )
           }
-
-          !isStaleDisabled  // Only disabled if NOT stale
-        }
-
-        DatasetIndexStats(
-          spec = row("spec").text,
-          recordCount = row.get("recordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          processedValid = row.get("processedValid").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          processedInvalid = row.get("processedInvalid").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          // Acquisition tracking fields
-          acquiredRecordCount = row.get("acquiredRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          deletedRecordCount = row.get("deletedRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          sourceRecordCount = row.get("sourceRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          acquisitionMethod = row.get("acquisitionMethod").map(_.text),
-          indexCount = 0, // Will be filled in later
-          deleted = row.get("deleted").exists(_.text == "true"),
-          disabled = isDisabled
-        )
+        case None =>
+          logger.warn("GlobalDsInfoService not available, returning empty list")
+          List.empty
       }
-    }.recover {
-      case e: Exception =>
-        logger.error(s"Failed to fetch Narthex datasets: ${e.getMessage}", e)
-        List.empty
-    }
-  }
-
-  /**
-   * Parse a timestamp string to milliseconds.
-   * Handles ISO format timestamps from the triplestore.
-   */
-  private def parseTimestamp(timestamp: String): Long = {
-    try {
-      org.joda.time.DateTime.parse(timestamp).getMillis
-    } catch {
-      case _: Exception => 0L
     }
   }
 
