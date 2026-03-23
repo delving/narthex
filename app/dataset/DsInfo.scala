@@ -451,7 +451,6 @@ object DsInfo {
   def listDsInfoLight(orgContext: OrgContext)(
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[List[DsInfoLight]] = {
-    logger.warn("[!!!] DsInfo.listDsInfoLight called — has no callers in codebase, using Fuseki")
     ts.query(selectDatasetsLightQ).map { results =>
       results.map { row =>
         DsInfoLight(

@@ -24,6 +24,7 @@ import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import dataset.DsInfo.withDsInfo
+import services.GlobalDsInfoService
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import init.NarthexConfig
@@ -111,19 +112,24 @@ class OrgContext @Inject() (
     val yesterday = org.joda.time.LocalDate.now().minusDays(1).toString("yyyy-MM-dd")
 
     val result = for {
-      datasets <- DsInfo.listDsInfo(this)
+      datasets <- Future.successful {
+        GlobalDsInfoService.get()
+          .map(_.listAllDatasetsLightJson(narthexConfig.orgId))
+          .getOrElse(Nil)
+      }
       (_, hub3Counts) <- indexStatsService.fetchHub3IndexCounts()
     } yield {
       var aggregated = 0
       val specs = scala.collection.mutable.ListBuffer[String]()
 
-      datasets.foreach { dsInfo =>
+      datasets.foreach { jsValue =>
+        val spec = (jsValue \ "spec").as[String]
         try {
-          val ctx = datasetContext(dsInfo.spec)
-          val trendsLog = ctx.trendsLog
-          val dailyLog = ctx.trendsDailyLog
+          val datasetRoot = new File(datasetsDir, spec)
+          val trendsLog = new File(datasetRoot, "trends.log")
+          val dailyLog = new File(datasetRoot, "trends_daily.log")
 
-          val hub3Count = hub3Counts.getOrElse(dsInfo.spec, 0)
+          val hub3Count = hub3Counts.getOrElse(spec, 0)
 
           val lastSnapshot = TrendTrackingService.getLastSnapshot(trendsLog)
           lastSnapshot.foreach { last =>
@@ -141,11 +147,11 @@ class OrgContext @Inject() (
           }
 
           TrendTrackingService.aggregateDay(trendsLog, dailyLog, yesterday)
-          specs += dsInfo.spec
+          specs += spec
           aggregated += 1
         } catch {
           case e: Exception =>
-            logger.warn(s"Failed to aggregate trends for ${dsInfo.spec}: ${e.getMessage}")
+            logger.warn(s"Failed to aggregate trends for $spec: ${e.getMessage}")
         }
       }
 
@@ -191,13 +197,16 @@ class OrgContext @Inject() (
     _.getName.endsWith(SIP_EXTENSION)
   ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
 
-  def uploadedSips: Future[Seq[Sip]] = {
-    DsInfo.listDsInfo(this).map { list =>
-      list.flatMap { dsi =>
-        val datasetContext = new DatasetContext(this, dsi)
-        datasetContext.sipRepo.latestSipOpt
+  def uploadedSips: Future[Seq[Sip]] = Future.successful {
+    GlobalDsInfoService.get()
+      .map { svc =>
+        svc.listAllDatasetsLightJson(narthexConfig.orgId).flatMap { js =>
+          val spec = (js \ "spec").as[String]
+          val sipRepo = new SipRepo(sipsDir, spec, narthexConfig.rdfBaseUrl)
+          sipRepo.latestSipOpt
+        }
       }
-    }
+      .getOrElse(Nil)
   }
 
   lazy val orgActorInst = new OrgActor(this, actorSystem)
@@ -216,10 +225,12 @@ class OrgContext @Inject() (
 
   def workflowActor: ActorRef = workflowActorRef
 
-  def startCategoryCounts() = {
-    val catDatasets = DsInfo.listDsInfo(this).map(_.filter(_.getBooleanProp(categoriesInclude)))
-    catDatasets.map { dsList =>
-      orgActorRef ! DatasetsCountCategories(dsList.map(_.spec))
+  def startCategoryCounts(): Unit = {
+    GlobalDsInfoService.get().foreach { svc =>
+      val specs = svc.listAllDatasetsLightJson(narthexConfig.orgId)
+        .filter(js => (js \ "categoriesInclude").as[Boolean])
+        .map(js => (js \ "spec").as[String])
+      orgActorRef ! DatasetsCountCategories(specs)
     }
   }
 
