@@ -20,8 +20,8 @@ import javax.inject._
 import scala.concurrent.{ExecutionContext, Future}
 import org.joda.time.DateTime
 import play.api.Logger
-import dataset.DsInfo
 import dataset.DatasetActor.Command
+import services.GlobalDsInfoService
 import organization.OrgContext
 import organization.OrgActor.DatasetMessage
 import triplestore.GraphProperties._
@@ -303,8 +303,10 @@ class DatasetDiscoveryService @Inject()(
    * Get all existing dataset specs.
    */
   private def checkExistingDatasets(): Future[Set[String]] = {
-    DsInfo.listDsInfo(orgContext).map { datasets =>
-      datasets.map(_.spec).toSet
+    Future.successful {
+      GlobalDsInfoService.get()
+        .map(_.listAllDatasetsLightJson(orgContext.narthexConfig.orgId).map(js => (js \ "spec").as[String]).toSet)
+        .getOrElse(Set.empty)
     }
   }
 
