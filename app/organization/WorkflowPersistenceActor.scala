@@ -2,7 +2,7 @@ package organization
 
 import akka.actor.{ActorLogging, Props}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SaveSnapshotSuccess, SaveSnapshotFailure, SnapshotOffer}
-import services.WorkflowDatabase
+import services.WorkflowRepository
 import WorkflowEvent.{WorkflowStarted, StepStarted, StepProgress, StepCompleted, StepFailed, WorkflowCompleted, WorkflowCancelled}
 
 class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
@@ -23,8 +23,8 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       val replyTo = sender()
       persist(event) { persistedEvent =>
         state = state.addWorkflow(persistedEvent)
-        workflowDb.insertWorkflow(workflowId, spec, trigger)
-        workflowDb.insertStep(workflowId, steps.head)
+        workflowRepo.insertWorkflow(workflowId, spec, trigger)
+        workflowRepo.insertStep(workflowId, steps.head)
         replyTo ! workflowId
         maybeSnapshot()
       }
@@ -33,7 +33,7 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       val event = StepStarted(workflowId, stepName, config)
       persist(event) { persistedEvent =>
         state = state.addStep(workflowId, stepName)
-        workflowDb.insertStep(workflowId, stepName)
+        workflowRepo.insertStep(workflowId, stepName)
         maybeSnapshot()
       }
       
@@ -49,7 +49,7 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       persist(event) { persistedEvent =>
         state = state.completeStep(workflowId, stepName, metadata)
         val metadataStr = metadata.map { case (k, v) => s"$k:$v" }.mkString(",")
-        workflowDb.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
+        workflowRepo.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
         maybeSnapshot()
       }
       
@@ -57,7 +57,7 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       val event = StepFailed(workflowId, stepName, error, metadata)
       persist(event) { persistedEvent =>
         state = state.failStep(workflowId, stepName, error)
-        workflowDb.failStep(workflowId, stepName, error)
+        workflowRepo.failStep(workflowId, stepName, error)
         maybeSnapshot()
       }
       
@@ -66,7 +66,7 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       persist(event) { persistedEvent =>
         state = state.completeWorkflow(workflowId)
         state = state.pruneOlderThan(retentionMillis)
-        workflowDb.completeWorkflow(workflowId, "completed", None)
+        workflowRepo.completeWorkflow(workflowId, "completed", None)
         maybeSnapshot()
       }
       
@@ -75,7 +75,7 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       persist(event) { persistedEvent =>
         state = state.cancelWorkflow(workflowId)
         state = state.pruneOlderThan(retentionMillis)
-        workflowDb.completeWorkflow(workflowId, "cancelled", None)
+        workflowRepo.completeWorkflow(workflowId, "cancelled", None)
         maybeSnapshot()
       }
       
@@ -123,8 +123,8 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       log.info(s"Recovery completed, state: ${state.workflows.size} workflows")
   }
   
-  private def workflowDb: WorkflowDatabase = {
-    services.GlobalWorkflowDatabase.get()
+  private def workflowRepo: WorkflowRepository = {
+    services.GlobalWorkflowRepository.get()
   }
 
   private def maybeSnapshot(): Unit = {

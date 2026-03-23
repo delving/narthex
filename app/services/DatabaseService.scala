@@ -115,8 +115,7 @@ class DatabaseService(config: PostgresConfig) extends Logging {
   }
 }
 
-/** Global singleton holder for the DatabaseService, following the same pattern
-  * as [[GlobalWorkflowDatabase]].
+/** Global singleton holder for the DatabaseService.
   *
   * Will be replaced by proper Guice DI in Phase 3.
   */
