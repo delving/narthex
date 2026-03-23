@@ -152,6 +152,48 @@ class DsInfoService(repo: DatasetRepository) {
     }
   }
 
+  /** Remove a workflow state by resetting to CREATED.
+    *
+    * Equivalent to DsInfo.removeState(). Clears the state timestamp by setting
+    * state back to the initial CREATED state.
+    */
+  def removeState(spec: String, state: String): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          state = "CREATED",
+          stateChangedAt = Instant.now()
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          state = "CREATED",
+          stateChangedAt = Instant.now()
+        ))
+    }
+  }
+
+  /** Clear all workflow states by resetting to CREATED.
+    *
+    * Equivalent to DsInfo.clearWorkflowStates(). Removes timestamps for all
+    * post-harvest states (RAW, SOURCED, MAPPABLE, etc.) by resetting to CREATED.
+    */
+  def clearWorkflowStates(spec: String): Unit = {
+    repo.getState(spec) match {
+      case Some(existing) =>
+        repo.upsertState(existing.copy(
+          state = "CREATED",
+          stateChangedAt = Instant.now()
+        ))
+      case None =>
+        repo.upsertState(DatasetStateRecord(
+          spec = spec,
+          state = "CREATED",
+          stateChangedAt = Instant.now()
+        ))
+    }
+  }
+
   /** Clear any error state on a dataset.
     *
     * Equivalent to DsInfo.clearError().
@@ -270,6 +312,45 @@ class DsInfoService(repo: DatasetRepository) {
           deletedCount = deletedCount,
           sourceCount = sourceCount,
           acquisitionMethod = Some(acquisitionMethod)
+        ))
+    }
+  }
+
+  /** Update dataset metadata fields.
+    *
+    * Equivalent to DsInfo.setMetadata(). Updates name, description, aggregator,
+    * owner, dataProviderURL, language, rights, datasetType, and edmType.
+    */
+  def setMetadata(spec: String, name: String, description: String, aggregator: String,
+                  owner: String, dataProviderURL: String, language: String,
+                  rights: String, dataType: String, edmType: String): Unit = {
+    repo.getDataset(spec) match {
+      case Some(existing) =>
+        repo.updateDataset(existing.copy(
+          name = if (name.isEmpty) None else Some(name),
+          description = if (description.isEmpty) None else Some(description),
+          aggregator = if (aggregator.isEmpty) None else Some(aggregator),
+          owner = if (owner.isEmpty) None else Some(owner),
+          dataProviderUrl = if (dataProviderURL.isEmpty) None else Some(dataProviderURL),
+          language = if (language.isEmpty) None else Some(language),
+          rights = if (rights.isEmpty) None else Some(rights),
+          datasetType = if (dataType.isEmpty) None else Some(dataType),
+          edmType = if (edmType.isEmpty) None else Some(edmType),
+          updatedAt = Instant.now()
+        ))
+      case None =>
+        repo.updateDataset(DatasetRecord(
+          spec = spec,
+          orgId = "",
+          name = if (name.isEmpty) None else Some(name),
+          description = if (description.isEmpty) None else Some(description),
+          aggregator = if (aggregator.isEmpty) None else Some(aggregator),
+          owner = if (owner.isEmpty) None else Some(owner),
+          dataProviderUrl = if (dataProviderURL.isEmpty) None else Some(dataProviderURL),
+          language = if (language.isEmpty) None else Some(language),
+          rights = if (rights.isEmpty) None else Some(rights),
+          datasetType = if (dataType.isEmpty) None else Some(dataType),
+          edmType = if (edmType.isEmpty) None else Some(edmType)
         ))
     }
   }

@@ -21,17 +21,18 @@ import java.util.Date
 
 import analysis.NodeRepo
 import dataset.DatasetActor.Command
-import dataset.DsInfo.DsMetadata
 import dataset.DsInfo.DsState._
 import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import harvest.Harvesting.HarvestType
 import organization.OrgContext
+import organization.OrgActor.DatasetMessage
 import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.Logger
 import record.PocketParser
 import record.SourceProcessor.{AdoptSource, GenerateSipZip}
 import services.FileHandling.clearDir
+import services.GlobalDsInfoService
 import services.StringHandling.pathToDirectory
 import services.{FileHandling, StringHandling}
 import mapping.DatasetMappingRepo
@@ -39,12 +40,12 @@ import triplestore.GraphProperties
 
 import scala.util.{Failure, Success, Try}
 
-class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
+class DatasetContext(val orgContext: OrgContext, val spec: String, val dsInfo: DsInfo) {
 
   private val logger = Logger(getClass)
 
   val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
-  val rootDir = new File(orgContext.datasetsDir, dsInfo.spec)
+  val rootDir = new File(orgContext.datasetsDir, spec)
 
   val rawDir = new File(rootDir, "raw")
   val sipsDir = new File(rootDir, "sips")
@@ -62,11 +63,11 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   val trendsDailyLog = new File(rootDir, "trends-daily.jsonl")
 
   // todo: maybe not put it in raw
-  val pocketFile = new File(orgContext.rawDir, s"$dsInfo.xml")
+  val pocketFile = new File(orgContext.rawDir, s"$spec.xml")
 
-  def createSipFile = new File(orgContext.sipsDir, s"${dsInfo}__${DATE_FORMAT.format(new Date())}.sip.zip")
+  def createSipFile = new File(orgContext.sipsDir, s"${spec}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
-  def sipFiles = orgContext.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${dsInfo}__")).sortBy(_.getName).reverse
+  def sipFiles = orgContext.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${spec}__")).sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
   val sourceTreeRoot = new NodeRepo(this, sourceTreeDir)
@@ -96,7 +97,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       case None =>
         dropTree()
         createSourceRepo(SourceFacts("raw", recordRoot, uniqueId, None))
-        orgContext.orgActor ! dsInfo.createMessage(AdoptSource(raw, orgContext))
+        orgContext.orgActor ! DatasetMessage(spec, AdoptSource(raw, orgContext))
     }
   }
 
@@ -106,9 +107,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
 
-    def sendRefresh() = orgContext.orgActor ! dsInfo.createMessage(Command("refresh"))
+    def sendRefresh() = orgContext.orgActor ! DatasetMessage(spec, Command("refresh"))
 
-    def cleanupWorkflowStates(): Unit = dsInfo.clearWorkflowStates()
+    def cleanupWorkflowStates(): Unit = GlobalDsInfoService.get().foreach(_.clearWorkflowStates(spec))
 
     if (fileName.endsWith(".csv")) {
       val csvFile = setTargetFile(createRawFile(fileName))
@@ -120,8 +121,8 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       reader.close()
       writer.close()
       tryConvert match {
-        case Success(_) => dsInfo.setState(RAW)
-        case Failure(e) => dsInfo.removeState(RAW)
+        case Success(_) => GlobalDsInfoService.get().foreach(_.setState(spec, "RAW"))
+        case Failure(e) => GlobalDsInfoService.get().foreach(_.removeState(spec, "RAW"))
       }
       cleanupWorkflowStates()
       dropTree()
@@ -130,7 +131,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
     else if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       setTargetFile(createRawFile(fileName))
-      dsInfo.setState(RAW)
+      GlobalDsInfoService.get().foreach(_.setState(spec, "RAW"))
       cleanupWorkflowStates()
       dsInfo.removeLiteralProp(GraphProperties.harvestType)
       dropTree()
@@ -140,35 +141,38 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     else if (fileName.endsWith(".sip.zip")) {
       val sipZipFile = setTargetFile(sipRepo.createSipZipFile(fileName))
       sipRepo.latestSipOpt.map { sip =>
-        dsInfo.setMetadata(DsMetadata(
-          name = sip.name.getOrElse(""),
-          description = "",
-          aggregator = sip.provider.getOrElse(""),
-          owner = sip.dataProvider.getOrElse(""),
-          dataProviderURL = sip.dataProviderURL.getOrElse(""),
-          language = sip.language.getOrElse(""),
-          rights = sip.rights.getOrElse(""),
-          dataType = sip.dataType.getOrElse(""),
-          edmType = sip.edmType.getOrElse("")
-        ))
-        dsInfo.setHarvestInfo(
-          harvestTypeEnum = sip.harvestType.flatMap(HarvestType.harvestTypeFromString).getOrElse(HarvestType.PMH),
-          url = sip.harvestUrl.getOrElse(""),
-          dataset = sip.harvestSpec.getOrElse(""),
-          recordId = sip.harvestSpec.getOrElse(""),
-          prefix = sip.harvestPrefix.getOrElse("")
-        )
+        GlobalDsInfoService.get().foreach { svc =>
+          svc.setMetadata(
+            spec = spec,
+            name = sip.name.getOrElse(""),
+            description = "",
+            aggregator = sip.provider.getOrElse(""),
+            owner = sip.dataProvider.getOrElse(""),
+            dataProviderURL = sip.dataProviderURL.getOrElse(""),
+            language = sip.language.getOrElse(""),
+            rights = sip.rights.getOrElse(""),
+            dataType = sip.dataType.getOrElse(""),
+            edmType = sip.edmType.getOrElse("")
+          )
+          svc.upsertHarvestConfig(
+            spec = spec,
+            harvestType = sip.harvestType.flatMap(HarvestType.harvestTypeFromString).map(_.toString),
+            harvestUrl = sip.harvestUrl,
+            harvestDataset = sip.harvestSpec,
+            harvestPrefix = sip.harvestPrefix
+          )
+        }
         // todo: should probably wait for the above future
         sip.sipMappingOpt.map { sipMapping =>
           if (sip.containsSource) {
             createSourceRepo(PocketParser.POCKET_SOURCE_FACTS)
             sip.copySourceToTempFile.map { sourceFile =>
-              orgContext.orgActor ! dsInfo.createMessage(AdoptSource(sourceFile, orgContext))
+              orgContext.orgActor ! DatasetMessage(spec, AdoptSource(sourceFile, orgContext))
               sendRefresh()
               None
             } getOrElse {
               dropSourceRepo()
-              Some(s"No source found in $sipZipFile for $dsInfo")
+              Some(s"No source found in $sipZipFile for $spec")
             }
           }
           else {
@@ -176,14 +180,14 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
             None
           }
         } getOrElse {
-          logger.error(s"No mapping found in SIP file $sipZipFile for dataset $dsInfo")
+          logger.error(s"No mapping found in SIP file $sipZipFile for dataset $spec")
           deleteQuietly(sipZipFile)
-          Some(s"No mapping found in $sipZipFile for $dsInfo")
+          Some(s"No mapping found in $sipZipFile for $spec")
         }
       } getOrElse {
-        logger.error(s"Unable to read SIP file ${sipZipFile.getName} for dataset $dsInfo - sipRepo.latestSipOpt returned None")
+        logger.error(s"Unable to read SIP file ${sipZipFile.getName} for dataset $spec - sipRepo.latestSipOpt returned None")
         deleteQuietly(sipZipFile)
-        Some(s"Unable to use ${sipZipFile.getName} for $dsInfo")
+        Some(s"Unable to use ${sipZipFile.getName} for $spec")
       }
     }
     else {
@@ -204,58 +208,64 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   def dropRaw() = {
     dropSourceRepo()
     deleteQuietly(rawDir)
-    dsInfo.removeState(RAW)
+    GlobalDsInfoService.get().foreach(_.removeState(spec, "RAW"))
   }
 
   def dropSourceRepo() = {
     dropProcessedRepo()
     // todo: note that we lose the delimiters this way:
     deleteQuietly(sourceDir)
-    dsInfo.removeState(SOURCED)
+    GlobalDsInfoService.get().foreach(_.removeState(spec, "SOURCED"))
     sipFiles.foreach(deleteQuietly)
-    dsInfo.removeState(MAPPABLE)
-    dsInfo.removeState(PROCESSABLE)
+    GlobalDsInfoService.get().foreach { svc =>
+      svc.removeState(spec, "MAPPABLE")
+      svc.removeState(spec, "PROCESSABLE")
+    }
   }
 
   def dropProcessedRepo() = {
     dropTree()
     deleteQuietly(processedDir)
-    dsInfo.removeState(PROCESSED)
+    GlobalDsInfoService.get().foreach(_.removeState(spec, "PROCESSED"))
   }
 
   def dropTree() = {
     // dropRecords should not be called here
     // dropRecords
     deleteQuietly(treeDir)
-    dsInfo.removeState(RAW_ANALYZED)
-    dsInfo.removeState(ANALYZED)
+    GlobalDsInfoService.get().foreach { svc =>
+      svc.removeState(spec, "RAW_ANALYZED")
+      svc.removeState(spec, "ANALYZED")
+    }
     logger.debug("Dropping analysis tree")
   }
 
   def dropSourceTree() = {
     deleteQuietly(sourceTreeDir)
-    dsInfo.removeState(SOURCE_ANALYZED)
+    GlobalDsInfoService.get().foreach(_.removeState(spec, "SOURCE_ANALYZED"))
     logger.debug("Dropping source analysis tree")
   }
 
   def dropRecords = {
-    dsInfo.removeState(SAVED)
+    GlobalDsInfoService.get().foreach(_.removeState(spec, "SAVED"))
     dsInfo.dropDatasetRecords
   }
 
   def dropIndex = {
-    dsInfo.removeState(SAVED)
+    GlobalDsInfoService.get().foreach(_.removeState(spec, "SAVED"))
     dsInfo.dropDatasetIndex
     dsInfo.dropDatasetRecords
   }
 
   def disableDataSet = {
-    dsInfo.setState(DISABLED)
+    GlobalDsInfoService.get().foreach { svc =>
+      svc.setState(spec, "DISABLED")
+    }
     dsInfo.dropDatasetIndex
     dsInfo.dropDatasetRecords
   }
 
-  def startSipZipGeneration() = orgContext.orgActor ! dsInfo.createMessage(GenerateSipZip)
+  def startSipZipGeneration() = orgContext.orgActor ! DatasetMessage(spec, GenerateSipZip)
 
   // ==================================================
 
@@ -320,7 +330,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def sourceHistogramText(path: String): Option[File] = sourceNodeRepo(path).map(_.histogramText)
 
-  override def toString = dsInfo.toString
+  override def toString = spec
 
 
 }

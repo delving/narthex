@@ -176,7 +176,18 @@ class OrgContext @Inject() (
     DsInfo.createDsInfo(spec, character, prefix, this)
   }
 
-  def datasetContext(spec: String): DatasetContext = withDsInfo(spec, this)(dsInfo => new DatasetContext(this, dsInfo))
+  def datasetContext(spec: String): DatasetContext = {
+    val dsInfo = new DsInfo(
+      spec,
+      narthexConfig.nxUriPrefix,
+      narthexConfig.naveApiAuthToken,
+      narthexConfig.naveApiUrl,
+      this,
+      narthexConfig.mockBulkApi,
+      GlobalDsInfoService.get()
+    )
+    new DatasetContext(this, spec, dsInfo)
+  }
 
   def vocabMappingStore(specA: String, specB: String): VocabMappingStore = {
     val futureStore = for {
