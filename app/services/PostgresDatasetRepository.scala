@@ -21,6 +21,25 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
     finally conn.close()
   }
 
+  /** Execute a block within a single transaction. Commits on success, rolls back on failure. */
+  def withTransaction[T](f: Connection => T): T = {
+    val conn = db.getConnection()
+    val autoCommit = conn.getAutoCommit
+    conn.setAutoCommit(false)
+    try {
+      val result = f(conn)
+      conn.commit()
+      result
+    } catch {
+      case e: Exception =>
+        conn.rollback()
+        throw e
+    } finally {
+      conn.setAutoCommit(autoCommit)
+      conn.close()
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Null-safe parameter helpers
   // ---------------------------------------------------------------------------
@@ -336,7 +355,7 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
             status = rs.getString("status"),
             stepName = getOptString(rs, "step_name"),
             stepStatus = getOptString(rs, "step_status"),
-            stepRecordsProcessed = Option(rs.getInt("records_processed")).filter(_ != 0),
+            stepRecordsProcessed = getOptInt(rs, "records_processed"),
             stepError = getOptString(rs, "step_error"),
             startedAt = rs.getTimestamp("started_at").toInstant
           ))
@@ -762,11 +781,12 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       status: String,
       recordsProcessed: Int = 0,
       errorMessage: Option[String] = None,
-      completedAt: Option[Instant] = None
+      completedAt: Option[Instant] = None,
+      metadata: Option[String] = None
   ): Unit = withConnection { conn =>
     val sql =
       """UPDATE workflow_steps SET
-        |  status = ?, records_processed = ?, error_message = ?, completed_at = ?
+        |  status = ?, records_processed = ?, error_message = ?, completed_at = ?, metadata = ?::jsonb
         |WHERE id = ?""".stripMargin
     val ps = conn.prepareStatement(sql)
     try {
@@ -774,7 +794,8 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       ps.setInt(2, recordsProcessed)
       setOptString(ps, 3, errorMessage)
       setOptTimestamp(ps, 4, completedAt)
-      ps.setInt(5, id)
+      setOptString(ps, 5, metadata)
+      ps.setInt(6, id)
       ps.executeUpdate()
     } finally ps.close()
   }
@@ -836,6 +857,71 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       changedAt = rs.getTimestamp("changed_at").toInstant,
       changedBy = getOptString(rs, "changed_by")
     )
+
+  // ---------------------------------------------------------------------------
+  // Batch listing (avoids N+1 queries)
+  // ---------------------------------------------------------------------------
+
+  override def listActiveDatasetsWithDetails(orgId: String): List[DatasetWithDetails] = withConnection { conn =>
+    // Fetch all active datasets
+    val datasets = {
+      val ps = conn.prepareStatement("SELECT * FROM datasets WHERE org_id = ? AND deleted_at IS NULL ORDER BY spec")
+      try {
+        ps.setString(1, orgId)
+        val rs = ps.executeQuery()
+        try readList(rs)(readDataset) finally rs.close()
+      } finally ps.close()
+    }
+    val specs = datasets.map(_.spec).toSet
+    if (specs.isEmpty) Nil
+    else {
+
+    // Batch fetch all states for these specs
+    val states = {
+      val ps = conn.prepareStatement(
+        s"SELECT * FROM dataset_state WHERE spec = ANY(?)"
+      )
+      try {
+        ps.setArray(1, conn.createArrayOf("text", specs.toArray))
+        val rs = ps.executeQuery()
+        try readList(rs)(readState).map(s => s.spec -> s).toMap finally rs.close()
+      } finally ps.close()
+    }
+
+    // Batch fetch all harvest configs
+    val harvestConfigs = {
+      val ps = conn.prepareStatement(
+        s"SELECT * FROM dataset_harvest_config WHERE spec = ANY(?)"
+      )
+      try {
+        ps.setArray(1, conn.createArrayOf("text", specs.toArray))
+        val rs = ps.executeQuery()
+        try readList(rs)(readHarvestConfig).map(h => h.spec -> h).toMap finally rs.close()
+      } finally ps.close()
+    }
+
+    // Batch fetch all mapping configs
+    val mappingConfigs = {
+      val ps = conn.prepareStatement(
+        s"SELECT * FROM dataset_mapping_config WHERE spec = ANY(?)"
+      )
+      try {
+        ps.setArray(1, conn.createArrayOf("text", specs.toArray))
+        val rs = ps.executeQuery()
+        try readList(rs)(readMappingConfig).map(m => m.spec -> m).toMap finally rs.close()
+      } finally ps.close()
+    }
+
+    datasets.map { ds =>
+      DatasetWithDetails(
+        dataset = ds,
+        state = states.get(ds.spec),
+        harvestConfig = harvestConfigs.get(ds.spec),
+        mappingConfig = mappingConfigs.get(ds.spec)
+      )
+    }
+    } // end else
+  }
 
   // ---------------------------------------------------------------------------
   // Scheduling queries
@@ -955,7 +1041,7 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       activeWorkflowStatus = getOptString(rs, "active_workflow_status"),
       workflowTrigger = getOptString(rs, "workflow_trigger"),
       errorMessage = getOptString(rs, "error_message"),
-      retryCount = Option(rs.getInt("retry_count")).filter(_ != 0).getOrElse(0),
+      retryCount = getOptInt(rs, "retry_count").getOrElse(0),
       nextRetryAt = getOptInstant(rs, "next_retry_at")
     )
 

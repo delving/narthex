@@ -140,10 +140,12 @@ class DiscoveryController @Inject()(
   def deleteSource(id: String): Action[AnyContent] = Action { request =>
     oaiSourceRepo match {
       case Some(repo) =>
-        repo.deleteSource(id)
-        Ok(Json.obj("deleted" -> id))
+        if (repo.deleteSource(id))
+          Ok(Json.obj("deleted" -> id))
+        else
+          NotFound(Json.obj("error" -> s"Source not found: $id"))
       case None =>
-        NotFound(Json.obj("error" -> s"Source not found: $id"))
+        InternalServerError(Json.obj("error" -> "PostgreSQL not configured"))
     }
   }
 

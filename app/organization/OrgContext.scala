@@ -126,8 +126,8 @@ class OrgContext @Inject() (
         val spec = (jsValue \ "spec").as[String]
         try {
           val datasetRoot = new File(datasetsDir, spec)
-          val trendsLog = new File(datasetRoot, "trends.log")
-          val dailyLog = new File(datasetRoot, "trends_daily.log")
+          val trendsLog = new File(datasetRoot, "trends.jsonl")
+          val dailyLog = new File(datasetRoot, "trends-daily.jsonl")
 
           val hub3Count = hub3Counts.getOrElse(spec, 0)
 

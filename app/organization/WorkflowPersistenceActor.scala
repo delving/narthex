@@ -23,59 +23,63 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       val replyTo = sender()
       persist(event) { persistedEvent =>
         state = state.addWorkflow(persistedEvent)
-        workflowRepo.insertWorkflow(workflowId, spec, trigger)
-        workflowRepo.insertStep(workflowId, steps.head)
+        workflowRepo.foreach { repo =>
+          repo.insertWorkflow(workflowId, spec, trigger)
+          repo.insertStep(workflowId, steps.head)
+        }
         replyTo ! workflowId
         maybeSnapshot()
       }
-      
+
     case WorkflowPersistenceActor.StepStart(workflowId, stepName, config) =>
       val event = StepStarted(workflowId, stepName, config)
       persist(event) { persistedEvent =>
         state = state.addStep(workflowId, stepName)
-        workflowRepo.insertStep(workflowId, stepName)
+        workflowRepo.foreach(_.insertStep(workflowId, stepName))
         maybeSnapshot()
       }
-      
+
     case WorkflowPersistenceActor.StepProgressMsg(workflowId, stepName, records, metadata) =>
       val event = StepProgress(workflowId, stepName, records, metadata)
       persist(event) { persistedEvent =>
         state = state.updateProgress(workflowId, stepName, records)
         maybeSnapshot()
       }
-      
+
     case WorkflowPersistenceActor.StepFinish(workflowId, stepName, duration, metadata) =>
       val event = StepCompleted(workflowId, stepName, duration, metadata)
       persist(event) { persistedEvent =>
         state = state.completeStep(workflowId, stepName, metadata)
-        val metadataStr = metadata.map { case (k, v) => s"$k:$v" }.mkString(",")
-        workflowRepo.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
+        workflowRepo.foreach { repo =>
+          val metadataStr = metadata.map { case (k, v) => s"$k:$v" }.mkString(",")
+          repo.completeStep(workflowId, stepName, state.getRecordsProcessed(workflowId, stepName), duration, metadataStr)
+        }
         maybeSnapshot()
       }
-      
+
     case WorkflowPersistenceActor.StepError(workflowId, stepName, error, metadata) =>
       val event = StepFailed(workflowId, stepName, error, metadata)
       persist(event) { persistedEvent =>
         state = state.failStep(workflowId, stepName, error)
-        workflowRepo.failStep(workflowId, stepName, error)
+        workflowRepo.foreach(_.failStep(workflowId, stepName, error))
         maybeSnapshot()
       }
-      
+
     case WorkflowPersistenceActor.Finished(workflowId) =>
       val event = WorkflowCompleted(workflowId)
       persist(event) { persistedEvent =>
         state = state.completeWorkflow(workflowId)
         state = state.pruneOlderThan(retentionMillis)
-        workflowRepo.completeWorkflow(workflowId, "completed", None)
+        workflowRepo.foreach(_.completeWorkflow(workflowId, "completed", None))
         maybeSnapshot()
       }
-      
+
     case WorkflowPersistenceActor.Cancelled(workflowId) =>
       val event = WorkflowCancelled(workflowId)
       persist(event) { persistedEvent =>
         state = state.cancelWorkflow(workflowId)
         state = state.pruneOlderThan(retentionMillis)
-        workflowRepo.completeWorkflow(workflowId, "cancelled", None)
+        workflowRepo.foreach(_.completeWorkflow(workflowId, "cancelled", None))
         maybeSnapshot()
       }
       
@@ -123,9 +127,8 @@ class WorkflowPersistenceActor extends PersistentActor with ActorLogging {
       log.info(s"Recovery completed, state: ${state.workflows.size} workflows")
   }
   
-  private def workflowRepo: WorkflowRepository = {
+  private def workflowRepo: Option[WorkflowRepository] =
     services.GlobalWorkflowRepository.get()
-  }
 
   private def maybeSnapshot(): Unit = {
     eventsSinceSnapshot += 1

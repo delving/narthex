@@ -47,11 +47,13 @@ class WorkflowRepository(repo: DatasetRepository) {
   ): Unit = {
     val steps = repo.getWorkflowSteps(workflowId)
     steps.find(s => s.stepName == stepName && s.status == "running").foreach { step =>
+      val metadataJson = if (metadata.isEmpty) None else Some(s"""{"data":"$metadata","durationMs":$duration}""")
       repo.updateWorkflowStep(
         id = step.id.getOrElse(0),
         status = "completed",
         recordsProcessed = recordsProcessed,
-        completedAt = Some(Instant.now())
+        completedAt = Some(Instant.now()),
+        metadata = metadataJson
       )
     }
   }
@@ -76,8 +78,10 @@ object GlobalWorkflowRepository {
     instance = Some(repo)
   }
 
-  def get(): WorkflowRepository = instance.getOrElse(
-    throw new RuntimeException("WorkflowRepository not initialized")
+  def get(): Option[WorkflowRepository] = instance
+
+  def getOrThrow(): WorkflowRepository = instance.getOrElse(
+    throw new IllegalStateException("WorkflowRepository not initialized — is PostgreSQL configured?")
   )
 
   def clear(): Unit = {

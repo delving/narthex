@@ -186,13 +186,12 @@ class OaiSourceRepository(db: DatabaseService) extends Logging {
     } finally ps.close()
   }
 
-  /** Delete a source. */
+  /** Delete a source. Returns true if a row was actually deleted. */
   def deleteSource(id: String): Boolean = withConnection { conn =>
     val ps = conn.prepareStatement("DELETE FROM oai_sources WHERE id = ?")
     try {
       ps.setString(1, id)
-      ps.executeUpdate()
-      true
+      ps.executeUpdate() > 0
     } finally ps.close()
   }
 

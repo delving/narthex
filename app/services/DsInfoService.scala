@@ -2,6 +2,7 @@ package services
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import play.api.Logging
 import play.api.libs.json._
 
 /** PostgreSQL-backed read service for dataset information.
@@ -13,7 +14,7 @@ import play.api.libs.json._
   * This is a parallel read path — the existing DsInfo stays for writes and for any
   * reads that haven't been migrated yet.
   */
-class DsInfoService(repo: DatasetRepository) {
+class DsInfoService(val repo: DatasetRepository) extends Logging {
 
   /** Get dataset info as JSON (equivalent to DsInfo.toSimpleJson).
     *
@@ -42,12 +43,9 @@ class DsInfoService(repo: DatasetRepository) {
   def listDatasetsJson(orgId: String): List[JsValue] = {
     val harvestable = repo.listHarvestableDatasets(orgId)
     val harvestableMap = harvestable.map(h => h.spec -> h).toMap
-    repo.listActiveDatasets(orgId).map { ds =>
-      val state = repo.getState(ds.spec)
-      val harvestConfig = repo.getHarvestConfig(ds.spec)
-      val mappingConfig = repo.getMappingConfig(ds.spec)
-      val baseJson = buildLightJsonFull(ds, state, harvestConfig, mappingConfig)
-      val extra = harvestableMap.get(ds.spec) match {
+    repo.listActiveDatasetsWithDetails(orgId).map { detail =>
+      val baseJson = buildLightJsonFull(detail.dataset, detail.state, detail.harvestConfig, detail.mappingConfig)
+      val extra = harvestableMap.get(detail.dataset.spec) match {
         case Some(h) if h.errorMessage.isDefined =>
           val retryTime: JsValue = h.nextRetryAt
             .map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t)))
@@ -67,34 +65,11 @@ class DsInfoService(repo: DatasetRepository) {
 
   /** Full list JSON matching DsInfoLight JSON shape exactly.
     *
-    * Includes all state timestamp fields (stateSaved, stateRaw, etc.),
-    * harvest credentials flags, mapping fields, and retry status.
+    * Currently identical to listDatasetsJson — both return the same fields
+    * including state timestamps, harvest credentials flags, mapping fields,
+    * and retry status. Kept as a separate method for API compatibility.
     */
-  def listDatasetsLightJson(orgId: String): List[JsValue] = {
-    val harvestable = repo.listHarvestableDatasets(orgId)
-    val harvestableMap = harvestable.map(h => h.spec -> h).toMap
-    repo.listActiveDatasets(orgId).map { ds =>
-      val state = repo.getState(ds.spec)
-      val harvestConfig = repo.getHarvestConfig(ds.spec)
-      val mappingConfig = repo.getMappingConfig(ds.spec)
-      val baseJson = buildLightJsonFull(ds, state, harvestConfig, mappingConfig)
-      val extra = harvestableMap.get(ds.spec) match {
-        case Some(h) if h.errorMessage.isDefined =>
-          val retryTime: JsValue = h.nextRetryAt
-            .map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t)))
-            .getOrElse(JsNull)
-          Json.obj(
-            "harvestInRetry" -> true,
-            "harvestRetryCount" -> h.retryCount,
-            "harvestLastRetryTime" -> retryTime,
-            "harvestRetryMessage" -> h.errorMessage.get
-          )
-        case _ =>
-          Json.obj("harvestInRetry" -> false)
-      }
-      JsObject(baseJson.as[JsObject].fields ++ extra.fields).as[JsObject]
-    }
-  }
+  def listDatasetsLightJson(orgId: String): List[JsValue] = listDatasetsJson(orgId)
 
   /** List all datasets (including deleted) with full light JSON shape. */
   def listAllDatasetsLightJson(orgId: String): List[JsValue] = {
@@ -178,10 +153,15 @@ class DsInfoService(repo: DatasetRepository) {
 
   /** Remove a workflow state by resetting to CREATED.
     *
-    * Equivalent to DsInfo.removeState(). Clears the state timestamp by setting
-    * state back to the initial CREATED state.
+    * In the old Fuseki model each state had an independent timestamp, so
+    * `removeState(SOURCED)` only cleared that one timestamp. In the PostgreSQL
+    * model there is a single `state` column, so removing any state resets to
+    * CREATED. This is correct because all callers in DatasetContext chain
+    * through drop methods that strip multiple states and then set the new
+    * state explicitly via `setState`.
     */
   def removeState(spec: String, state: String): Unit = {
+    logger.debug(s"removeState($spec, $state) — resetting to CREATED")
     repo.getState(spec) match {
       case Some(existing) =>
         repo.upsertState(existing.copy(
@@ -796,9 +776,9 @@ class DsInfoService(repo: DatasetRepository) {
       "delimitersSet" -> state.delimiterSet.map(t => JsString(DateTimeFormatter.ISO_INSTANT.format(t))).getOrElse(JsNull),
       "recordRoot" -> hc.recordRoot.map(JsString).getOrElse(JsNull),
       "uniqueId" -> hc.uniqueId.map(JsString).getOrElse(JsNull),
-      "harvestUsername" -> JsNull,
-      "harvestPasswordSet" -> JsBoolean(false),
-      "harvestApiKeySet" -> JsBoolean(false)
+      "harvestUsername" -> hc.harvestUsername.map(JsString).getOrElse(JsNull),
+      "harvestPasswordSet" -> JsBoolean(hc.harvestPassword.exists(_.nonEmpty)),
+      "harvestApiKeySet" -> JsBoolean(hc.harvestApiKey.exists(_.nonEmpty))
     )
   }
 

@@ -18,7 +18,7 @@ package harvest
 
 import akka.actor.{Actor, Props}
 import play.api.Logger
-import dataset.DatasetActor.{FromScratch, FromScratchIncremental, ModifiedAfter, StartHarvest}
+import dataset.DatasetActor.{FromScratch, FromScratchIncremental, StartHarvest}
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
 import services.{GlobalDsInfoService, HarvestableDataset}
@@ -47,7 +47,6 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
 
   private def scanForScheduledHarvests(): Unit = {
     val orgId = orgContext.appConfig.orgId
-    val retryIntervalMinutes = orgContext.appConfig.harvestRetryIntervalMinutes
 
     val harvestable = dsInfoService.listHarvestableNow(orgId)
     logger.info(s"PeriodicHarvest: Found ${harvestable.size} datasets with schedules")

@@ -43,8 +43,14 @@ class DatabaseService(config: PostgresConfig) extends Logging {
 
   @volatile private var dataSource: Option[HikariDataSource] = None
 
-  /** Run Flyway migrations and then create the HikariCP connection pool. */
+  /** Run Flyway migrations and then create the HikariCP connection pool.
+    * Safe to call only once — subsequent calls log a warning and are ignored.
+    */
   def initialize(): Unit = {
+    if (dataSource.isDefined) {
+      logger.warn("DatabaseService.initialize() called but pool already exists — ignoring")
+      return
+    }
     logger.info(s"Running Flyway migrations against ${config.url}")
     val flyway = Flyway.configure()
       .dataSource(config.url, config.user, config.password)

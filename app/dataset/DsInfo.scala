@@ -1562,17 +1562,31 @@ class DsInfo(
     )
   }
 
-  def setMetadata(metadata: DsMetadata) = setSingularLiteralProps(
-    datasetName -> metadata.name,
-    datasetDescription -> metadata.description,
-    datasetAggregator -> metadata.aggregator,
-    datasetOwner -> metadata.owner,
-    datasetDataProviderURL -> metadata.dataProviderURL,
-    datasetLanguage -> metadata.language,
-    datasetRights -> metadata.rights,
-    datasetType -> metadata.dataType,
-    edmType -> metadata.edmType
-  )
+  def setMetadata(metadata: DsMetadata) = {
+    pgWrite(ws => ws.setMetadata(
+      spec,
+      name = metadata.name,
+      description = metadata.description,
+      aggregator = metadata.aggregator,
+      owner = metadata.owner,
+      dataProviderURL = metadata.dataProviderURL,
+      language = metadata.language,
+      rights = metadata.rights,
+      dataType = metadata.dataType,
+      edmType = metadata.edmType
+    ))
+    setSingularLiteralProps(
+      datasetName -> metadata.name,
+      datasetDescription -> metadata.description,
+      datasetAggregator -> metadata.aggregator,
+      datasetOwner -> metadata.owner,
+      datasetDataProviderURL -> metadata.dataProviderURL,
+      datasetLanguage -> metadata.language,
+      datasetRights -> metadata.rights,
+      datasetType -> metadata.dataType,
+      edmType -> metadata.edmType
+    )
+  }
 
   def toggleNaveSkosField(datasetUri: String,
                           propertyUri: String,

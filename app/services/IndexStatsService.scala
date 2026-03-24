@@ -21,7 +21,7 @@ import init.NarthexConfig
 import play.api.Logging
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import triplestore.TripleStore
+
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -75,7 +75,7 @@ object IndexStatsResponse {
 class IndexStatsService @Inject()(
   narthexConfig: NarthexConfig,
   wsClient: WSClient
-)(implicit ec: ExecutionContext, ts: TripleStore) extends Logging {
+)(implicit ec: ExecutionContext) extends Logging {
 
   private val hub3Timeout = 30.seconds
 
