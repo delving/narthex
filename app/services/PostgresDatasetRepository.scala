@@ -297,14 +297,59 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
             )
           }
           buf.result()
-        } finally rs.close()
+        }
+        finally rs.close()
       } finally ps.close()
     }
+
+  override def getCurrentWorkflowInfo(spec: String): Option[CurrentWorkflowInfo] = withConnection { conn =>
+    val sql =
+      """SELECT
+        |  w.id as workflow_id,
+        |  w.trigger,
+        |  w.status,
+        |  w.started_at,
+        |  s.step_name,
+        |  s.status as step_status,
+        |  s.records_processed,
+        |  s.error_message as step_error
+        |FROM workflows w
+        |LEFT JOIN LATERAL (
+        |  SELECT step_name, status, records_processed, error_message
+        |  FROM workflow_steps
+        |  WHERE workflow_id = w.id
+        |  ORDER BY id DESC
+        |  LIMIT 1
+        |) s ON true
+        |WHERE w.spec = ? AND w.status = 'running'
+        |ORDER BY w.started_at DESC
+        |LIMIT 1""".stripMargin
+    val ps = conn.prepareStatement(sql)
+    try {
+      ps.setString(1, spec)
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) {
+          Some(CurrentWorkflowInfo(
+            workflowId = rs.getString("workflow_id"),
+            trigger = rs.getString("trigger"),
+            status = rs.getString("status"),
+            stepName = getOptString(rs, "step_name"),
+            stepStatus = getOptString(rs, "step_status"),
+            stepRecordsProcessed = Option(rs.getInt("records_processed")).filter(_ != 0),
+            stepError = getOptString(rs, "step_error"),
+            startedAt = rs.getTimestamp("started_at").toInstant
+          ))
+        } else {
+          None
+        }
+      } finally rs.close()
+    } finally ps.close()
+  }
 
   // ---------------------------------------------------------------------------
   // Harvest Config
   // ---------------------------------------------------------------------------
-
   override def upsertHarvestConfig(config: HarvestConfigRecord): Unit = withConnection { conn =>
     val sql =
       """INSERT INTO dataset_harvest_config (

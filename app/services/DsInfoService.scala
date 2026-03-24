@@ -18,6 +18,7 @@ class DsInfoService(repo: DatasetRepository) {
   /** Get dataset info as JSON (equivalent to DsInfo.toSimpleJson).
     *
     * Returns the same field names so the frontend doesn't need changes.
+    * Now includes current workflow info for status display.
     */
   def getDatasetInfoJson(spec: String): Option[JsValue] = {
     for {
@@ -28,7 +29,8 @@ class DsInfoService(repo: DatasetRepository) {
       val schedule = repo.getHarvestSchedule(spec)
       val mappingConfig = repo.getMappingConfig(spec)
       val indexing = repo.getIndexing(spec)
-      buildJson(ds, state, harvestConfig, schedule, mappingConfig, indexing)
+      val workflow = repo.getCurrentWorkflowInfo(spec)
+      buildJson(ds, state, harvestConfig, schedule, mappingConfig, indexing, workflow)
     }
   }
 
@@ -140,6 +142,13 @@ class DsInfoService(repo: DatasetRepository) {
     */
   def listAllHarvestDatasets(orgId: String): List[String] =
     repo.listAllHarvestDatasets(orgId)
+
+  /** Get the current workflow for a dataset, including the latest step.
+    *
+    * Used for status bar and progress bar rendering.
+    */
+  def getCurrentWorkflowInfo(spec: String): Option[CurrentWorkflowInfo] =
+    repo.getCurrentWorkflowInfo(spec)
 
   // ==========================================================================
   // Write methods — Phase 3: PostgreSQL as primary store for state, errors,
@@ -669,7 +678,8 @@ class DsInfoService(repo: DatasetRepository) {
       harvestConfig: Option[HarvestConfigRecord],
       schedule: Option[HarvestScheduleRecord],
       mappingConfig: Option[MappingConfigRecord],
-      indexing: Option[IndexingRecord]
+      indexing: Option[IndexingRecord],
+      workflow: Option[CurrentWorkflowInfo] = None
   ): JsValue = {
     // Core identity fields (always present, same as toSimpleJson)
     val core: Seq[(String, JsValue)] = Seq(
@@ -685,10 +695,11 @@ class DsInfoService(repo: DatasetRepository) {
     val mappingFields = mappingConfig.map(buildMappingConfigFields).getOrElse(Nil)
     val indexingFields = indexing.map(buildIndexingFields).getOrElse(Nil)
     val computedFields = buildComputedFields(state, mappingConfig)
+    val workflowFields = workflow.map(buildWorkflowFields).getOrElse(Nil)
 
     JsObject(
       core ++ datasetFields ++ stateFields ++ harvestFields ++
-        scheduleFields ++ mappingFields ++ indexingFields ++ computedFields
+        scheduleFields ++ mappingFields ++ indexingFields ++ computedFields ++ workflowFields
     )
   }
 
@@ -890,6 +901,23 @@ class DsInfoService(repo: DatasetRepository) {
       optStr("indexingLastMessage", idx.lastMessage) ++
       optInstant("indexingLastTimestamp", idx.lastTimestamp) ++
       optInt("indexingLastRevision", idx.lastRevision)
+  }
+
+  /** Workflow fields for status display.
+    *
+    * Includes the current workflow step and its status for progress bar rendering.
+    */
+  private def buildWorkflowFields(wf: CurrentWorkflowInfo): Seq[(String, JsValue)] = {
+    Seq(
+      "workflowId" -> JsString(wf.workflowId),
+      "workflowTrigger" -> JsString(wf.trigger),
+      "workflowStatus" -> JsString(wf.status),
+      "currentStepName" -> wf.stepName.map(JsString).getOrElse(JsNull),
+      "currentStepStatus" -> wf.stepStatus.map(JsString).getOrElse(JsNull),
+      "currentStepRecordsProcessed" -> wf.stepRecordsProcessed.map(JsNumber(_)).getOrElse(JsNull),
+      "currentStepError" -> wf.stepError.map(JsString).getOrElse(JsNull),
+      "workflowStartedAt" -> JsString(DateTimeFormatter.ISO_INSTANT.format(wf.startedAt))
+    )
   }
 
   /** Computed fields for backward compatibility with toSimpleJson.

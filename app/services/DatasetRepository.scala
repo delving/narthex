@@ -160,6 +160,18 @@ case class WorkflowRecord(
     completedAt: Option[Instant] = None
 )
 
+/** Current workflow info for a dataset - includes the active workflow and its latest step. */
+case class CurrentWorkflowInfo(
+    workflowId: String,
+    trigger: String,
+    status: String,
+    stepName: Option[String],
+    stepStatus: Option[String],
+    stepRecordsProcessed: Option[Int],
+    stepError: Option[String],
+    startedAt: Instant
+)
+
 /** Individual step within a workflow. */
 case class WorkflowStepRecord(
     id: Option[Int] = None,
@@ -250,6 +262,7 @@ trait DatasetRepository {
       completedAt: Option[Instant] = None
   ): Unit
   def getWorkflowSteps(workflowId: String): List[WorkflowStepRecord]
+  def getCurrentWorkflowInfo(spec: String): Option[CurrentWorkflowInfo]
 
   // Scheduling
   def listHarvestableDatasets(orgId: String): List[HarvestableDataset]
