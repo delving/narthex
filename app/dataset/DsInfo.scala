@@ -30,7 +30,7 @@ import org.joda.time.{DateTime, Minutes}
 import organization.OrgContext
 import services.GlobalDsInfoService
 import play.api.Logger
-import play.api.libs.json.{JsObject, JsValue, Json, Writes}
+import play.api.libs.json.{JsBoolean, JsObject, JsValue, Json, Writes}
 import play.api.libs.ws.WSResponse
 import services.StringHandling.{createGraphName, urlEncodeValue}
 import services.Temporal._
@@ -1858,10 +1858,55 @@ class DsInfo(
       "datasetDefaultMappingVersion" -> getDefaultMappingVersion.map(JsString(_)).getOrElse(JsNull),
       "defaultMappingVersion" -> getDefaultMappingVersion.map(JsString(_)).getOrElse(JsNull),
       // Duplicate error message field for backward compatibility
-      "errorMessage" -> getLiteralProp(triplestore.GraphProperties.datasetErrorMessage).map(JsString(_)).getOrElse(JsNull)
+      "errorMessage" -> getLiteralProp(triplestore.GraphProperties.datasetErrorMessage).map(JsString(_)).getOrElse(JsNull),
+      // Workflow display fields - computed from currentOperation and harvestType
+      // These drive the frontend status bar and state highlighting
+      "displayLabel" -> JsString(computeDisplayLabel(getLiteralProp(triplestore.GraphProperties.datasetCurrentOperation))),
+      "nextCheckpoint" -> JsString(computeNextCheckpoint(
+        getLiteralProp(triplestore.GraphProperties.datasetCurrentOperation),
+        getLiteralProp(triplestore.GraphProperties.harvestType)
+      )),
+      "workflowActive" -> JsBoolean(getLiteralProp(triplestore.GraphProperties.datasetCurrentOperation).isDefined)
     ).filterNot(_._2 == JsNull)
 
     JsObject(coreFields ++ registryFields ++ computedFields)
+  }
+
+  /** Compute display label from current operation.
+    * "HARVESTING" -> "Harvesting"
+    * "PROCESSING" -> "Processing"
+    * etc.
+    */
+  def computeDisplayLabel(operation: Option[String]): String = {
+    operation.map { op =>
+      if (op.endsWith("ING")) {
+        op.head.toUpper + op.tail.toLowerCase  // "HARVESTING" -> "Harvesting"
+      } else {
+        op
+      }
+    }.getOrElse("")
+  }
+
+  /** Compute the next checkpoint based on current operation and harvest type.
+    * This determines which state item should be highlighted in the UI.
+    */
+  def computeNextCheckpoint(operation: Option[String], harvestType: Option[String]): String = {
+    (operation, harvestType) match {
+      case (Some("HARVESTING"), Some(ht)) if ht != "upload" && ht.nonEmpty =>
+        "stateSourced"
+      case (Some("HARVESTING"), _) =>
+        "stateRaw"
+      case (Some("ANALYZING"), _) =>
+        "stateAnalyzed"
+      case (Some("GENERATING"), _) =>
+        "stateMappable"
+      case (Some("PROCESSING"), _) =>
+        "stateProcessed"
+      case (Some("SAVING"), _) =>
+        "stateSaved"
+      case _ =>
+        ""
+    }
   }
 
 }

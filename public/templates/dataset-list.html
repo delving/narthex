@@ -386,6 +386,11 @@
                                     <span ng-switch-when="stateReadyToHarvest">Ready to Harvest</span>
                                     <span ng-switch-default>Empty</span>
                                 </span>
+                                <!-- Show active workflow step indicator -->
+                                <span ng-if="dataset.stateCurrent.isWorkflowStep" class="badge badge-primary workflow-active" title="Active workflow step">
+                                    <i class="fa fa-cog fa-spin"></i>
+                                    {{ dataset.stateCurrent.stepName }}
+                                </span>
                             </td>
                             <td class="date-time">
                                 {{ dataset.stateCurrent.date | date: 'yyyy/MM/dd HH:mm' }}
@@ -613,7 +618,8 @@
                             <div class="input-group">
                                 <progressbar class="form-control-feedback progress-striped"
                                     ng-class="{'active': dataset.progress.count === 0}"
-                                    value="dataset.progress.count" max="100">{{ dataset.progress.message }}
+                                    value="dataset.progress.count" max="100">
+                                    {{ dataset.progress.displayLabel || dataset.progress.message }}
                                 </progressbar>
                                 <!-- Page/record metadata -->
                                 <span class="input-group-addon" style="background: #f5f5f5; font-size: 11px; min-width: 100px;"

@@ -40,7 +40,7 @@ import organization.WorkflowPersistenceActor._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Logger
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{Json, JsString, JsBoolean, Writes}
 import record.SourceProcessor
 import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
@@ -121,8 +121,29 @@ object DatasetActor {
       "totalRecords" -> active.totalRecords,
       "errorRecoveryUrl" -> active.errorRecoveryUrl,
       "errorPagesTotal" -> active.errorPagesTotal,
-      "errorPagesRecovered" -> active.errorPagesRecovered
+      "errorPagesRecovered" -> active.errorPagesRecovered,
+      "displayLabel" -> JsString(progressStateToDisplayLabel(active.progressState.toString)),
+      "workflowActive" -> JsBoolean(true)
     )
+  }
+
+  private def progressStateToDisplayLabel(state: String): String = {
+    state match {
+      case "HARVESTING" => "Harvesting"
+      case "COLLECTING" => "Collecting"
+      case "ADOPTING" => "Adopting"
+      case "GENERATING" => "Generating"
+      case "SPLITTING" => "Splitting"
+      case "COLLATING" => "Collating"
+      case "CATEGORIZING" => "Categorizing"
+      case "PROCESSING" => "Processing"
+      case "SAVING" => "Saving"
+      case "SKOSIFYING" => "Skosifying"
+      case "ANALYZING" => "Analyzing"
+      case "STATE_IDLE" => ""
+      case "ERROR" => "Error"
+      case other => other
+    }
   }
 
   case class InError(error: String) extends DatasetActorData

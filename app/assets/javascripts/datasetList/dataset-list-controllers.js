@@ -165,6 +165,10 @@ define(["angular"], function () {
                                     existingDataset.currentOperation = message.currentOperation;
                                 }
                                 if (message.operationStatus !== undefined) existingDataset.operationStatus = message.operationStatus;
+                                // Update workflow display fields
+                                if (message.displayLabel !== undefined) existingDataset.displayLabel = message.displayLabel;
+                                if (message.nextCheckpoint !== undefined) existingDataset.nextCheckpoint = message.nextCheckpoint;
+                                if (message.workflowActive !== undefined) existingDataset.workflowActive = message.workflowActive;
                                 // Update error fields - clear them when absent from message
                                 existingDataset.errorMessage = message.errorMessage || null;
                                 existingDataset.errorTime = message.errorTime || null;
@@ -597,6 +601,17 @@ define(["angular"], function () {
                 }
             }
 
+            // If backend provides workflow display info, use it to override stateCurrent
+            // This ensures the UI shows the active workflow step, not the last checkpoint
+            if (dataset.workflowActive && dataset.displayLabel) {
+                dataset.stateCurrent = {
+                    "name": dataset.nextCheckpoint || dataset.stateCurrent.name,
+                    "date": Date.now(),
+                    "isWorkflowStep": true,
+                    "stepName": dataset.displayLabel
+                };
+            }
+
             // Check for error state (errorMessage comes from DsInfoLight)
             // Use truthiness check - null and undefined should not trigger error state
             if (dataset.errorMessage) {
@@ -756,6 +771,18 @@ define(["angular"], function () {
                     dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
                 }
             }
+
+            // If backend provides workflow display info, use it to override stateCurrent
+            // This ensures the UI shows the active workflow step, not the last checkpoint
+            if (dataset.workflowActive && dataset.displayLabel) {
+                dataset.stateCurrent = {
+                    "name": dataset.nextCheckpoint || dataset.stateCurrent.name,
+                    "date": Date.now(),
+                    "isWorkflowStep": true,
+                    "stepName": dataset.displayLabel
+                };
+            }
+
             // Use truthiness check - null and undefined should not trigger error state
             if (dataset.datasetErrorMessage || dataset.errorMessage) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
@@ -1286,7 +1313,8 @@ define(["angular"], function () {
                         totalRecords: message.totalRecords,
                         errorRecoveryUrl: message.errorRecoveryUrl,
                         errorPagesTotal: message.errorPagesTotal,
-                        errorPagesRecovered: message.errorPagesRecovered
+                        errorPagesRecovered: message.errorPagesRecovered,
+                        displayLabel: message.displayLabel
                     });
                     $scope.datasetBusy = true;
                 }

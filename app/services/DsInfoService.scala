@@ -702,10 +702,10 @@ class DsInfoService(val repo: DatasetRepository) extends Logging {
   }
 
   /** Full light JSON matching DsInfoLight output exactly.
-    *
-    * Includes all per-state timestamp fields (stateSaved, stateRaw, etc.),
-    * full harvest config fields, and mapping config fields.
-    */
+     *
+     * Includes all per-state timestamp fields (stateSaved, stateRaw, etc.),
+     * full harvest config fields, and mapping config fields.
+     */
   private def buildLightJsonFull(
       ds: DatasetRecord,
       state: Option[DatasetStateRecord],
@@ -721,7 +721,21 @@ class DsInfoService(val repo: DatasetRepository) extends Logging {
     val harvestFields = harvestConfig.flatMap(h => state.map(s => buildHarvestConfigFieldsFull(h, s))).getOrElse(Nil)
     val mappingFields = mappingConfig.map(buildMappingConfigFieldsFull).getOrElse(Nil)
 
-    JsObject(core ++ stateFields ++ harvestFields ++ mappingFields)
+    // Workflow display fields - computed from currentOperation and harvestType
+    val workflowDisplayFields: Seq[(String, JsValue)] = state.map { s =>
+      val operation = s.currentOperation
+      val harvestType = harvestConfig.flatMap(_.harvestType)
+      val displayLabel = computeDisplayLabel(operation)
+      val nextCheckpoint = computeNextCheckpoint(operation, harvestType)
+      val workflowActive = operation.isDefined
+      Seq(
+        "displayLabel" -> JsString(displayLabel),
+        "nextCheckpoint" -> JsString(nextCheckpoint),
+        "workflowActive" -> JsBoolean(workflowActive)
+      )
+    }.getOrElse(Nil)
+
+    JsObject(core ++ stateFields ++ harvestFields ++ mappingFields ++ workflowDisplayFields)
   }
 
   /** State fields matching DsInfoLight exactly — includes per-state timestamp fields. */
@@ -896,8 +910,51 @@ class DsInfoService(val repo: DatasetRepository) extends Logging {
       "currentStepStatus" -> wf.stepStatus.map(JsString).getOrElse(JsNull),
       "currentStepRecordsProcessed" -> wf.stepRecordsProcessed.map(JsNumber(_)).getOrElse(JsNull),
       "currentStepError" -> wf.stepError.map(JsString).getOrElse(JsNull),
-      "workflowStartedAt" -> JsString(DateTimeFormatter.ISO_INSTANT.format(wf.startedAt))
+      "workflowStartedAt" -> JsString(DateTimeFormatter.ISO_INSTANT.format(wf.startedAt)),
+      "displayLabel" -> JsString(computeDisplayLabel(wf.stepName)),
+      "nextCheckpoint" -> JsString(computeNextCheckpoint(wf.stepName, None)),
+      "workflowActive" -> JsBoolean(true)
     )
+  }
+
+  /** Compute display label from step name.
+    * "HARVEST" -> "Harvesting"
+    */
+  private def computeDisplayLabel(stepName: Option[String]): String = {
+    stepName.map { step =>
+      step match {
+        case "HARVEST" => "Harvesting"
+        case "ANALYZE" => "Analyzing"
+        case "GENERATE" => "Generating"
+        case "PROCESS" => "Processing"
+        case "SAVE" => "Saving"
+        case "SKOSIFY" => "Skosifying"
+        case "CATEGORIZE" => "Categorizing"
+        case other => other
+      }
+    }.getOrElse("")
+  }
+
+  /** Compute the next checkpoint based on current operation and harvest type.
+    * This determines which state item should be highlighted in the UI.
+    */
+  private def computeNextCheckpoint(operation: Option[String], harvestType: Option[String]): String = {
+    (operation, harvestType) match {
+      case (Some("HARVEST"), Some(ht)) if ht != "upload" && ht.nonEmpty =>
+        "stateSourced"
+      case (Some("HARVEST"), _) =>
+        "stateRaw"
+      case (Some("ANALYZE"), _) =>
+        "stateAnalyzed"
+      case (Some("GENERATE"), _) =>
+        "stateMappable"
+      case (Some("PROCESS"), _) =>
+        "stateProcessed"
+      case (Some("SAVE"), _) =>
+        "stateSaved"
+      case _ =>
+        ""
+    }
   }
 
   /** Computed fields for backward compatibility with toSimpleJson.
