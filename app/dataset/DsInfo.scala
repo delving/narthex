@@ -633,8 +633,6 @@ object DsInfo {
             GlobalDsInfoService.get()
           )
 
-          // Cache the existence result to avoid individual dataGet() calls
-          dsInfo.cacheDataExists(dataExists)
           dsInfo
         }
       }
@@ -711,7 +709,6 @@ object DsInfo {
             orgContext.appConfig.mockBulkApi,
             GlobalDsInfoService.get()
           )
-          dsInfo.cacheDataExists(exists)
           Future.successful(Some(dsInfo))
         } else {
           Future.successful(None)
@@ -738,7 +735,6 @@ object DsInfo {
               )
               // Cache this result for future use
               orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
-              dsInfo.cacheDataExists(answer)
               Some(dsInfo)
             } else {
               orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
@@ -799,31 +795,20 @@ class DsInfo(
 
   val skosGraphName = getSkosGraphName(uri)
 
-  // Caching to avoid repeated expensive dataGet() calls
-  private var cachedDataExists: Option[Boolean] = None
-  private var cachedModel: Option[Model] = None
+  // PostgreSQL property snapshot — loaded once at construction, replaces Fuseki graph fetch.
+  // When PG is configured, all getLiteralProp calls resolve from this map.
+  // SKOS properties fall through to Fuseki. When PG is not configured, all reads use Fuseki.
+  private var pgSnapshot: Option[Map[String, String]] = {
+    val svc = writeService.orElse(GlobalDsInfoService.get())
+    svc.map(s => services.PropertySnapshot.load(s.repo, spec))
+  }
 
-  // Check for cached existence result on creation
-  private def loadCachedExistence(): Unit = {
-    if (cachedDataExists.isEmpty) {
-      val cacheKey = s"dataset_existence_$spec"
-      cachedDataExists = orgContext.cacheApi.get[Boolean](cacheKey)
-      if (cachedDataExists.isDefined) {
-        logger.debug(s"Loaded cached existence result for dataset $spec: ${cachedDataExists.get}")
-      }
+  /** Reload the snapshot from PostgreSQL after a write, so subsequent reads see fresh data. */
+  private def reloadSnapshot(): Unit = {
+    pgSnapshot = pgSnapshot.flatMap { _ =>
+      val svc = writeService.orElse(GlobalDsInfoService.get())
+      svc.map(s => services.PropertySnapshot.load(s.repo, spec))
     }
-  }
-
-  def cacheDataExists(exists: Boolean): Unit = {
-    cachedDataExists = Some(exists)
-  }
-
-  /** Invalidate the cached model to force fresh data to be read from triplestore.
-    * This should be called when properties are changed externally.
-    */
-  def invalidateCachedModel(): Unit = {
-    cachedModel = None
-    logger.debug(s"Invalidated cached model for dataset $spec")
   }
 
   /** Route a write to PostgreSQL when available, with SPARQL as fallback.
@@ -836,46 +821,31 @@ class DsInfo(
     svc.foreach(block)
   }
 
-  // Initialize cache on construction
-  loadCachedExistence()
-  
+  /** Fuseki graph fetch — used only for SKOS property fallback. */
   def futureModel: Future[Model] = {
-    cachedDataExists match {
-      case Some(false) =>
-        // We know data doesn't exist - return empty model immediately
-        logger.debug(s"Using cached 'no data' result for dataset $spec")
-        Future.successful(ModelFactory.createDefaultModel())
-        
-      case Some(true) =>
-        // We know data exists - fetch it (but could also cache the model)
-        cachedModel match {
-          case Some(model) =>
-            Future.successful(model)
-          case None =>
-            logger.debug(s"Fetching data for dataset $spec (existence confirmed)")
-            val future = ts.dataGet(graphName)
-            future.onComplete {
-              case Success(model) => cachedModel = Some(model)
-              case Failure(e) => logger.warn(s"Failed to fetch data for dataset $spec", e)
-            }
-            future
-        }
-        
-      case None =>
-        // No cache - use original logic (fallback)
-        logger.warn(s"CACHE MISS: No cache available for dataset $spec - using expensive dataGet call. This indicates caching is not working properly.")
-        val future = ts.dataGet(graphName)
-        future.onComplete {
-          case Success(_) => ()
-          case Failure(e) => logger.warn(s"No data found for dataset $spec", e)
-        }
-        future
-    }
+    logger.debug(s"Fetching Fuseki graph for dataset $spec (SKOS fallback)")
+    ts.dataGet(graphName)
   }
 
   def getModel = Await.result(futureModel, patience)
 
   def getLiteralProp(prop: NXProp): Option[String] = {
+    pgSnapshot match {
+      case Some(snapshot) =>
+        snapshot.get(prop.name) match {
+          case some @ Some(_) => some
+          case None if services.PropertySnapshot.skosProperties.contains(prop.name) =>
+            fusekiGetLiteralProp(prop)
+          case None => None
+        }
+      case None => fusekiGetLiteralProp(prop)
+    }
+  }
+
+  /** Original Fuseki-backed property read — used as fallback for SKOS properties
+    * and when PostgreSQL is not configured.
+    */
+  private def fusekiGetLiteralProp(prop: NXProp): Option[String] = {
     val m = getModel
     val res = m.getResource(uri)
     val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
@@ -907,8 +877,8 @@ class DsInfo(
         logger.error(s"Failed to update properties [$propNames] for $spec: ${e.getMessage}", e)
         throw e
     }
-    // Invalidate cached model so next read gets fresh data with updated properties
-    cachedModel = None
+    // Reload snapshot so subsequent reads see the updated values
+    reloadSnapshot()
   }
 
   def removeLiteralProp(prop: NXProp): Unit = {
@@ -925,8 +895,7 @@ class DsInfo(
         logger.error(s"Failed to remove property ${prop.name} for $spec: ${e.getMessage}", e)
         throw e
     }
-    // Invalidate cached model so next read gets fresh data
-    cachedModel = None
+    reloadSnapshot()
   }
 
   /**
@@ -992,8 +961,7 @@ class DsInfo(
     val futureUpdate = ts.up.sparqlUpdate(
       addLiteralPropertyToListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
-    // Invalidate cached model so next read gets fresh data
-    cachedModel = None
+    reloadSnapshot()
   }
 
   def removeLiteralPropFromList(prop: NXProp, uriValueString: String): Unit = {
@@ -1004,8 +972,7 @@ class DsInfo(
     val futureUpdate = ts.up.sparqlUpdate(
       deleteLiteralPropertyFromListQ(graphName, uri, prop, uriValueString))
     Await.ready(futureUpdate, patience)
-    // Invalidate cached model so next read gets fresh data
-    cachedModel = None
+    reloadSnapshot()
   }
 
   def getUriProp(prop: NXProp): Option[String] = {
@@ -1127,18 +1094,6 @@ class DsInfo(
     pgWrite(_.setState(spec, state.toString))
     setSingularLiteralProps(
       NXProp(state.toString, GraphProperties.timeProp) -> now)
-
-    // Update existence cache immediately with new state - don't just invalidate
-    val cacheKey = s"dataset_existence_$spec"
-    // Note: DISABLED datasets still have metadata in triplestore - only EMPTY means no data
-    // Bug fix: Previously DISABLED was treated as non-existent, which broke property lookups
-    val dataExists = state match {
-      case DsState.EMPTY => false // Only truly empty datasets don't exist
-      case _ => true // DISABLED and all other states still have metadata that needs to be readable
-    }
-    orgContext.cacheApi.set(cacheKey, dataExists, 30.seconds)
-    cachedDataExists = Some(dataExists)
-    logger.debug(s"Updated existence cache for $spec due to state change to $state (dataExists: $dataExists)")
   }
 
   def setHarvestIncrementalMode(enabled: Boolean = false) = {
