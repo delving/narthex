@@ -1187,6 +1187,8 @@ class DsInfo(
     clearError()
 
     // Set retry state
+    pgWrite(_.setRetryState(spec, inRetry = true, retryCount = retryCount,
+      retryMessage = Some(message), lastRetryAt = Some(java.time.Instant.now())))
     setSingularLiteralProps(
       harvestInRetry -> "true",
       harvestRetryCount -> retryCount.toString,
@@ -1203,6 +1205,8 @@ class DsInfo(
   def incrementRetryCount(): Int = {
     val currentCount = getLiteralProp(harvestRetryCount).map(_.toInt).getOrElse(0)
     val newCount = currentCount + 1
+    pgWrite(_.setRetryState(spec, inRetry = true, retryCount = newCount,
+      retryMessage = None, lastRetryAt = Some(java.time.Instant.now())))
     setSingularLiteralProps(
       harvestRetryCount -> newCount.toString,
       harvestLastRetryTime -> now

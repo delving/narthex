@@ -231,15 +231,27 @@ class DsInfoService(val repo: DatasetRepository) extends Logging {
     }
   }
 
-  /** Clear retry state — called when a retry succeeds or is abandoned.
-    *
-    * Clears the inRetry flag and resets retry counters.
-    */
+  /** Set retry state — called when a harvest enters retry mode. */
+  def setRetryState(spec: String, inRetry: Boolean, retryCount: Int,
+                    retryMessage: Option[String], lastRetryAt: Option[Instant]): Unit = {
+    repo.getState(spec).foreach { existing =>
+      repo.upsertState(existing.copy(
+        inRetry = inRetry,
+        retryCount = retryCount,
+        retryMessage = retryMessage,
+        lastRetryAt = lastRetryAt
+      ))
+    }
+  }
+
+  /** Clear retry state — called when a retry succeeds or is abandoned. */
   def clearRetryState(spec: String): Unit = {
     repo.getState(spec).foreach { existing =>
       repo.upsertState(existing.copy(
-        currentOperation = None,
-        operationStart = None
+        inRetry = false,
+        retryCount = 0,
+        retryMessage = None,
+        lastRetryAt = None
       ))
     }
   }
@@ -254,14 +266,16 @@ class DsInfoService(val repo: DatasetRepository) extends Logging {
         repo.upsertState(existing.copy(
           currentOperation = Some(operation),
           operationStart = Some(Instant.now()),
-          operationTrigger = Some(trigger)
+          operationTrigger = Some(trigger),
+          operationStatus = Some("in_progress")
         ))
       case None =>
         repo.upsertState(DatasetStateRecord(
           spec = spec,
           currentOperation = Some(operation),
           operationStart = Some(Instant.now()),
-          operationTrigger = Some(trigger)
+          operationTrigger = Some(trigger),
+          operationStatus = Some("in_progress")
         ))
     }
   }
@@ -275,7 +289,8 @@ class DsInfoService(val repo: DatasetRepository) extends Logging {
       repo.upsertState(existing.copy(
         currentOperation = None,
         operationStart = None,
-        operationTrigger = None
+        operationTrigger = None,
+        operationStatus = None
       ))
     }
   }
