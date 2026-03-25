@@ -81,7 +81,12 @@ case class DatasetStateRecord(
     processedIncrementalValid: Int = 0,
     processedIncrementalInvalid: Int = 0,
     acquisitionMethod: Option[String] = None,
-    delimiterSet: Option[Instant] = None
+    delimiterSet: Option[Instant] = None,
+    retryMessage: Option[String] = None,
+    inRetry: Boolean = false,
+    retryCount: Int = 0,
+    lastRetryAt: Option[Instant] = None,
+    operationStatus: Option[String] = None
 )
 
 /** Harvest source configuration. */
@@ -106,7 +111,8 @@ case class HarvestConfigRecord(
     continueOnError: Boolean = false,
     errorThreshold: Option[Int] = None,
     idFilterType: Option[String] = None,
-    idFilterExpression: Option[String] = None
+    idFilterExpression: Option[String] = None,
+    harvestJson: Option[String] = None
 )
 
 /** Harvest scheduling configuration. */
@@ -131,7 +137,8 @@ case class MappingConfigRecord(
     publishOaipmh: Boolean = true,
     publishIndex: Boolean = true,
     publishLod: Boolean = true,
-    categoriesInclude: Boolean = false
+    categoriesInclude: Boolean = false,
+    processedExternally: Option[String] = None
 )
 
 /** Index progress tracking. */

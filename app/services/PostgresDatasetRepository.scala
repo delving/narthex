@@ -213,8 +213,10 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
         |  record_count, acquired_count, deleted_count, source_count,
         |  processed_valid, processed_invalid,
         |  processed_incremental_valid, processed_incremental_invalid,
-        |  acquisition_method, delimiters_set, updated_at
-        |) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+        |  acquisition_method, delimiters_set,
+        |  retry_message, in_retry, retry_count, last_retry_at, operation_status,
+        |  updated_at
+        |) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
         |ON CONFLICT (spec) DO UPDATE SET
         |  state = EXCLUDED.state,
         |  state_changed_at = EXCLUDED.state_changed_at,
@@ -233,6 +235,11 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
         |  processed_incremental_invalid = EXCLUDED.processed_incremental_invalid,
         |  acquisition_method = EXCLUDED.acquisition_method,
         |  delimiters_set = EXCLUDED.delimiters_set,
+        |  retry_message = EXCLUDED.retry_message,
+        |  in_retry = EXCLUDED.in_retry,
+        |  retry_count = EXCLUDED.retry_count,
+        |  last_retry_at = EXCLUDED.last_retry_at,
+        |  operation_status = EXCLUDED.operation_status,
         |  updated_at = now()""".stripMargin
     val ps = conn.prepareStatement(sql)
     try {
@@ -254,6 +261,11 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       ps.setInt(16, state.processedIncrementalInvalid)
       setOptString(ps, 17, state.acquisitionMethod)
       setOptTimestamp(ps, 18, state.delimiterSet)
+      setOptString(ps, 19, state.retryMessage)
+      ps.setBoolean(20, state.inRetry)
+      ps.setInt(21, state.retryCount)
+      setOptTimestamp(ps, 22, state.lastRetryAt)
+      setOptString(ps, 23, state.operationStatus)
       ps.executeUpdate()
     } finally ps.close()
   }
@@ -288,7 +300,12 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       processedIncrementalValid = rs.getInt("processed_incremental_valid"),
       processedIncrementalInvalid = rs.getInt("processed_incremental_invalid"),
       acquisitionMethod = getOptString(rs, "acquisition_method"),
-      delimiterSet = getOptInstant(rs, "delimiters_set")
+      delimiterSet = getOptInstant(rs, "delimiters_set"),
+      retryMessage = getOptString(rs, "retry_message"),
+      inRetry = rs.getBoolean("in_retry"),
+      retryCount = rs.getInt("retry_count"),
+      lastRetryAt = getOptInstant(rs, "last_retry_at"),
+      operationStatus = getOptString(rs, "operation_status")
     )
 
   override def listDatasetsWithActiveOperation(orgId: String): List[ActiveOperationRecord] =
@@ -461,7 +478,8 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       continueOnError = rs.getBoolean("continue_on_error"),
       errorThreshold = getOptInt(rs, "error_threshold"),
       idFilterType = getOptString(rs, "id_filter_type"),
-      idFilterExpression = getOptString(rs, "id_filter_expression")
+      idFilterExpression = getOptString(rs, "id_filter_expression"),
+      harvestJson = getOptString(rs, "harvest_json")
     )
 
   override def listAllHarvestDatasets(orgId: String): List[String] = withConnection { conn =>
@@ -542,8 +560,9 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       """INSERT INTO dataset_mapping_config (
         |  spec, map_to_prefix, mapping_source, default_mapping_prefix,
         |  default_mapping_name, default_mapping_version,
-        |  publish_oaipmh, publish_index, publish_lod, categories_include, updated_at
-        |) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+        |  publish_oaipmh, publish_index, publish_lod, categories_include,
+        |  processed_externally, updated_at
+        |) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
         |ON CONFLICT (spec) DO UPDATE SET
         |  map_to_prefix = EXCLUDED.map_to_prefix,
         |  mapping_source = EXCLUDED.mapping_source,
@@ -554,6 +573,7 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
         |  publish_index = EXCLUDED.publish_index,
         |  publish_lod = EXCLUDED.publish_lod,
         |  categories_include = EXCLUDED.categories_include,
+        |  processed_externally = EXCLUDED.processed_externally,
         |  updated_at = now()""".stripMargin
     val ps = conn.prepareStatement(sql)
     try {
@@ -567,6 +587,7 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       ps.setBoolean(8, config.publishIndex)
       ps.setBoolean(9, config.publishLod)
       ps.setBoolean(10, config.categoriesInclude)
+      setOptString(ps, 11, config.processedExternally)
       ps.executeUpdate()
     } finally ps.close()
   }
@@ -593,7 +614,8 @@ class PostgresDatasetRepository(db: DatabaseService) extends DatasetRepository w
       publishOaipmh = rs.getBoolean("publish_oaipmh"),
       publishIndex = rs.getBoolean("publish_index"),
       publishLod = rs.getBoolean("publish_lod"),
-      categoriesInclude = rs.getBoolean("categories_include")
+      categoriesInclude = rs.getBoolean("categories_include"),
+      processedExternally = getOptString(rs, "processed_externally")
     )
 
   // ---------------------------------------------------------------------------
