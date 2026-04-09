@@ -111,7 +111,16 @@ class FusekiMigration(
   private def migrateOneDataset(spec: String, report: MigrationReport): Future[MigrationReport] = {
     logger.info(s"Migrating dataset: $spec")
     try {
-      val dsInfo = DsInfo.getDsInfo(spec, orgContext)
+      // Create DsInfo WITHOUT PostgreSQL snapshot — must read from Fuseki for migration
+      val dsInfo = new DsInfo(
+        spec,
+        orgContext.appConfig.nxUriPrefix,
+        orgContext.appConfig.naveApiAuthToken,
+        orgContext.appConfig.naveApiUrl,
+        orgContext,
+        orgContext.appConfig.mockBulkApi,
+        None  // No DsInfoService — forces Fuseki reads, not PG snapshot
+      )
       val r1 = migrateDatasetRecord(dsInfo, report)
       val r2 = migrateStateRecord(dsInfo, r1)
       val r3 = migrateHarvestConfig(dsInfo, r2)
