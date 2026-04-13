@@ -1,8 +1,12 @@
 # DsInfo PostgreSQL Snapshot Design
 
-**Date:** 2026-03-25
-**Status:** Accepted
-**Scope:** Eliminate Fuseki reads from DsInfo by loading a per-instance property snapshot from PostgreSQL
+**Date started:** 2026-03-25
+**Last updated:** 2026-04-13
+**Status:** Implemented — in testing
+
+## Session log
+
+**2026-04-13:** Reviewed the full worktree (23 commits), found and fixed 19 issues across bug fixes, safety guards, performance (N+1 queries), and dead code removal (3 commits). Then diagnosed why DsInfo still reads from Fuseki during workflows — DatasetActor was never migrated. Designed and implemented Option B (property snapshot): each DsInfo loads a `Map[String, String]` from 6 PG tables at construction, replacing all Fuseki graph reads. Implemented in 7 commits: V11 migration, record type updates, PropertySnapshot, DsInfo wiring, retry/operation writes, and a critical fix where FusekiMigration was reading its own empty PG output instead of Fuseki. Migration re-run confirmed 8/11 datasets have complete data; 2 datasets never had harvest URLs in Fuseki either. Next: manual harvest test on a dataset with a URL, then disable Fuseki reads entirely.
 
 ## Problem
 

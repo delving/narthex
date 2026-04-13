@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Tasks 1-7 implemented, Task 8 (integration verification) in progress.
+
 **Goal:** Replace Fuseki reads in DsInfo.getLiteralProp with a per-instance property snapshot loaded from PostgreSQL, eliminating all `[FUSEKI READ] GET GRAPH` calls during normal workflow execution.
 
 **Architecture:** Each `DsInfo` instance loads a `Map[String, String]` from 6 PostgreSQL tables at construction. `getLiteralProp` resolves from this map. SKOS properties fall through to Fuseki. The existing Fuseki caching (`cachedModel`, `cachedDataExists`, Play `cacheApi`) is removed.
@@ -9,6 +11,15 @@
 **Tech Stack:** Scala 2.13, Play 2.8, PostgreSQL (via existing `DatasetRepository`/`PostgresDatasetRepository`), Flyway migrations.
 
 **Spec:** `docs/plans/2026-03-25-dsinfo-postgres-snapshot-design.md`
+
+**Implementation commits:**
+- `88634ce2` — V11 migration (Task 1)
+- `d7ae4384` — Record type updates (Tasks 2+3)
+- `565c57b9` — PropertySnapshot.scala (Task 4)
+- `41467072` — Wire snapshot into DsInfo (Task 5)
+- `5416fbf5` — Retry state + operation writes (Task 6)
+- Task 7 covered by Tasks 2-4 (harvestJson field + PropertySnapshot parsing)
+- `c0377bf0` — Fix FusekiMigration to bypass snapshot
 
 ---
 
