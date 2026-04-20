@@ -281,6 +281,7 @@ object DsInfo {
       StringField("harvestPreviousTime", harvestPreviousTime),
       StringField("harvestIncremental", harvestIncremental),
       BoolField("harvestContinueOnError", harvestContinueOnError),
+      BoolField("harvestDateOnly", harvestDateOnly),
       IntField("harvestErrorThreshold", harvestErrorThreshold),
 
       // Harvest credentials

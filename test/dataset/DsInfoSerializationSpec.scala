@@ -105,7 +105,8 @@ class DsInfoSerializationSpec extends AnyFlatSpec with should.Matchers {
       "harvestJsonPageParam", "harvestJsonPageSizeParam", "harvestJsonPageSize",
       "harvestJsonDetailPath", "harvestJsonSkipDetail",
       "harvestJsonXmlRoot", "harvestJsonXmlRecord", "harvestApiKeyParam",
-      "harvestDelay", "harvestDelayUnit", "harvestIncremental", "harvestIncrementalMode"
+      "harvestDelay", "harvestDelayUnit", "harvestIncremental", "harvestIncrementalMode",
+      "harvestDateOnly"
     )
 
     val missing = saveableHarvestFields -- webSocketFieldNames
