@@ -161,6 +161,21 @@ object Harvesting {
     def timeToWork = unit.after(previous, delay).isBeforeNow
   }
 
+  /**
+   * Format a DateTime for the OAI-PMH `from=` query parameter.
+   *
+   * @param mod      the timestamp from the previous harvest
+   * @param justDate when true, returns YYYY-MM-DD (for servers with day-level
+   *                 granularity, e.g., Brocade/Anet); when false, returns full
+   *                 UTC ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)
+   */
+  def formatFromParameter(mod: DateTime, justDate: Boolean): String = {
+    val dateTime = services.Temporal.timeToUTCString(mod)
+    val withoutMillis = dateTime.replaceAll("\\.[0-9]+", "")
+    if (justDate) withoutMillis.substring(0, withoutMillis.indexOf('T'))
+    else withoutMillis.replaceAll("\\.[0-9]{3}[Z]{0,1}$", "Z")
+  }
+
 }
 
 trait Harvesting {
@@ -279,11 +294,7 @@ trait Harvesting {
         val withSet = if (set.isEmpty) withRecord else withRecord.withQueryString("set" -> set)
         strategy match {
           case ModifiedAfter(mod, justDate) =>
-            withSet.withQueryString("from" -> {
-              val dateTime = timeToUTCString(mod)
-              val withoutMillis = dateTime.replaceAll("\\.[0-9]+", "")
-              if (justDate) withoutMillis.substring(0, withoutMillis.indexOf('T')) else withoutMillis.replaceAll("\\.[0-9]{3}[Z]{0,1}$", "Z")
-            })
+            withSet.withQueryString("from" -> Harvesting.formatFromParameter(mod, justDate))
           case _ => withSet
         }
       case Some(token) =>
