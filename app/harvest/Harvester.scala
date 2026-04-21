@@ -740,10 +740,11 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
           futurePage.map {
             case page: PMHHarvestPage =>
               FileUtils.writeStringToFile(rawXml, page.records, "UTF-8")
+              val sampled = if (page.totalRecords > 0) page.totalRecords else page.recordCount
               datasetContext.dsInfo.setAcquisitionCounts(
-                acquired = page.totalRecords,
+                acquired = sampled,
                 deleted = 0,
-                source = page.totalRecords,
+                source = sampled,
                 method = "pmh"
               )
               finish(strategy, None)
@@ -819,7 +820,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
     }
 
-    case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount) => actorWork(context) {
+    case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount, _) => actorWork(context) {
       resetStallTimer(strategy)
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
