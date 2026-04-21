@@ -77,10 +77,11 @@ No change to `Harvesting.scala` — the `justDate` branch is already wired.
 
 ## Error handling
 
-- Missing `harvestDateOnly` triple → `getBooleanProp.getOrElse(false)` →
-  full timestamp sent.
-- Malformed value (cannot occur via UI) → `booleanProp` parser returns None
-  → defaults to false.
+- Missing `harvestDateOnly` triple → `DsInfo.getBooleanProp` returns
+  `false` directly (defined as `getLiteralProp(prop).exists(_ == "true")`)
+  → full timestamp sent.
+- Malformed value (cannot occur via UI) → same accessor returns `false` for
+  any literal that is not exactly `"true"`.
 - No new error paths. The setting only affects query string format; OAI-PMH
   server response handling is unchanged.
 
