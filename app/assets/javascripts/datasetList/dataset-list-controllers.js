@@ -1213,7 +1213,8 @@ define(["angular"], function () {
     ];
 
     var harvestCronFields = [
-        "harvestPreviousTime", "harvestDelay", "harvestDelayUnit", "harvestIncremental"
+        "harvestPreviousTime", "harvestDelay", "harvestDelayUnit", "harvestIncremental",
+        "harvestDateOnly"
     ];
 
     var idFilterFields = [
