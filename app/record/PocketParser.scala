@@ -68,11 +68,10 @@ object PocketParser {
     def writeTo(writer: Writer) = {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
-      val normalizedId = PocketParser.cleanUpId(id)
-      if (normalizedId.contains("--")) {
-        throw new Exception(s"""subject URI cannot contain '--'; $normalizedId""")
+      if (id.contains("--")) {
+        throw new Exception(s"""subject URI cannot contain '--'; $id""")
       }
-      writer.write(s"""<!--<${normalizedId}__$sha1>-->\n""")
+      writer.write(s"""<!--<${id}__$sha1>-->\n""")
     }
   }
 
