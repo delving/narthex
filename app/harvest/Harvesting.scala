@@ -105,7 +105,8 @@ object Harvesting {
     strategy: HarvestStrategy,
     resumptionToken: Option[PMHResumptionToken],
     deletedIds: List[String] = List.empty,    // Record IDs with status="deleted"
-    deletedCount: Int = 0                     // Count of deleted records in this page
+    deletedCount: Int = 0,                    // Count of deleted records in this page
+    recordCount: Int = 0                      // Actual number of <record> elements on this page
   )
 
   case class AdLibHarvestPage
@@ -466,7 +467,8 @@ trait Harvesting {
               strategy,
               resumptionToken = newToken,
               deletedIds = deletedIds,
-              deletedCount = deletedIds.size
+              deletedCount = deletedIds.size,
+              recordCount = allRecords.size
             )
             logger.debug(s"Return PMHHarvestPage: $newToken, $sourceUri")
             harvestPage

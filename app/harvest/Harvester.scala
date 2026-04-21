@@ -819,7 +819,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
     }
 
-    case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount) => actorWork(context) {
+    case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount, _) => actorWork(context) {
       resetStallTimer(strategy)
       val pageNumber = addPage(records)
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
