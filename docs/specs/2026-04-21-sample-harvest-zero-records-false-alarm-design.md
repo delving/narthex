@@ -7,58 +7,44 @@
 ## Problem
 
 The dataset list UI shows a "Sample Harvest: 0 Records" confirmation dialog
-that asks the operator whether to reset record counts to zero. The dialog
-fires when, in fact, the harvest succeeded with data. Two distinct triggers,
-same root cause (frontend infers "harvest empty" from incomplete state):
-
-### Trigger 1 — Sample harvest on any dataset
+asking the operator whether to reset record counts to zero. The dialog fires
+even when the sample harvest succeeded with data.
 
 `Harvester.scala:743-748` (PMH sample handler) writes
 `setAcquisitionCounts(acquired = page.totalRecords, ...)`. The
 `totalRecords` value comes from the OAI-PMH `<resumptionToken
-completeListSize="...">` attribute. When the sample response fits in one page
-and the server omits the resumption token (Brocade/Anet on small samples),
-`Harvesting.scala:420-423` defaults `total = 0`. Sample writes
-`acquiredRecordCount = 0` even though the response contained records.
+completeListSize="...">` attribute. When the sample response fits in one
+page and the server omits the resumption token (Brocade/Anet on small
+samples), `Harvesting.scala:431-434` defaults `total = 0`. Sample writes
+`acquiredRecordCount = 0` even when records were returned.
 
 The frontend dialog at `dataset-list-controllers.js:204-208` checks
-`acquiredRecordCount === 0` (among others) and fires a confirm dialog.
-
-### Trigger 2 — First-ever full harvest on a fresh dataset
-
-State changes propagate through WebSocket as separate frames:
-
-1. Harvest starts → `currentOperation = "HARVESTING"`, `stateRaw` set → frame 1
-2. Records ingest → `acquiredRecordCount` written → frame 2
-3. Harvest completes → `currentOperation` cleared, `stateSourced` set → frame 3
-
-For a never-sourced dataset, frame 1 hits the frontend with
-`previousStateRaw = null`, `acquiredRecordCount = 0`, `stateSourced = null`
-— all three current dialog conditions are transiently true → dialog fires
-mid-harvest, then later frames clear the conditions but the dialog already
-opened.
+`acquiredRecordCount === 0` (among other conditions) and fires a confirm
+dialog. Since sample succeeded but the count is wrong, the dialog
+mischaracterises a successful sample as an empty result.
 
 ## Goal
 
-Stop the false-alarm dialog without removing the legitimate signal (sample
-that genuinely returned zero records). Two complementary fixes addressing
-the two triggers.
+Stop the false-alarm dialog without removing the legitimate signal — sample
+that genuinely returned zero records.
 
 ## Non-goals
 
 - AdLib sample (already correct via `diagnostic.totalItems`)
 - JSON harvest (no sample path)
-- Restructuring the WebSocket message protocol
-- Changing the dialog text or its "reset counts to 0" callback
+- Frontend dialog logic itself (correct behaviour given correct data)
+- The "reset counts" command path or any other `setState(RAW)` site
+- A separate, unverified report of the dialog firing on "manual reharvest"
+  — `setState(RAW)` is not called by the FromScratch full-harvest path, so
+  that report cannot be triggered by FromScratch directly. If it reproduces
+  after this fix, investigate separately.
 
 ## Approach
 
-### Fix 1 — Backend: derive accurate sample count
-
 Add `recordCount: Int` field to `PMHHarvestPage`, populated from the parsed
 XML record list during `fetchPMHPage`. Symmetric with the existing
-`deletedCount` field, single source of truth for "how many records did this
-page actually contain."
+`deletedCount` field, and the right single source of truth for "how many
+records did this page actually contain."
 
 The PMH sample handler picks the count via fallback:
 
@@ -70,34 +56,13 @@ val sampled = if (page.totalRecords > 0) page.totalRecords else page.recordCount
 catalog total, useful for progress display elsewhere. The XML record count
 is the truthful fallback when `completeListSize` is absent or zero.
 
-### Fix 2 — Frontend: gate dialog on operation completion
-
-Add a fourth condition to the dialog check at
-`dataset-list-controllers.js:204-208`:
-
-```js
-var noOperationInProgress = !existingDataset.currentOperation;
-```
-
-Dialog only fires when an operation has fully completed (no
-`currentOperation` set). Eliminates the first-full-harvest race because
-mid-harvest WebSocket frames carry `currentOperation = "HARVESTING"` and
-fail the new gate.
-
-The fix preserves the legitimate trigger: when sample genuinely returns zero
-records, the `noRecordsMatch` path in `Harvester.scala:750-752` does not
-write counts; `DatasetActor.scala:889-893` sets state RAW (Sample bypasses
-the workflow state machine, so `currentOperation` is not set during sample);
-all four conditions are true → dialog fires correctly.
-
 ## File changes
 
 | File | Change |
 |---|---|
-| `app/harvest/Harvesting.scala` (`PMHHarvestPage` ~line 98-109) | Add `recordCount: Int = 0` field |
-| `app/harvest/Harvesting.scala` (`fetchPMHPage` ~line 449) | Set `recordCount = allRecords.size` from already-parsed `xml \ "ListRecords" \ "record"` |
+| `app/harvest/Harvesting.scala` (`PMHHarvestPage` lines 98-109) | Add `recordCount: Int = 0` field |
+| `app/harvest/Harvesting.scala` (`fetchPMHPage` constructor call lines 460-470) | Set `recordCount = allRecords.size` from the already-parsed value at line 437 |
 | `app/harvest/Harvester.scala:743-748` | Compute `val sampled = if (page.totalRecords > 0) page.totalRecords else page.recordCount`; pass `sampled` as both `acquired` and `source` to `setAcquisitionCounts` |
-| `app/assets/javascripts/datasetList/dataset-list-controllers.js:204-208` | Add `var noOperationInProgress = !existingDataset.currentOperation;` and append `&& noOperationInProgress` to the `if` condition |
 
 ## Data flow
 
@@ -109,19 +74,9 @@ all four conditions are true → dialog fires correctly.
 3. PMH sample handler computes `sampled = 5`, writes
    `setAcquisitionCounts(5, 0, 5, "pmh")`
 4. `DatasetActor` Sample case sets state RAW (unchanged)
-5. WebSocket frame: `stateRaw = set, acquiredRecordCount = 5,
-   currentOperation = null`
+5. `WebSocketIdleBroadcast` fires after `clearOperation`. Frame carries
+   `stateRaw = set, acquiredRecordCount = 5, currentOperation = null`
 6. Frontend: `noRecordsAcquired = false` → dialog skipped ✅
-
-### First full harvest on a fresh dataset (currently broken)
-
-1. Harvest starts → `currentOperation = "HARVESTING"`, `stateRaw` set →
-   WebSocket frame 1
-2. Frontend: `noOperationInProgress = false` → dialog skipped ✅
-3. Records ingest → counts set → frame 2; still mid-harvest
-4. Harvest completes → `currentOperation` cleared, `stateSourced` set →
-   frame 3
-5. Frontend: `notSourced = false` → dialog skipped ✅
 
 ### Sample with truly 0 records (legitimate signal, must still fire)
 
@@ -129,7 +84,7 @@ all four conditions are true → dialog fires correctly.
 2. `DatasetActor` Sample case sets state RAW
 3. WebSocket frame: `stateRaw = set, acquiredRecordCount = 0,
    stateSourced = null, currentOperation = null`
-4. All four conditions true → dialog fires correctly ✅
+4. All three conditions true → dialog fires correctly ✅
 
 ## Error handling
 
@@ -137,9 +92,6 @@ all four conditions are true → dialog fires correctly.
   `fetchPMHPage`; no new error paths.
 - `recordCount` defaults to 0 — same as today's behavior for any caller that
   does not explicitly read it. Backward-compatible field addition.
-- If `currentOperation` is `undefined` on a stale dataset object,
-  `!undefined === true` → dialog can fire if the other conditions match.
-  Matches today's behavior (no regression).
 
 ## Testing
 
@@ -155,7 +107,11 @@ all four conditions are true → dialog fires correctly.
 
 - Sample harvest on `brocade-cat-rsl` → no dialog, dataset detail panel
   shows non-zero record count after sample completes.
-- First-ever full harvest on a fresh test dataset → no transient dialog
-  during harvest progression.
 - Regression: sample on a fresh test dataset against an OAI-PMH endpoint
   that returns zero records → dialog still fires (correct behavior).
+- Operator reports of the dialog firing on "manual reharvest" should be
+  re-verified after this fix lands. If it still reproduces, capture the
+  WebSocket frame at the moment of firing (the broadcast carries
+  `stateRaw`, `stateSourced`, `acquiredRecordCount`, `currentOperation`)
+  and identify which state path triggered RAW (Sample? upload? "reset
+  counts"? retry?). Address as a separate spec.
