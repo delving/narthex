@@ -28,6 +28,7 @@ import harvest.PeriodicHarvest.ScanForHarvests
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
 import services.Temporal.DelayUnit
+import triplestore.GraphProperties.harvestDateOnly
 import triplestore.TripleStore
 
 object PeriodicHarvest {
@@ -93,8 +94,8 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                   }
                   logger.info(s"Set harvest cron: $next")
                   info.setHarvestCron(next)
-                  val justDate = harvestCron.unit == DelayUnit.WEEKS
-                  val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, justDate) else FromScratchIncremental
+                  val dateOnly = info.getBooleanProp(harvestDateOnly)
+                  val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, dateOnly) else FromScratchIncremental
                   val startHarvest = StartHarvest(strategy)
 
                   logger.info(s"$info queueing periodic harvest $startHarvest")
