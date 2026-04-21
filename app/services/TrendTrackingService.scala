@@ -548,6 +548,34 @@ object TrendTrackingService extends Logging {
     logger.debug(s"Captured event snapshot ($event): source=$sourceRecords, valid=$validRecords, indexed=$indexedRecords")
   }
 
+  /**
+   * Like captureEventSnapshot but inherits indexedRecords from the previous snapshot.
+   * Use this at SAVE time because Hub3 indexing is async and the true indexed count
+   * is not yet known. The daily aggregation path (OrgContext.runDailyTrendAggregation)
+   * reconciles with Hub3 and writes the real indexed count.
+   */
+  def captureEventSnapshotCarryingIndexed(
+    trendsLog: File,
+    event: String,
+    sourceRecords: Int,
+    acquiredRecords: Int,
+    deletedRecords: Int,
+    validRecords: Int,
+    invalidRecords: Int
+  ): Unit = {
+    val carriedIndexed = getLastSnapshot(trendsLog).map(_.indexedRecords).getOrElse(0)
+    captureEventSnapshot(
+      trendsLog = trendsLog,
+      event = event,
+      sourceRecords = sourceRecords,
+      acquiredRecords = acquiredRecords,
+      deletedRecords = deletedRecords,
+      validRecords = validRecords,
+      invalidRecords = invalidRecords,
+      indexedRecords = carriedIndexed
+    )
+  }
+
   // === Task 3: Daily summary read/write ===
 
   def appendDailySummary(dailyLog: File, summary: DailySummary): Unit = {
@@ -592,43 +620,59 @@ object TrendTrackingService extends Logging {
   // === Task 4: Daily aggregation logic ===
 
   def aggregateDay(trendsLog: File, dailyLog: File, date: String): Unit = {
-    val lastSnapshot = getLastSnapshot(trendsLog)
-    if (lastSnapshot.isEmpty) {
-      logger.debug(s"No snapshots to aggregate for $date")
-      return
+    val allSnapshots = readSnapshots(trendsLog)
+
+    // Filter to snapshots whose ISO timestamp begins with the target date,
+    // then take the last one within that date so we ignore any snapshots
+    // taken after midnight on day+1.
+    val daySnapshots = allSnapshots.filter { s =>
+      timeToString(s.timestamp).startsWith(date)
     }
+    val endOfDaySnapshot = daySnapshots.sortBy(_.timestamp.getMillis).lastOption
 
-    val current = lastSnapshot.get
-    val endOfDay = EndOfDayCounts.fromSnapshot(current)
+    if (endOfDaySnapshot.isEmpty) {
+      // No snapshots on that date — carry forward the previous day's end-of-day
+      // counts so the chart has a continuous series. Zero delta by definition.
+      val previousSummary = getLastDailySummary(dailyLog)
+      previousSummary match {
+        case Some(prev) =>
+          val summary = DailySummary(
+            date = date,
+            endOfDay = prev.endOfDay,
+            delta = TrendDelta.zero,
+            events = 0
+          )
+          appendDailySummary(dailyLog, summary)
+          logger.info(s"Aggregated $date with carry-forward (no snapshots on that date): source=${prev.endOfDay.sourceRecords}")
+        case None =>
+          logger.debug(s"No snapshots or previous summary available for $date; skipping")
+      }
+    } else {
+      val endOfDay = EndOfDayCounts.fromSnapshot(endOfDaySnapshot.get)
+      val todayEvents = daySnapshots.size
 
-    // Count events for this specific date
-    val datePrefix = date
-    val todayEvents = readSnapshots(trendsLog).count { s =>
-      timeToString(s.timestamp).startsWith(datePrefix)
+      val previousSummary = getLastDailySummary(dailyLog)
+      val delta = previousSummary match {
+        case Some(prev) =>
+          TrendDelta(
+            source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
+            valid = endOfDay.validRecords - prev.endOfDay.validRecords,
+            indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
+          )
+        case None =>
+          TrendDelta.zero
+      }
+
+      val summary = DailySummary(
+        date = date,
+        endOfDay = endOfDay,
+        delta = delta,
+        events = todayEvents
+      )
+
+      appendDailySummary(dailyLog, summary)
+      logger.info(s"Aggregated daily summary for $date: source=${endOfDay.sourceRecords}, delta=${delta.source}, events=$todayEvents")
     }
-
-    val previousSummary = getLastDailySummary(dailyLog)
-
-    val delta = previousSummary match {
-      case Some(prev) =>
-        TrendDelta(
-          source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
-          valid = endOfDay.validRecords - prev.endOfDay.validRecords,
-          indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
-        )
-      case None =>
-        TrendDelta.zero
-    }
-
-    val summary = DailySummary(
-      date = date,
-      endOfDay = endOfDay,
-      delta = delta,
-      events = todayEvents
-    )
-
-    appendDailySummary(dailyLog, summary)
-    logger.info(s"Aggregated daily summary for $date: source=${endOfDay.sourceRecords}, delta=${delta.source}")
   }
 
   // === Task 5: Fix delta calculation ===

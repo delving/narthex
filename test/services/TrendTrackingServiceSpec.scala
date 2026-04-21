@@ -169,8 +169,15 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     val trendsLog = new File(dir, "trends.jsonl")
     val dailyLog = new File(dir, "trends-daily.jsonl")
 
-    // Write a snapshot for today
-    TrendTrackingService.captureEventSnapshot(trendsLog, "harvest", 200, 200, 0, 180, 20, 160)
+    // Write a snapshot timestamped on 2026-02-18 so aggregateDay picks it up
+    val snap = TrendSnapshot(
+      timestamp = new DateTime(2026, 2, 18, 12, 0, 0),
+      snapshotType = "harvest",
+      sourceRecords = 200, acquiredRecords = 200, deletedRecords = 0,
+      validRecords = 180, invalidRecords = 20, indexedRecords = 160
+    )
+    val w1 = services.FileHandling.appender(trendsLog)
+    try { w1.write(Json.stringify(Json.toJson(snap)) + "\n") } finally { w1.close() }
 
     // Write a previous day summary
     TrendTrackingService.appendDailySummary(dailyLog,
@@ -193,7 +200,15 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     val trendsLog = new File(dir, "trends.jsonl")
     val dailyLog = new File(dir, "trends-daily.jsonl")
 
-    TrendTrackingService.captureEventSnapshot(trendsLog, "harvest", 100, 100, 0, 90, 10, 80)
+    val snap = TrendSnapshot(
+      timestamp = new DateTime(2026, 2, 18, 12, 0, 0),
+      snapshotType = "harvest",
+      sourceRecords = 100, acquiredRecords = 100, deletedRecords = 0,
+      validRecords = 90, invalidRecords = 10, indexedRecords = 80
+    )
+    val w = services.FileHandling.appender(trendsLog)
+    try { w.write(Json.stringify(Json.toJson(snap)) + "\n") } finally { w.close() }
+
     TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
 
     val summaries = TrendTrackingService.readDailySummaries(dailyLog)
@@ -306,5 +321,101 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     trends.spec shouldBe "test-spec"
     trends.current shouldBe defined
     trends.current.get.sourceRecords shouldBe 100
+  }
+
+  // === Task 1 fix: captureEventSnapshotCarryingIndexed ===
+
+  "captureEventSnapshotCarryingIndexed" should "carry previous indexedRecords forward" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    // Seed a snapshot where Hub3 has 800 indexed
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 1000, acquiredRecords = 1000, deletedRecords = 0,
+      validRecords = 900, invalidRecords = 100, indexedRecords = 800
+    )
+    // New SAVE: valid climbs to 950 but Hub3 index not yet refreshed
+    TrendTrackingService.captureEventSnapshotCarryingIndexed(
+      trendsLog, "save",
+      sourceRecords = 1050, acquiredRecords = 1050, deletedRecords = 0,
+      validRecords = 950, invalidRecords = 100
+    )
+    val snaps = TrendTrackingService.readSnapshots(trendsLog)
+    snaps.size shouldBe 2
+    snaps.last.indexedRecords shouldBe 800
+    snaps.last.validRecords shouldBe 950
+  }
+
+  it should "use 0 indexed when no previous snapshot exists" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    TrendTrackingService.captureEventSnapshotCarryingIndexed(
+      trendsLog, "save",
+      sourceRecords = 100, acquiredRecords = 100, deletedRecords = 0,
+      validRecords = 90, invalidRecords = 10
+    )
+    val snaps = TrendTrackingService.readSnapshots(trendsLog)
+    snaps.head.indexedRecords shouldBe 0
+  }
+
+  // === Task 2 fix: aggregateDay picks target-date snapshot ===
+
+  "aggregateDay" should "aggregate the last snapshot within the target date, not the global last" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    val dailyLog = new File(tmpDir, "trends-daily.jsonl")
+
+    val yesterday = DateTime.now().minusDays(1).withTime(23, 50, 0, 0)
+    val today = DateTime.now().withTime(0, 5, 0, 0)
+
+    val yesterdaySnap = TrendSnapshot(
+      timestamp = yesterday,
+      snapshotType = "save",
+      sourceRecords = 1000, acquiredRecords = 1000, deletedRecords = 0,
+      validRecords = 900, invalidRecords = 100, indexedRecords = 850
+    )
+    val todaySnap = TrendSnapshot(
+      timestamp = today,
+      snapshotType = "save",
+      sourceRecords = 1500, acquiredRecords = 1500, deletedRecords = 0,
+      validRecords = 1400, invalidRecords = 100, indexedRecords = 850
+    )
+
+    val yesterdayDate = yesterday.toString("yyyy-MM-dd")
+
+    val w = services.FileHandling.appender(trendsLog)
+    try {
+      w.write(Json.stringify(Json.toJson(yesterdaySnap)) + "\n")
+      w.write(Json.stringify(Json.toJson(todaySnap)) + "\n")
+    } finally { w.close() }
+
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, yesterdayDate)
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.size shouldBe 1
+    summaries.head.endOfDay.sourceRecords shouldBe 1000
+    summaries.head.endOfDay.validRecords shouldBe 900
+  }
+
+  it should "carry forward previous end-of-day when no snapshots exist on target date" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    val dailyLog = new File(tmpDir, "trends-daily.jsonl")
+
+    val prev = DailySummary(
+      date = "2026-04-18",
+      endOfDay = EndOfDayCounts(
+        sourceRecords = 500, acquiredRecords = 500, deletedRecords = 0,
+        validRecords = 450, invalidRecords = 50, indexedRecords = 400
+      ),
+      delta = TrendDelta.zero,
+      events = 2
+    )
+    TrendTrackingService.appendDailySummary(dailyLog, prev)
+
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-04-19")
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.size shouldBe 2
+    summaries.last.date shouldBe "2026-04-19"
+    summaries.last.endOfDay.sourceRecords shouldBe 500
+    summaries.last.delta shouldBe TrendDelta.zero
+    summaries.last.events shouldBe 0
   }
 }
