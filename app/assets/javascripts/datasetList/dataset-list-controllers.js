@@ -1418,12 +1418,24 @@ define(["angular"], function () {
             }
         }
 
+        // Mirrors Scala-side Harvesting.formatFromParameter so preview matches actual harvest:
+        // dateOnly=true → YYYY-MM-DD (no Z), else YYYY-MM-DDTHH:MM:SSZ
+        function formatIncrementalFromParam() {
+            var trimmed = $scope.trimMillis($scope.dataset.edit.harvestPreviousTime);
+            if (!trimmed) return '';
+            if ($scope.dataset.edit.harvestDateOnly === 'true') {
+                var tIdx = trimmed.indexOf('T');
+                return tIdx > 0 ? trimmed.substring(0, tIdx) : trimmed;
+            }
+            return trimmed + 'Z';
+        }
+
         // Build encoded preview URL with optional 'from' parameter for incremental harvest
         $scope.getIncrementalPreviewUrl = function() {
             if (!$scope.pmhPreviewBase) return '';
-            var fromDate = $scope.trimMillis($scope.dataset.edit.harvestPreviousTime);
-            if (!fromDate) return '/narthex/preview/' + encodeURIComponent($scope.pmhPreviewBase);
-            var fullUrl = $scope.pmhPreviewBase + '&from=' + fromDate + 'Z';
+            var fromParam = formatIncrementalFromParam();
+            if (!fromParam) return '/narthex/preview/' + encodeURIComponent($scope.pmhPreviewBase);
+            var fullUrl = $scope.pmhPreviewBase + '&from=' + fromParam;
             return '/narthex/preview/' + encodeURIComponent(fullUrl);
         };
 
@@ -1460,9 +1472,9 @@ define(["angular"], function () {
         // Get the raw incremental harvest URL
         $scope.getRawIncrementalUrl = function() {
             if (!$scope.pmhPreviewBase) return '';
-            var fromDate = $scope.trimMillis($scope.dataset.edit.harvestPreviousTime);
-            if (!fromDate) return $scope.pmhPreviewBase;
-            return $scope.pmhPreviewBase + '&from=' + fromDate + 'Z';
+            var fromParam = formatIncrementalFromParam();
+            if (!fromParam) return $scope.pmhPreviewBase;
+            return $scope.pmhPreviewBase + '&from=' + fromParam;
         };
 
         // Build preview URLs initially
