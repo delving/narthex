@@ -70,6 +70,16 @@ class TestPocketParser extends AnyFlatSpec with should.Matchers with MockitoSuga
     runTestFor("------")
   }
 
+  it should "collapse space-dash-space into a single dash" in {
+    // Regression: "XN1012 - 1" must not become "XN1012--1" in the pocket-mapper id
+    val source = Source.fromString(getRecords("XN1012 - 1"))
+    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter, mock[OrgContext])
+    var captured: Option[String] = None
+    def outPut(pocket: Pocket): Unit = { captured = Some(pocket.id) }
+    pocketParser.parse(source, Set.empty, outPut, reporter)
+    assert(captured.contains("XN1012-1"))
+  }
+
   def runTestFor(illegalChar: String): Unit = {
     val source = Source.fromString(getRecords(s"foo${illegalChar}bar"))
     val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter, mock[OrgContext])

@@ -43,7 +43,9 @@ object PocketParser {
       .replace("+", "-")
       .replace("(", "-")
       .replace(")", "-")
-      .replaceAll("[-]{2,20}", "-")
+      .replace(" ", "-")
+      .replace("_", "-")
+      .replaceAll("-{2,}", "-")
   }
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
@@ -66,10 +68,11 @@ object PocketParser {
     def writeTo(writer: Writer) = {
       val sha1: String = PocketParser.sha1(text)
       writer.write(text)
-      if (id.contains("--")) {
-        throw new Exception(s"""subject URI cannot contain '--'; $id""")
+      val normalizedId = PocketParser.cleanUpId(id)
+      if (normalizedId.contains("--")) {
+        throw new Exception(s"""subject URI cannot contain '--'; $normalizedId""")
       }
-      writer.write(s"""<!--<${id}__$sha1>-->\n""")
+      writer.write(s"""<!--<${normalizedId}__$sha1>-->\n""")
     }
   }
 
