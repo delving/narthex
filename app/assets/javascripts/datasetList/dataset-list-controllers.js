@@ -645,6 +645,10 @@ define(["angular"], function () {
             if (!dataset.harvestContinueOnError) {
                 dataset.harvestContinueOnError = 'false';
             }
+            // harvestDateOnly is BoolField → arrives as real boolean from WebSocket;
+            // checkbox uses string convention. Normalize to string so ng-true-value
+            // strict equality matches.
+            dataset.harvestDateOnly = (dataset.harvestDateOnly === true || dataset.harvestDateOnly === 'true') ? 'true' : 'false';
             if (!dataset.harvestErrorThreshold) {
                 dataset.harvestErrorThreshold = 10;
             } else {
