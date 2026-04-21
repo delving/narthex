@@ -1544,6 +1544,18 @@
                     </div>
                 </div>
             </div>
+            <div class="form-group" data-ng-show="dataset.edit.harvestType == 'pmh'">
+                <label class="col-sm-3" for="hc_dateonly">OAI-PMH Date Granularity</label>
+                <div class="col-sm-9">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="hc_dateonly" data-ng-model="dataset.edit.harvestDateOnly" ng-true-value="'true'" ng-false-value="'false'"/>
+                            Send date-only timestamp (<code>YYYY-MM-DD</code>) instead of full ISO timestamp.
+                            Required for OAI-PMH endpoints that only support day-level granularity (e.g., Brocade/Anet).
+                        </label>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <div class="alert alert-info">
                     Harvesting is executed only if the Dataset is in either Saved or Incremental Saved state.
