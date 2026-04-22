@@ -419,6 +419,18 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     summaries.last.events shouldBe 0
   }
 
+  it should "fall back to oldest summary when no baseline at cutoff for 7d delta" in withTempDir { _ =>
+    val summaries = List(
+      DailySummary("2026-04-19", EndOfDayCounts(100, 100, 0, 90, 10, 80), TrendDelta.zero, 1),
+      DailySummary("2026-04-20", EndOfDayCounts(200, 200, 0, 180, 20, 170), TrendDelta.zero, 1),
+      DailySummary("2026-04-21", EndOfDayCounts(300, 300, 0, 280, 20, 260), TrendDelta.zero, 1)
+    )
+    val delta = TrendTrackingService.calculateDeltaFromDailySummaries(summaries, 7)
+    delta.source shouldBe 200
+    delta.valid shouldBe 190
+    delta.indexed shouldBe 180
+  }
+
   it should "assign a near-midnight UTC snapshot to that same UTC date" in withTempDir { tmpDir =>
     val trendsLog = new File(tmpDir, "trends.jsonl")
     val dailyLog = new File(tmpDir, "trends-daily.jsonl")

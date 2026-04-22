@@ -747,7 +747,12 @@ object TrendTrackingService extends Logging {
     val current = summaries.last
     val cutoffDate = org.joda.time.LocalDate.parse(current.date).minusDays(daysAgo).toString("yyyy-MM-dd")
 
+    // Prefer a baseline on or before the cutoff; when the history is too
+    // short (e.g., 3 days of data, asking for 7d), fall back to the oldest
+    // non-current entry so the UI shows accurate growth within the window
+    // that's actually available instead of a misleading zero.
     val baseline = summaries.reverse.find(_.date <= cutoffDate)
+      .orElse(summaries.headOption.filterNot(_ == current))
 
     baseline match {
       case Some(base) =>
