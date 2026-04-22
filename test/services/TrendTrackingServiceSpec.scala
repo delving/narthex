@@ -281,16 +281,28 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     result.get.currentIndexed shouldBe 130
   }
 
-  it should "fall back to trends log when no daily data exists" in withTempDir { dir =>
+  it should "fall back to trends log when no daily data exists and mark as initializing" in withTempDir { dir =>
     val dailyLog = new File(dir, "trends-daily.jsonl")
     val trendsLog = new File(dir, "trends.jsonl")
 
-    // Write only to trends log
     TrendTrackingService.captureEventSnapshot(trendsLog, "harvest", 100, 100, 0, 90, 10, 80)
 
     val result = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, "test-spec")
     result shouldBe defined
     result.get.currentSource shouldBe 100
+    result.get.initializing shouldBe Some(true)
+  }
+
+  it should "not mark as initializing when daily summaries exist" in withTempDir { dir =>
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+    val trendsLog = new File(dir, "trends.jsonl")
+
+    TrendTrackingService.appendDailySummary(dailyLog,
+      DailySummary("2026-04-21", EndOfDayCounts(100, 100, 0, 90, 10, 80), TrendDelta.zero, 1))
+
+    val result = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, "test-spec")
+    result shouldBe defined
+    result.get.initializing shouldBe None
   }
 
   "getDatasetTrendsFromDaily" should "build trends from daily summaries" in withTempDir { dir =>
@@ -467,6 +479,26 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
       validRecords = 0, invalidRecords = 0, indexedRecords = 0
     )
     TrendTrackingService.readSnapshots(trendsLog).size shouldBe 2
+  }
+
+  it should "tail-read the last snapshot from a large file" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    // Pre-populate 5000 snapshots; insist getLastSnapshot returns the final one.
+    val w = services.FileHandling.appender(trendsLog)
+    try {
+      (1 to 5000).foreach { i =>
+        val snap = TrendSnapshot(
+          timestamp = new DateTime(2026, 1, 1, 0, 0, 0, org.joda.time.DateTimeZone.UTC).plusMinutes(i),
+          snapshotType = "save",
+          sourceRecords = i, acquiredRecords = i, deletedRecords = 0,
+          validRecords = i, invalidRecords = 0, indexedRecords = i
+        )
+        w.write(Json.stringify(Json.toJson(snap)) + "\n")
+      }
+    } finally { w.close() }
+
+    val last = TrendTrackingService.getLastSnapshot(trendsLog).get
+    last.sourceRecords shouldBe 5000
   }
 
   it should "still capture a snapshot when source drops >50%" in withTempDir { tmpDir =>

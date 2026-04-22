@@ -138,14 +138,20 @@
                         </td>
                         <td>
                             <a href="#/?dataset={{ ds.spec }}">{{ ds.spec }}</a>
+                            <span ng-if="ds.initializing" class="label label-warning" style="margin-left: 6px;"
+                                  title="First daily aggregation has not run yet; deltas are unreliable until 00:30 UTC tomorrow.">
+                                Initializing
+                            </span>
                         </td>
                         <td class="text-right">{{ formatNumber(ds.currentSource) }}</td>
                         <td class="text-right">{{ formatNumber(ds.currentIndexed) }}</td>
-                        <td class="text-right" ng-class="getDeltaClass(getDelta(ds, 'source'))">
-                            {{ formatDelta(getDelta(ds, 'source')) }}
+                        <td class="text-right" ng-class="ds.initializing ? '' : getDeltaClass(getDelta(ds, 'source'))">
+                            <span ng-if="!ds.initializing">{{ formatDelta(getDelta(ds, 'source')) }}</span>
+                            <span ng-if="ds.initializing" class="text-muted">—</span>
                         </td>
-                        <td class="text-right" ng-class="getDeltaClass(getDelta(ds, 'indexed'))">
-                            {{ formatDelta(getDelta(ds, 'indexed')) }}
+                        <td class="text-right" ng-class="ds.initializing ? '' : getDeltaClass(getDelta(ds, 'indexed'))">
+                            <span ng-if="!ds.initializing">{{ formatDelta(getDelta(ds, 'indexed')) }}</span>
+                            <span ng-if="ds.initializing" class="text-muted">—</span>
                         </td>
                     </tr>
                     <tr ng-if="expandedSpec === ds.spec">

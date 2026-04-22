@@ -115,7 +115,11 @@ case class DatasetTrendSummary(
   currentIndexed: Int,
   delta24h: TrendDelta,
   delta7d: TrendDelta,
-  delta30d: TrendDelta
+  delta30d: TrendDelta,
+  // true when no daily summary exists yet and the summary was synthesized from
+  // the raw event log (so deltas are unreliable). UI renders "Initializing"
+  // instead of misleading zero deltas.
+  initializing: Option[Boolean] = None
 )
 
 object DatasetTrendSummary {
@@ -571,12 +575,47 @@ object TrendTrackingService extends Logging {
       return None
     }
 
-    Using(Source.fromFile(trendsLog)) { source =>
-      source.getLines()
-        .filter(_.nonEmpty)
-        .foldLeft(Option.empty[String])((_, line) => Some(line))
-        .flatMap(line => Try(Json.parse(line).as[TrendSnapshot]).toOption)
-    }.getOrElse(None)
+    // Tail-read the final line via RandomAccessFile so the cost is O(1) in
+    // file length. Per-SAVE captures used to stream the entire trends.jsonl
+    // which grew unbounded on busy datasets and could time out during the
+    // change-detection read, silently dropping new captures.
+    Try {
+      val raf = new java.io.RandomAccessFile(trendsLog, "r")
+      try {
+        val fileLength = raf.length()
+
+        // Walk back over trailing newline bytes to find the last byte of content.
+        var endOfContent = fileLength - 1
+        var done = false
+        while (!done && endOfContent >= 0) {
+          raf.seek(endOfContent)
+          val b = raf.readByte()
+          if (b == '\n' || b == '\r') endOfContent -= 1
+          else done = true
+        }
+
+        if (endOfContent < 0) None
+        else {
+          // Walk back to the byte just after the newline preceding the last line.
+          var startOfLastLine = endOfContent
+          var foundBoundary = false
+          while (!foundBoundary && startOfLastLine > 0) {
+            raf.seek(startOfLastLine - 1)
+            val b = raf.readByte()
+            if (b == '\n' || b == '\r') foundBoundary = true
+            else startOfLastLine -= 1
+          }
+
+          val length = (endOfContent - startOfLastLine + 1).toInt
+          val buf = new Array[Byte](length)
+          raf.seek(startOfLastLine)
+          raf.readFully(buf)
+          val line = new String(buf, "UTF-8").trim
+          if (line.isEmpty) None
+          else Try(Json.parse(line).as[TrendSnapshot]).toOption
+        }
+      } finally raf.close()
+    }.toOption.flatten
   }
 
   /**
@@ -813,7 +852,10 @@ object TrendTrackingService extends Logging {
         delta30d = calculateDeltaFromDailySummaries(dailySummaries, 30)
       ))
     } else {
-      getDatasetTrendSummary(trendsLog, spec)
+      // Fallback reads raw event log; deltas are best-effort when only 1-2
+      // snapshots exist. Flag as initializing so the UI can distinguish
+      // "genuinely flat" from "first aggregation hasn't run yet".
+      getDatasetTrendSummary(trendsLog, spec).map(_.copy(initializing = Some(true)))
     }
   }
 
