@@ -575,41 +575,47 @@ object TrendTrackingService extends Logging {
     invalidRecords: Int,
     indexedRecords: Int
   ): Unit = {
-    if (sourceRecords == 0) {
-      logger.debug("Skipping event snapshot: sourceRecords is 0")
-      return
-    }
-
     val lastSnapshot = getLastSnapshot(trendsLog)
-    lastSnapshot.foreach { prev =>
-      if (prev.sourceRecords == sourceRecords &&
+
+    // Only skip when this is truly the pre-harvest state: no prior history at
+    // all AND the new counts are all zero. Legitimate depublications (dataset
+    // emptied after having content) must be recorded so the UI can show the
+    // drop. Likewise large drops >50% are no longer silently dropped; they are
+    // logged as a warning but still captured, so the UI reflects reality even
+    // when a partial harvest produced them.
+    val shouldSkip = lastSnapshot match {
+      case None =>
+        sourceRecords == 0 && validRecords == 0 && indexedRecords == 0
+      case Some(prev) =>
+        prev.sourceRecords == sourceRecords &&
           prev.acquiredRecords == acquiredRecords &&
           prev.deletedRecords == deletedRecords &&
           prev.validRecords == validRecords &&
           prev.invalidRecords == invalidRecords &&
-          prev.indexedRecords == indexedRecords) {
-        logger.debug("Skipping event snapshot: counts unchanged")
-        return
-      }
-
-      if (prev.sourceRecords > 0 && sourceRecords < prev.sourceRecords * 0.5) {
-        logger.warn(s"Skipping event snapshot: sourceRecords dropped from ${prev.sourceRecords} to $sourceRecords (>50% drop, likely partial harvest)")
-        return
-      }
+          prev.indexedRecords == indexedRecords
     }
 
-    val snapshot = TrendSnapshot(
-      timestamp = nowUtc,
-      snapshotType = event,
-      sourceRecords = sourceRecords,
-      acquiredRecords = acquiredRecords,
-      deletedRecords = deletedRecords,
-      validRecords = validRecords,
-      invalidRecords = invalidRecords,
-      indexedRecords = indexedRecords
-    )
-    appendSnapshot(trendsLog, snapshot)
-    logger.debug(s"Captured event snapshot ($event): source=$sourceRecords, valid=$validRecords, indexed=$indexedRecords")
+    if (shouldSkip) {
+      logger.debug(s"Skipping event snapshot for $event: no change or pre-harvest zero state")
+    } else {
+      lastSnapshot.foreach { prev =>
+        if (prev.sourceRecords > 0 && sourceRecords < prev.sourceRecords * 0.5) {
+          logger.warn(s"Large sourceRecords drop for $event: ${prev.sourceRecords} -> $sourceRecords (recording anyway — verify upstream isn't a partial harvest)")
+        }
+      }
+      val snapshot = TrendSnapshot(
+        timestamp = nowUtc,
+        snapshotType = event,
+        sourceRecords = sourceRecords,
+        acquiredRecords = acquiredRecords,
+        deletedRecords = deletedRecords,
+        validRecords = validRecords,
+        invalidRecords = invalidRecords,
+        indexedRecords = indexedRecords
+      )
+      appendSnapshot(trendsLog, snapshot)
+      logger.debug(s"Captured event snapshot ($event): source=$sourceRecords, valid=$validRecords, indexed=$indexedRecords")
+    }
   }
 
   /**

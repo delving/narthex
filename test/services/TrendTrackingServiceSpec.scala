@@ -87,14 +87,15 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     trendsLog.length() shouldBe sizeBefore
   }
 
-  it should "skip when sourceRecords drops more than 50%" in withTempDir { dir =>
+  it should "still capture a snapshot when sourceRecords drops more than 50%" in withTempDir { dir =>
+    // Intentional: we no longer hide >50% drops. Legitimate large deletions must
+    // be recorded so the UI can show the dataset shrinking.
     val trendsLog = new File(dir, "trends.jsonl")
     TrendTrackingService.captureEventSnapshot(trendsLog, "harvest", 1000, 1000, 0, 900, 100, 800)
 
     val sizeBefore = trendsLog.length()
-    // Try with 40% of original (>50% drop)
     TrendTrackingService.captureEventSnapshot(trendsLog, "harvest", 400, 400, 0, 360, 40, 320)
-    trendsLog.length() shouldBe sizeBefore
+    trendsLog.length() should be > sizeBefore
   }
 
   it should "write snapshot when counts change" in withTempDir { dir =>
@@ -451,6 +452,36 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     sums.size shouldBe 1
     sums.head.date shouldBe "2026-04-19"
     sums.head.endOfDay.sourceRecords shouldBe 100
+  }
+
+  "captureEventSnapshot guards" should "capture a zero-source snapshot when a prior snapshot exists (depublication)" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 500, acquiredRecords = 500, deletedRecords = 0,
+      validRecords = 450, invalidRecords = 50, indexedRecords = 400
+    )
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 0, acquiredRecords = 0, deletedRecords = 500,
+      validRecords = 0, invalidRecords = 0, indexedRecords = 0
+    )
+    TrendTrackingService.readSnapshots(trendsLog).size shouldBe 2
+  }
+
+  it should "still capture a snapshot when source drops >50%" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 1000, acquiredRecords = 1000, deletedRecords = 0,
+      validRecords = 900, invalidRecords = 100, indexedRecords = 800
+    )
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 300, acquiredRecords = 300, deletedRecords = 700,
+      validRecords = 270, invalidRecords = 30, indexedRecords = 800
+    )
+    TrendTrackingService.readSnapshots(trendsLog).size shouldBe 2
   }
 
   // === Task 5 fix: cleanup/append race ===
