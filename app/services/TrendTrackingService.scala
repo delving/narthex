@@ -338,19 +338,72 @@ object TrendTrackingService extends Logging {
    * and recent event snapshots.
    */
   def cleanupOldSnapshots(trendsLog: File): Unit = {
-    val snapshots = readSnapshots(trendsLog)
-    val cutoff = DateTime.now().minusDays(MAX_HISTORY_DAYS)
+    withFileLock(trendsLog) {
+      val snapshots = readSnapshots(trendsLog)
+      val cutoff = DateTime.now().minusDays(MAX_HISTORY_DAYS)
 
-    val toKeep = snapshots.filter { s =>
-      s.timestamp.isAfter(cutoff) || s.snapshotType == "daily"
-    }.sortBy(_.timestamp.getMillis).takeRight(MAX_HISTORY_DAYS * 2)  // Keep reasonable history
+      val toKeep = snapshots.filter { s =>
+        s.timestamp.isAfter(cutoff) || s.snapshotType == "daily"
+      }.sortBy(_.timestamp.getMillis).takeRight(MAX_HISTORY_DAYS * 2)  // Keep reasonable history
 
-    // Rewrite file with only kept snapshots
-    if (toKeep.size < snapshots.size) {
-      val tmpFile = new File(trendsLog.getParent, trendsLog.getName + ".tmp")
-      toKeep.foreach(s => appendSnapshot(tmpFile, s))
-      tmpFile.renameTo(trendsLog)
-      logger.info(s"Cleaned up trends file: ${snapshots.size} -> ${toKeep.size} snapshots")
+      // Rewrite file with only kept snapshots via ATOMIC_MOVE to avoid losing
+      // writes that land between read and rename. All appendSnapshot calls also
+      // acquire the same file lock, so the rewrite sees a consistent state.
+      if (toKeep.size < snapshots.size) {
+        val tmpFile = new File(trendsLog.getParent, trendsLog.getName + ".tmp")
+        // Build the tmp file directly (appendSnapshot here would recursively
+        // re-enter the lock — a no-op on re-entrant FileLock, but avoid relying
+        // on that).
+        val writer = appender(tmpFile)
+        try {
+          toKeep.foreach { s =>
+            writer.write(Json.stringify(Json.toJson(s)) + "\n")
+          }
+          writer.flush()
+        } finally {
+          writer.close()
+        }
+        java.nio.file.Files.move(
+          tmpFile.toPath,
+          trendsLog.toPath,
+          java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+          java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+        logger.info(s"Cleaned up trends file: ${snapshots.size} -> ${toKeep.size} snapshots")
+      }
+    }
+  }
+
+  /**
+   * Acquire an exclusive lock for a trends file while executing `body`.
+   *
+   * Uses a JVM-level ReentrantLock keyed by canonical path for intra-process
+   * mutual exclusion (FileChannel.lock is process-level; overlapping locks
+   * from threads in the same JVM throw OverlappingFileLockException).
+   *
+   * Layered on top is a FileChannel.lock on a sidecar .lock file so that
+   * separate Narthex processes (e.g., test suite + dev server sharing the
+   * same NarthexFiles dir) also serialize.
+   */
+  private val pathLocks = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.locks.ReentrantLock]()
+
+  private def withFileLock[A](trendsLog: File)(body: => A): A = {
+    val canonicalKey = trendsLog.getCanonicalPath
+    val jvmLock = pathLocks.computeIfAbsent(canonicalKey, _ => new java.util.concurrent.locks.ReentrantLock())
+    jvmLock.lock()
+    try {
+      val lockFile = new File(trendsLog.getParent, trendsLog.getName + ".lock")
+      val raf = new java.io.RandomAccessFile(lockFile, "rw")
+      val channel = raf.getChannel
+      val fileLock = channel.lock()
+      try body
+      finally {
+        fileLock.release()
+        channel.close()
+        raf.close()
+      }
+    } finally {
+      jvmLock.unlock()
     }
   }
 
@@ -358,13 +411,15 @@ object TrendTrackingService extends Logging {
    * Append a snapshot to the trends file.
    */
   private def appendSnapshot(trendsLog: File, snapshot: TrendSnapshot): Unit = {
-    val line = Json.stringify(Json.toJson(snapshot)) + "\n"
-    val writer = appender(trendsLog)
-    try {
-      writer.write(line)
-      writer.flush()
-    } finally {
-      writer.close()
+    withFileLock(trendsLog) {
+      val line = Json.stringify(Json.toJson(snapshot)) + "\n"
+      val writer = appender(trendsLog)
+      try {
+        writer.write(line)
+        writer.flush()
+      } finally {
+        writer.close()
+      }
     }
   }
 

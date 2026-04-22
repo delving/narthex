@@ -418,4 +418,42 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     summaries.last.delta shouldBe TrendDelta.zero
     summaries.last.events shouldBe 0
   }
+
+  // === Task 5 fix: cleanup/append race ===
+
+  "cleanupOldSnapshots" should "not lose snapshots when concurrent appends happen" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    // Seed 10 snapshots older than 30 days so cleanup will discard them
+    val oldTimestamp = DateTime.now().minusDays(60)
+    (1 to 10).foreach { i =>
+      val snap = TrendSnapshot(
+        timestamp = oldTimestamp.plusMinutes(i),
+        snapshotType = "event",
+        sourceRecords = 100 + i, acquiredRecords = 100 + i, deletedRecords = 0,
+        validRecords = 100 + i, invalidRecords = 0, indexedRecords = 100 + i
+      )
+      val w = services.FileHandling.appender(trendsLog)
+      try { w.write(Json.stringify(Json.toJson(snap)) + "\n") } finally { w.close() }
+    }
+
+    // Concurrent writers inject fresh snapshots while cleanup runs
+    val writerThreads = (1 to 10).map { n =>
+      new Thread(() => {
+        TrendTrackingService.captureEventSnapshot(
+          trendsLog, "save",
+          sourceRecords = 2000 + n, acquiredRecords = 2000 + n, deletedRecords = 0,
+          validRecords = 1800, invalidRecords = 200, indexedRecords = 1700
+        )
+      })
+    }
+    val cleaner = new Thread(() => TrendTrackingService.cleanupOldSnapshots(trendsLog))
+    writerThreads.foreach(_.start())
+    cleaner.start()
+    writerThreads.foreach(_.join())
+    cleaner.join()
+
+    val finalSnaps = TrendTrackingService.readSnapshots(trendsLog)
+    val concurrentCaptured = finalSnaps.map(_.sourceRecords).filter(_ >= 2001).toSet
+    concurrentCaptured.size shouldBe 10
+  }
 }
