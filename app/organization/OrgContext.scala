@@ -103,19 +103,39 @@ class OrgContext @Inject() (
     )(new Runnable {
       override def run(): Unit = runDailyTrendAggregation()
     })(actorSystem.dispatcher)
+
+    // Bootstrap: on fresh installs (or when trend tracking has been off for a
+    // while) trends_summary.json is missing or empty, so the UI falls back to
+    // per-dataset logs that only have a handful of snapshots and shows 0 deltas
+    // for every dataset. Run one aggregation asynchronously at startup so the
+    // UI has usable data immediately instead of waiting until 00:30 tomorrow.
+    if (!trendsSummaryFile.exists() || trendsSummaryFile.length() == 0) {
+      logger.info("No trends summary found — scheduling bootstrap aggregation")
+      actorSystem.scheduler.scheduleOnce(10.seconds) {
+        runBootstrapTrendAggregation()
+      }(actorSystem.dispatcher)
+    }
+  }
+
+  private def runBootstrapTrendAggregation(): Unit = {
+    val today = org.joda.time.LocalDate.now().toString("yyyy-MM-dd")
+    logger.info(s"Running bootstrap trend aggregation for $today")
+    runTrendAggregation(today)
   }
 
   private def runDailyTrendAggregation(): Unit = {
-    logger.info("Running daily trend aggregation...")
-
     val yesterday = org.joda.time.LocalDate.now().minusDays(1).toString("yyyy-MM-dd")
+    logger.info(s"Running daily trend aggregation for $yesterday...")
+    runTrendAggregation(yesterday)
+  }
 
+  private def runTrendAggregation(date: String): Unit = {
     val result = for {
       datasets <- DsInfo.listDsInfo(this)
       hub3 <- indexStatsService.fetchHub3IndexCounts()
     } yield {
       if (!hub3.reachable) {
-        logger.warn("Skipping daily trend aggregation: Hub3 unreachable. Indexed counts would be corrupted.")
+        logger.warn(s"Skipping trend aggregation for $date: Hub3 unreachable. Indexed counts would be corrupted.")
       } else {
         var aggregated = 0
         val specs = scala.collection.mutable.ListBuffer[String]()
@@ -146,7 +166,7 @@ class OrgContext @Inject() (
               }
             }
 
-            TrendTrackingService.aggregateDay(trendsLog, dailyLog, yesterday)
+            TrendTrackingService.aggregateDay(trendsLog, dailyLog, date)
             specs += dsInfo.spec
             aggregated += 1
           } catch {
@@ -162,13 +182,13 @@ class OrgContext @Inject() (
             logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
         }
 
-        logger.info(s"Daily trend aggregation complete: $aggregated/${datasets.size} datasets")
+        logger.info(s"Trend aggregation for $date complete: $aggregated/${datasets.size} datasets")
       }
     }
 
     val _ = result.recover {
       case e: Exception =>
-        logger.error(s"Daily trend aggregation failed: ${e.getMessage}", e)
+        logger.error(s"Trend aggregation for $date failed: ${e.getMessage}", e)
     }
   }
 
