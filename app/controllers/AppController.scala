@@ -262,7 +262,7 @@ class AppController @Inject() (
     import services.{TrendDelta, DatasetTrendSummary, OrganizationTrends}
 
     // Try to read from cached summary file first (fast path for 200+ datasets)
-    TrendTrackingService.readTrendsSummary(orgContext.trendsSummaryFile) match {
+    TrendTrackingService.readTrendsSummary(orgContext.trendsSummaryFile, orgContext.datasetsDir) match {
       case Some(summary) =>
         logger.debug(s"Using cached trends summary from ${summary.generatedAt}")
         val orgTrends = TrendTrackingService.buildOrganizationTrends(summary)

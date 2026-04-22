@@ -475,7 +475,7 @@ object TrendTrackingService extends Logging {
    * @param summaryFile The trends_summary.json file at org level
    * @param maxAgeHours Maximum age in hours before considering stale (default 25 hours)
    */
-  def readTrendsSummary(summaryFile: File, maxAgeHours: Int = 25): Option[TrendsSummaryFile] = {
+  def readTrendsSummary(summaryFile: File, datasetsDir: File, maxAgeHours: Int = 25): Option[TrendsSummaryFile] = {
     if (!summaryFile.exists()) {
       logger.debug("Trends summary file does not exist")
       return None
@@ -488,13 +488,31 @@ object TrendTrackingService extends Logging {
       }.get
     } match {
       case scala.util.Success(summary) =>
-        // Check if summary is too old
+        // Age check: a long-stale summary (aggregation failed or was off) is
+        // treated as missing so the fallback rebuild path runs.
         val ageHours = (nowUtc.getMillis - summary.generatedAt.getMillis) / (1000 * 60 * 60)
         if (ageHours > maxAgeHours) {
           logger.debug(s"Trends summary is stale (${ageHours}h old)")
           None
         } else {
-          Some(summary)
+          // Cross-check: if any per-dataset trends-daily.jsonl is newer than
+          // the summary, the summary doesn't reflect the latest aggregation
+          // and we should rebuild rather than serve yesterday's answer.
+          val newestDailyMtime = Option(datasetsDir.listFiles())
+            .getOrElse(Array.empty[File])
+            .flatMap { specDir =>
+              val dailyLog = new File(specDir, "trends-daily.jsonl")
+              if (dailyLog.exists()) Some(dailyLog.lastModified()) else None
+            }
+            .maxOption
+            .getOrElse(0L)
+
+          if (newestDailyMtime > summary.generatedAt.getMillis) {
+            logger.info("Trends summary is stale (per-dataset daily logs newer than summary)")
+            None
+          } else {
+            Some(summary)
+          }
         }
       case scala.util.Failure(e) =>
         logger.warn(s"Failed to read trends summary: ${e.getMessage}")
