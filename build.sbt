@@ -14,6 +14,8 @@
 //    limitations under the License.
 //===========================================================================
 
+import scala.sys.process._
+
 name := "narthex"
 organization := "eu.delving"
 maintainer := "info@delving.eu"
@@ -30,7 +32,7 @@ lazy val root = (project in file(".")).
       version,
       scalaVersion,
       sbtVersion,
-      "commitSha" -> git.gitHeadCommit.value.getOrElse("unknown")
+      "commitSha" -> scala.util.Try("git rev-parse HEAD".!!.trim).getOrElse("unknown")
     ),
     buildInfoPackage := "buildinfo"
   )
