@@ -362,23 +362,23 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     val trendsLog = new File(tmpDir, "trends.jsonl")
     val dailyLog = new File(tmpDir, "trends-daily.jsonl")
 
-    val yesterday = DateTime.now().minusDays(1).withTime(23, 50, 0, 0)
-    val today = DateTime.now().withTime(0, 5, 0, 0)
+    // Explicit UTC timestamps so the test is deterministic regardless of JVM zone.
+    val utc = org.joda.time.DateTimeZone.UTC
+    val yesterdayTs = new DateTime(2026, 4, 20, 23, 50, 0, utc)
+    val todayTs = new DateTime(2026, 4, 21, 0, 5, 0, utc)
 
     val yesterdaySnap = TrendSnapshot(
-      timestamp = yesterday,
+      timestamp = yesterdayTs,
       snapshotType = "save",
       sourceRecords = 1000, acquiredRecords = 1000, deletedRecords = 0,
       validRecords = 900, invalidRecords = 100, indexedRecords = 850
     )
     val todaySnap = TrendSnapshot(
-      timestamp = today,
+      timestamp = todayTs,
       snapshotType = "save",
       sourceRecords = 1500, acquiredRecords = 1500, deletedRecords = 0,
       validRecords = 1400, invalidRecords = 100, indexedRecords = 850
     )
-
-    val yesterdayDate = yesterday.toString("yyyy-MM-dd")
 
     val w = services.FileHandling.appender(trendsLog)
     try {
@@ -386,7 +386,7 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
       w.write(Json.stringify(Json.toJson(todaySnap)) + "\n")
     } finally { w.close() }
 
-    TrendTrackingService.aggregateDay(trendsLog, dailyLog, yesterdayDate)
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-04-20")
 
     val summaries = TrendTrackingService.readDailySummaries(dailyLog)
     summaries.size shouldBe 1
@@ -417,6 +417,28 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     summaries.last.endOfDay.sourceRecords shouldBe 500
     summaries.last.delta shouldBe TrendDelta.zero
     summaries.last.events shouldBe 0
+  }
+
+  it should "assign a near-midnight UTC snapshot to that same UTC date" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    val dailyLog = new File(tmpDir, "trends-daily.jsonl")
+
+    val nearMidnight = new DateTime(2026, 4, 19, 23, 55, 0, org.joda.time.DateTimeZone.UTC)
+    val snap = TrendSnapshot(
+      timestamp = nearMidnight,
+      snapshotType = "save",
+      sourceRecords = 100, acquiredRecords = 100, deletedRecords = 0,
+      validRecords = 90, invalidRecords = 10, indexedRecords = 80
+    )
+    val w = services.FileHandling.appender(trendsLog)
+    try { w.write(Json.stringify(Json.toJson(snap)) + "\n") } finally { w.close() }
+
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-04-19")
+
+    val sums = TrendTrackingService.readDailySummaries(dailyLog)
+    sums.size shouldBe 1
+    sums.head.date shouldBe "2026-04-19"
+    sums.head.endOfDay.sourceRecords shouldBe 100
   }
 
   // === Task 5 fix: cleanup/append race ===

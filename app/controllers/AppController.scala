@@ -298,7 +298,7 @@ class AppController @Inject() (
           ).sortBy(_.spec)
 
           val orgTrends = OrganizationTrends(
-            generatedAt = DateTime.now(),
+            generatedAt = DateTime.now(org.joda.time.DateTimeZone.UTC),
             totalDatasets = datasets.size,
             totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
             totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
@@ -332,7 +332,7 @@ class AppController @Inject() (
   def triggerTrendSnapshot = Action.async { request =>
     import triplestore.GraphProperties._
 
-    val today = org.joda.time.LocalDate.now().toString("yyyy-MM-dd")
+    val today = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
 
     listDsInfo(orgContext).flatMap { datasets =>
       indexStatsService.fetchHub3IndexCounts().map { hub3 =>

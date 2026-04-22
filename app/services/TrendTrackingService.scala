@@ -195,6 +195,15 @@ object TrendTrackingService extends Logging {
   private val MAX_HISTORY_DAYS = 30
 
   /**
+   * Trend timestamps are always captured and compared in UTC so that the
+   * "which day does this snapshot belong to" question has a stable answer
+   * regardless of the JVM's default timezone. Without this, snapshots taken
+   * near midnight in a non-UTC zone would be assigned to the wrong day by
+   * aggregateDay's string-prefix filter.
+   */
+  private def nowUtc: DateTime = DateTime.now(org.joda.time.DateTimeZone.UTC)
+
+  /**
    * Capture a trend snapshot for a dataset.
    * Called after SAVE operations complete.
    *
@@ -218,7 +227,7 @@ object TrendTrackingService extends Logging {
     indexedRecords: Int
   ): Unit = {
     val snapshot = TrendSnapshot(
-      timestamp = DateTime.now(),
+      timestamp = nowUtc,
       snapshotType = snapshotType,
       sourceRecords = sourceRecords,
       acquiredRecords = acquiredRecords,
@@ -260,7 +269,7 @@ object TrendTrackingService extends Logging {
    * Get snapshots within a time window.
    */
   def getSnapshotsInWindow(trendsLog: File, hoursAgo: Int): List[TrendSnapshot] = {
-    val cutoff = DateTime.now().minusHours(hoursAgo)
+    val cutoff = nowUtc.minusHours(hoursAgo)
     readSnapshots(trendsLog).filter(_.timestamp.isAfter(cutoff))
   }
 
@@ -280,7 +289,7 @@ object TrendTrackingService extends Logging {
    * Compares most recent snapshot to the most recent snapshot before the window.
    */
   def calculateDeltaForWindow(snapshots: List[TrendSnapshot], hoursAgo: Int): TrendDelta = {
-    val cutoff = DateTime.now().minusHours(hoursAgo)
+    val cutoff = nowUtc.minusHours(hoursAgo)
     val sorted = snapshots.sortBy(_.timestamp.getMillis)
 
     val current = sorted.lastOption
@@ -340,7 +349,7 @@ object TrendTrackingService extends Logging {
   def cleanupOldSnapshots(trendsLog: File): Unit = {
     withFileLock(trendsLog) {
       val snapshots = readSnapshots(trendsLog)
-      val cutoff = DateTime.now().minusDays(MAX_HISTORY_DAYS)
+      val cutoff = nowUtc.minusDays(MAX_HISTORY_DAYS)
 
       val toKeep = snapshots.filter { s =>
         s.timestamp.isAfter(cutoff) || s.snapshotType == "daily"
@@ -438,7 +447,7 @@ object TrendTrackingService extends Logging {
     }
 
     val summary = TrendsSummaryFile(
-      generatedAt = DateTime.now(),
+      generatedAt = nowUtc,
       summaries = summaries
     )
 
@@ -480,7 +489,7 @@ object TrendTrackingService extends Logging {
     } match {
       case scala.util.Success(summary) =>
         // Check if summary is too old
-        val ageHours = (DateTime.now().getMillis - summary.generatedAt.getMillis) / (1000 * 60 * 60)
+        val ageHours = (nowUtc.getMillis - summary.generatedAt.getMillis) / (1000 * 60 * 60)
         if (ageHours > maxAgeHours) {
           logger.debug(s"Trends summary is stale (${ageHours}h old)")
           None
@@ -590,7 +599,7 @@ object TrendTrackingService extends Logging {
     }
 
     val snapshot = TrendSnapshot(
-      timestamp = DateTime.now(),
+      timestamp = nowUtc,
       snapshotType = event,
       sourceRecords = sourceRecords,
       acquiredRecords = acquiredRecords,
@@ -677,11 +686,11 @@ object TrendTrackingService extends Logging {
   def aggregateDay(trendsLog: File, dailyLog: File, date: String): Unit = {
     val allSnapshots = readSnapshots(trendsLog)
 
-    // Filter to snapshots whose ISO timestamp begins with the target date,
-    // then take the last one within that date so we ignore any snapshots
-    // taken after midnight on day+1.
+    // Filter to snapshots whose UTC date matches the target. Forcing UTC
+    // eliminates midnight-boundary bugs that arise when the capture timestamp
+    // was recorded in the JVM's default zone but `date` is a UTC calendar day.
     val daySnapshots = allSnapshots.filter { s =>
-      timeToString(s.timestamp).startsWith(date)
+      s.timestamp.withZone(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd") == date
     }
     val endOfDaySnapshot = daySnapshots.sortBy(_.timestamp.getMillis).lastOption
 
@@ -786,7 +795,7 @@ object TrendTrackingService extends Logging {
     val lastSnapshot = getLastSnapshot(trendsLog)
 
     // Get recent event snapshots (last 48h) for detailed 24h chart
-    val cutoff48h = DateTime.now().minusHours(48)
+    val cutoff48h = nowUtc.minusHours(48)
     val recentEvents = readSnapshots(trendsLog)
       .filter(s => s.timestamp.isAfter(cutoff48h) && s.snapshotType != "daily")
       .sortBy(_.timestamp.getMillis)
@@ -826,7 +835,7 @@ object TrendTrackingService extends Logging {
     }
 
     val summary = TrendsSummaryFile(
-      generatedAt = DateTime.now(),
+      generatedAt = nowUtc,
       summaries = summaries
     )
 

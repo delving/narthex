@@ -118,14 +118,14 @@ class OrgContext @Inject() (
   }
 
   private def runBootstrapTrendAggregation(): Unit = {
-    val today = org.joda.time.LocalDate.now().toString("yyyy-MM-dd")
-    logger.info(s"Running bootstrap trend aggregation for $today")
+    val today = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
+    logger.info(s"Running bootstrap trend aggregation for $today (UTC)")
     runTrendAggregation(today)
   }
 
   private def runDailyTrendAggregation(): Unit = {
-    val yesterday = org.joda.time.LocalDate.now().minusDays(1).toString("yyyy-MM-dd")
-    logger.info(s"Running daily trend aggregation for $yesterday...")
+    val yesterday = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).minusDays(1).toString("yyyy-MM-dd")
+    logger.info(s"Running daily trend aggregation for $yesterday (UTC)...")
     runTrendAggregation(yesterday)
   }
 
