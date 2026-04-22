@@ -33,7 +33,7 @@ import organization.WorkflowPersistenceActor
 import play.api.cache.SyncCacheApi
 import play.api.libs.ws.WSClient
 import play.api.Logging
-import services.{IndexStatsService, MailService, TrendTrackingService}
+import services.{IndexStatsService, MailService, RecordRegistry, TrendTrackingService}
 import triplestore.GraphProperties._
 import triplestore.TripleStore
 
@@ -54,7 +54,8 @@ class OrgContext @Inject() (
   val wsApi: WSClient,
   val mailService: MailService,
   val actorSystem: ActorSystem,
-  indexStatsService: IndexStatsService
+  indexStatsService: IndexStatsService,
+  val recordRegistry: RecordRegistry
 ) (ec: ExecutionContext, implicit val ts: TripleStore) extends Logging {
 
   val root = narthexConfig.narthexDataDir

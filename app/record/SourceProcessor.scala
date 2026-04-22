@@ -39,11 +39,12 @@ import services.Temporal._
 import services.{FileHandling, ProgressReporter}
 import mapping.{DatasetMappingRepo, DefaultMappingRepo}
 import play.api.libs.json.{JsValue, Json, Writes}
+import services.RecordRegistry
 
 
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object SourceProcessor {
 
@@ -220,6 +221,25 @@ class SourceProcessor(val datasetContext: DatasetContext,
           datasetContext.processedRepo.clear()
         }
 
+        val registry = orgContext.recordRegistry
+        val spec = dsInfo.spec
+        val registryKind =
+          if (isIncrementalHarvest) RecordRegistry.KIND_INCREMENT
+          else RecordRegistry.KIND_FULL
+        val runId = registry.beginRun(spec, registryKind)
+        log.info(s"Registry run $runId opened for $spec (kind=$registryKind)")
+
+        // Stamp OAI-PMH tombstones (from harvester's deleted.ids) into the
+        // registry so the next save phase can diff them. Does not filter
+        // pockets — SourceRepo still uses the file for that.
+        val tombstoneIds = datasetContext.sourceRepoOpt
+          .map(_.deletedIdSet.toSeq)
+          .getOrElse(Seq.empty)
+        if (tombstoneIds.nonEmpty) {
+          registry.upsertDeletedBatch(spec, tombstoneIds, runId)
+          log.info(s"Registry: stamped ${tombstoneIds.size} tombstoned records")
+        }
+
         val processedOutput = datasetContext.processedRepo.createOutput
         log.info(s"Processing will write to: ${processedOutput.xmlFile.getName} (number: ${processedOutput.number})")
         val xmlOutput = createZstdWriter(processedOutput.xmlFile)  // ZSTD compressed output
@@ -288,6 +308,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         // Batch size for parallel processing
         val batchSize = 100
         val batch = new ArrayBuffer[Pocket](batchSize)
+        val seenBuf = new ArrayBuffer[(String, String)](batchSize)
 
         def processBatch(): Unit = {
           if (batch.nonEmpty) {
@@ -303,8 +324,10 @@ class SourceProcessor(val datasetContext: DatasetContext,
             results.foreach { case (rawPocket, pocketTry) =>
               pocketTry match {
                 case Success(pocket) =>
+                  val hash = PocketParser.sha1(pocket.text)
                   pocket.writeTo(xmlOutput)
                   validRecords += 1
+                  seenBuf += ((rawPocket.id, hash))
 
                 case Failure(ue: URIErrorsException) =>
                   writeError("URI ERRORS", ue.uriErrors.mkString("\n"), rawPocket.id)
@@ -321,6 +344,10 @@ class SourceProcessor(val datasetContext: DatasetContext,
             }
 
             batch.clear()
+            if (seenBuf.nonEmpty) {
+              registry.upsertSeenBatch(spec, seenBuf.toSeq, runId)
+              seenBuf.clear()
+            }
 
             val total = validRecords + invalidRecords
             if (total % 10000 == 0) {
@@ -388,6 +415,18 @@ class SourceProcessor(val datasetContext: DatasetContext,
           s"Processed Source Records - ${LocalDateTime.now()} - valid records: $validRecords - invalid records: $invalidRecords - scheduled: ${!scheduledOpt.isEmpty}")
         harvestingLogger.newLine()
         harvestingLogger.close()
+
+        Try(registry.completeRun(
+          spec, runId,
+          RecordRegistry.RunCounts(
+            seen = validRecords,
+            changed = validRecords,
+            deleted = tombstoneIds.size
+          )
+        )).recover { case e: Throwable =>
+          log.warning(s"Registry: failed to complete run $runId: ${e.getMessage}")
+        }
+
         context.parent ! ProcessingComplete(validRecords,
                                             invalidRecords,
                                             scheduledOptOutput)

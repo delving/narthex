@@ -7,8 +7,8 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.{Inject, Singleton}
 
+import init.NarthexConfig
 import org.apache.commons.io.FileUtils
-import organization.OrgContext
 import play.api.Logger
 
 object RecordRegistry {
@@ -39,7 +39,8 @@ class RecordRegistry(datasetsDir: File) {
 
   import RecordRegistry._
 
-  @Inject() def this(orgContext: OrgContext) = this(orgContext.datasetsDir)
+  @Inject() def this(narthexConfig: NarthexConfig) =
+    this(new File(new File(narthexConfig.narthexDataDir, narthexConfig.orgId), "datasets"))
 
   private val logger = Logger(getClass)
   private val specs = new ConcurrentHashMap[String, SpecRegistry]()
