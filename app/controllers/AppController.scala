@@ -284,22 +284,26 @@ class AppController @Inject() (
             indexed = summaries.map(_.delta24h.indexed).sum
           )
 
-          // Categorize datasets
+          // Categorize datasets — include valid delta so datasets whose processed
+          // counts moved (even with unchanged source/indexed) don't hide in stable.
           val growing = summaries.filter(s =>
-            s.delta24h.source > 0 || s.delta24h.indexed > 0
-          ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+            s.delta24h.source > 0 || s.delta24h.indexed > 0 || s.delta24h.valid > 0
+          ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed + s.delta24h.valid))
 
           val shrinking = summaries.filter(s =>
-            s.delta24h.source < 0 || s.delta24h.indexed < 0
-          ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+            s.delta24h.source < 0 || s.delta24h.indexed < 0 || s.delta24h.valid < 0
+          ).sortBy(s => s.delta24h.source + s.delta24h.indexed + s.delta24h.valid)
 
           val stable = summaries.filter(s =>
-            s.delta24h.source == 0 && s.delta24h.indexed == 0
+            s.delta24h.source == 0 && s.delta24h.indexed == 0 && s.delta24h.valid == 0
           ).sortBy(_.spec)
 
           val orgTrends = OrganizationTrends(
             generatedAt = DateTime.now(org.joda.time.DateTimeZone.UTC),
-            totalDatasets = datasets.size,
+            // Use summaries.size so this matches the cached-path (buildOrganizationTrends)
+            // which also reports count of datasets with trend data, not count of
+            // all known datasets. Otherwise the number flickers on refresh.
+            totalDatasets = summaries.size,
             totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
             totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
             netDelta24h = netDelta24h,

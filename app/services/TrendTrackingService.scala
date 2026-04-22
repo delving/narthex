@@ -534,17 +534,19 @@ object TrendTrackingService extends Logging {
       indexed = summaries.map(_.delta24h.indexed).sum
     )
 
-    // Categorize datasets by 24h delta
+    // Categorize datasets by 24h delta. Includes `valid` so datasets whose
+    // processed counts moved (without source/indexed movement) don't hide in
+    // the 'stable' bucket.
     val growing = summaries.filter(s =>
-      s.delta24h.source > 0 || s.delta24h.indexed > 0
-    ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+      s.delta24h.source > 0 || s.delta24h.indexed > 0 || s.delta24h.valid > 0
+    ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed + s.delta24h.valid))
 
     val shrinking = summaries.filter(s =>
-      s.delta24h.source < 0 || s.delta24h.indexed < 0
-    ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+      s.delta24h.source < 0 || s.delta24h.indexed < 0 || s.delta24h.valid < 0
+    ).sortBy(s => s.delta24h.source + s.delta24h.indexed + s.delta24h.valid)
 
     val stable = summaries.filter(s =>
-      s.delta24h.source == 0 && s.delta24h.indexed == 0
+      s.delta24h.source == 0 && s.delta24h.indexed == 0 && s.delta24h.valid == 0
     ).sortBy(_.spec)
 
     OrganizationTrends(
@@ -838,7 +840,8 @@ object TrendTrackingService extends Logging {
         delta30d = calculateDeltaFromDailySummaries(dailySums, 30),
         history = dailySums.takeRight(MAX_HISTORY_DAYS).map { ds =>
           TrendSnapshot(
-            timestamp = DateTime.parse(ds.date + "T23:59:59.000Z"),
+            timestamp = org.joda.time.LocalDate.parse(ds.date)
+              .toDateTime(new org.joda.time.LocalTime(23, 59, 59, 999), org.joda.time.DateTimeZone.UTC),
             snapshotType = "daily",
             sourceRecords = ds.endOfDay.sourceRecords,
             acquiredRecords = ds.endOfDay.acquiredRecords,
