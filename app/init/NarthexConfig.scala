@@ -99,6 +99,16 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(true)
   logger.info(s"narthex.trends.enabled: $enableTrendTracking")
 
+  def registryEnabled: Boolean = configuration
+    .getOptional[Boolean]("narthex.registry.enabled")
+    .getOrElse(true)
+  logger.info(s"narthex.registry.enabled: $registryEnabled")
+
+  def registryKeepRevisionSweep: Boolean = configuration
+    .getOptional[Boolean]("narthex.registry.keepRevisionSweep")
+    .getOrElse(true)
+  logger.info(s"narthex.registry.keepRevisionSweep: $registryKeepRevisionSweep")
+
   // Minute offset past midnight to run daily aggregation (default: 30 = 00:30)
   def trendAggregationMinute: Int = configuration
     .getOptional[Int]("narthex.trends.aggregationMinute")

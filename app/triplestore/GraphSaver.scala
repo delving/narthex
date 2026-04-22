@@ -16,6 +16,7 @@
 
 package triplestore
 
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 import akka.actor.{Actor, ActorLogging, Props}
 import org.joda.time.DateTime
@@ -26,7 +27,7 @@ import dataset.DsInfo.Hub3BulkApiException
 import dataset.ProcessedRepo.{GraphChunk, GraphReader}
 import organization.OrgContext
 import nxutil.Utils._
-import services.{ActivityLogger, ProgressReporter}
+import services.{ActivityLogger, ProgressReporter, RecordRegistry}
 import services.ProgressReporter.InterruptedException
 import services.ProgressReporter.ProgressState._
 import services.Temporal._
@@ -35,11 +36,12 @@ object GraphSaver {
 
   case object GraphSaveComplete
 
-  case class SaveGraphs(scheduledOpt: Option[Scheduled])
+  case class SaveGraphs(scheduledOpt: Option[Scheduled], registryRunId: Option[Long] = None)
 
   /** Internal messages for thread-safe Future result handling */
   private case object RevisionReady
   private case object ChunkSaved
+  private case object RegistryDropsDone
   private case class AsyncFailure(ex: Throwable)
 
   def props(datasetContext: DatasetContext, orgContext: OrgContext) =
@@ -62,9 +64,28 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   var isIncremental = false
   var isExplicitFileSave = false
   var chunksSaved = 0
+  var registryRunIdOpt: Option[Long] = None
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
+
+  private val registry = orgContext.recordRegistry
+  private val registryEnabled = orgContext.narthexConfig.registryEnabled
+  private val keepRevisionSweep = orgContext.narthexConfig.registryKeepRevisionSweep
+  private val spec = datasetContext.dsInfo.spec
+
+  private def localIdsInChunk(chunk: GraphChunk): Seq[String] = {
+    val dsInfo = chunk.dsInfo
+    chunk.dataset
+      .listNames()
+      .asScala
+      .toList
+      .flatMap { graphUri =>
+        scala.util.Try(dsInfo.extractSpecIdFromGraphName(graphUri))
+          .toOption
+          .map(_._2)
+      }
+  }
   
   override def postStop(): Unit = {
     // Ensure resources are cleaned up even if actor is terminated unexpectedly
@@ -156,7 +177,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
 
   override def receive = {
 
-    case SaveGraphs(scheduledOpt) =>
+    case SaveGraphs(scheduledOpt, runIdOpt) =>
       actorWork(context) {
         log.info("Save graphs")
         val progressReporter = ProgressReporter(SAVING, context.parent)
@@ -164,41 +185,53 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         isScheduled = !scheduledOpt.isEmpty
         isExplicitFileSave = scheduledOpt.isDefined
         isIncremental = isScheduled && !scheduledOpt.head.modifiedAfter.isEmpty
+        registryRunIdOpt = runIdOpt
 
         val invalidFileOpt = scheduledOpt.map(_.file).filterNot { file =>
           file.getName.endsWith(".xml") || file.getName.endsWith(".xml.zst")
         }
+        invalidFileOpt.foreach { file =>
+          throw new RuntimeException(
+            s"SaveGraphs received non-processed file ${file.getName}; expected .xml or .xml.zst")
+        }
 
-        invalidFileOpt match {
-          case Some(file) =>
-            failure(new RuntimeException(
-              s"SaveGraphs received non-processed file ${file.getName}; expected .xml or .xml.zst"))
-          case None =>
-            reader = Some(
-              datasetContext.processedRepo.createGraphReaderXML(
-                scheduledOpt.map(_.file),
-                saveTime,
-                progressReporter))
-            if (!isIncremental) {
-              log.info(s"Only increment dataset revision when not in incremental mode")
-              // IMPORTANT: Wait for increment_revision to complete before sending records.
-              // Otherwise, the first batch may be indexed with the OLD revision and then
-              // deleted as an orphan when clear_orphans runs.
-              // Use message-passing to avoid accessing actor state from Future thread
-              val selfRef = self
-              val incrementFuture = datasetContext.dsInfo.updateDatasetRevision()
-              incrementFuture.onComplete {
-                case Success(_) =>
-                  log.info("Dataset revision incremented, starting to send graph chunks")
-                  selfRef ! RevisionReady
-                case Failure(ex) =>
-                  selfRef ! AsyncFailure(ex)
-              }
-            } else {
-              sendGraphChunkOpt()
-            }
+        reader = Some(
+          datasetContext.processedRepo.createGraphReaderXML(
+            scheduledOpt.map(_.file),
+            saveTime,
+            progressReporter))
+
+        // Full-harvest registry sweep: mark records not seen this run as
+        // deleted so they get drop_records actions later. Incremental saves
+        // skip this — they see only the delta and cannot reason about the
+        // absent set.
+        if (registryEnabled && !isIncremental) {
+          registryRunIdOpt.foreach { runId =>
+            val swept = registry.markMissingForFullRun(spec, runId)
+            if (swept > 0) log.info(s"Registry: marked $swept records missing for full run $runId")
           }
         }
+
+        val doRevisionSweep = !isIncremental && (!registryEnabled || keepRevisionSweep)
+        if (doRevisionSweep) {
+          log.info(s"Incrementing dataset revision (keepRevisionSweep=$keepRevisionSweep)")
+          // IMPORTANT: Wait for increment_revision to complete before sending records.
+          // Otherwise, the first batch may be indexed with the OLD revision and then
+          // deleted as an orphan when clear_orphans runs.
+          // Use message-passing to avoid accessing actor state from Future thread
+          val selfRef = self
+          val incrementFuture = datasetContext.dsInfo.updateDatasetRevision()
+          incrementFuture.onComplete {
+            case Success(_) =>
+              log.info("Dataset revision incremented, starting to send graph chunks")
+              selfRef ! RevisionReady
+            case Failure(ex) =>
+              selfRef ! AsyncFailure(ex)
+          }
+        } else {
+          sendGraphChunkOpt()
+        }
+      }
 
     case RevisionReady =>
       actorWork(context) {
@@ -236,7 +269,19 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             chunk.dsInfo.bulkApiUpdate(chunk.bulkAPIQ(orgContext.appConfig.orgId))
           }
           update.onComplete {
-            case Success(_) => selfRef ! ChunkSaved
+            case Success(_) =>
+              if (registryEnabled) {
+                registryRunIdOpt.foreach { runId =>
+                  val ids = localIdsInChunk(chunk)
+                  if (ids.nonEmpty) {
+                    scala.util.Try(registry.confirmIndexedByIds(spec, ids, runId))
+                      .recover { case ex: Throwable =>
+                        log.warning(s"Registry: confirmIndexedByIds failed for ${ids.size} ids: ${ex.getMessage}")
+                      }
+                  }
+                }
+              }
+              selfRef ! ChunkSaved
             case Failure(ex) => selfRef ! AsyncFailure(ex)
           }
         }
@@ -246,34 +291,69 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
       actorWork(context) {
         reader.foreach(_.close())
         reader = None
+
         if (isExplicitFileSave && chunksSaved == 0) {
           failure(new RuntimeException("Explicit processed-file save completed with zero graph chunks"))
         } else {
-          if (!isIncremental){
-            datasetContext.dsInfo.removeNaveOrphans(startSave)
-            log.info(s"Only drop orphans when not in incremental mode")
-          }
+          // Registry-driven drops: explicit drop_records for every record
+          // the registry knows is deleted (OAI tombstones + full-run sweep
+          // misses). Runs for both full and incremental saves.
+          val dropsFuture: scala.concurrent.Future[Seq[String]] =
+            if (registryEnabled) {
+              val pendingDrops = registry.pendingDropBatch(spec, Int.MaxValue)
+              if (pendingDrops.isEmpty) scala.concurrent.Future.successful(Seq.empty)
+              else {
+                log.info(s"Registry: emitting drop_records for ${pendingDrops.size} ids")
+                datasetContext.dsInfo.dropRecordsByIds(pendingDrops).map(_ => pendingDrops)
+              }
+            } else scala.concurrent.Future.successful(Seq.empty)
 
-          // Log deleted record IDs for future orphan control (Hub3 bulk delete)
-          // TODO: Implement actual Hub3 bulk delete API call in future iteration
-          datasetContext.sourceRepoOpt.foreach { sourceRepo =>
-            val deletedIds = sourceRepo.deletedIdSet
-            if (deletedIds.nonEmpty) {
-              log.info(s"Found ${deletedIds.size} deleted record IDs for future orphan control in Hub3")
-              // Future: Call Hub3 bulk delete API here
-              // datasetContext.dsInfo.deleteRecordsByIds(deletedIds.toList)
+          val selfRef = self
+          dropsFuture.onComplete {
+            case Success(droppedIds) =>
+              if (registryEnabled && droppedIds.nonEmpty) {
+                scala.util.Try(registry.confirmDropped(spec, droppedIds))
+                  .recover { case ex: Throwable =>
+                    log.warning(s"Registry: confirmDropped failed: ${ex.getMessage}")
+                  }
+              }
+              selfRef ! RegistryDropsDone
+            case Failure(ex) => selfRef ! AsyncFailure(ex)
+          }
+        }
+      }
+
+    case RegistryDropsDone =>
+      actorWork(context) {
+        if (!isIncremental && (!registryEnabled || keepRevisionSweep)) {
+          datasetContext.dsInfo.removeNaveOrphans(startSave)
+          log.info(s"Revision sweep: clear_orphans emitted (keepRevisionSweep=$keepRevisionSweep)")
+        }
+
+        // Close the registry run started by SourceProcessor. Counts are a
+        // best-effort summary; downstream observability relies on the
+        // per-record rows, not on these aggregates.
+        if (registryEnabled) {
+          registryRunIdOpt.foreach { runId =>
+            val seen = registry.count(spec, RecordRegistry.STATUS_SEEN)
+            val deleted = registry.count(spec, RecordRegistry.STATUS_DELETED)
+            scala.util.Try(registry.completeRun(
+              spec, runId,
+              RecordRegistry.RunCounts(seen = seen, changed = seen, deleted = deleted)
+            )).recover { case ex: Throwable =>
+              log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
             }
           }
-
-          // Release BOTH semaphores on successful completion to be safe
-          orgContext.semaphore.release(datasetContext.dsInfo.spec)
-          orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
-          log.info(
-            s"${datasetContext.dsInfo.spec} both semaphores released. Active specs - semaphore: ${orgContext.semaphore.activeSpecs().toString()}, saveSemaphore: ${orgContext.saveSemaphore.activeSpecs().toString()}"
-          )
-          log.info("All graphs saved")
-          context.parent ! GraphSaveComplete
         }
+
+        // Release BOTH semaphores on successful completion to be safe
+        orgContext.semaphore.release(datasetContext.dsInfo.spec)
+        orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
+        log.info(
+          s"${datasetContext.dsInfo.spec} both semaphores released. Active specs - semaphore: ${orgContext.semaphore.activeSpecs().toString()}, saveSemaphore: ${orgContext.saveSemaphore.activeSpecs().toString()}"
+        )
+        log.info("All graphs saved")
+        context.parent ! GraphSaveComplete
       }
   }
 }

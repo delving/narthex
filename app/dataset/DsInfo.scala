@@ -1695,6 +1695,38 @@ class DsInfo(
     bulkApiUpdate(s"${actionMap.toString()}\n")
   }
 
+  // Explicit per-record delete. Emitted as a single bulk-action line with an
+  // array of local_ids, chunked to stay under chunkMaxBytes so very large
+  // delete batches do not overflow the HTTP body. Hub3 must recognise
+  // `action = drop_records` with an `ids` array — the matching Hub3 change
+  // lands separately.
+  def dropRecordsByIds(localIds: scala.collection.Seq[String])(
+      implicit ec: scala.concurrent.ExecutionContext
+  ): scala.concurrent.Future[Any] = {
+    if (localIds.isEmpty) scala.concurrent.Future.successful(())
+    else {
+      // ~6 MB body budget to match ProcessedRepo.chunkMaxBytes. Assume ids
+      // are well under 512 bytes each on average; 10_000 ids per batch is
+      // comfortably under the ceiling and keeps the single JSON line small.
+      val batchSize = 10000
+      val batches = localIds.grouped(batchSize).toList
+
+      def sendOne(ids: scala.collection.Seq[String]): scala.concurrent.Future[Any] = {
+        val actionMap = Json.obj(
+          "dataset" -> spec,
+          "orgId" -> orgContext.appConfig.orgId,
+          "action" -> "drop_records",
+          "ids" -> ids.toList
+        )
+        bulkApiUpdate(s"${actionMap.toString()}\n")
+      }
+
+      batches.foldLeft[scala.concurrent.Future[Any]](scala.concurrent.Future.successful(())) {
+        (acc, batch) => acc.flatMap(_ => sendOne(batch))
+      }
+    }
+  }
+
   def disableInNaveIndex() = {
     val actionMap = Json.obj(
       "dataset" -> spec,

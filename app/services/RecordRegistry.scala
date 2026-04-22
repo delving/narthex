@@ -83,6 +83,9 @@ class RecordRegistry(datasetsDir: File) {
   def confirmIndexed(specName: String, rows: Seq[(String, String)], runId: Long): Unit =
     if (rows.nonEmpty) spec(specName).confirmIndexed(rows, runId)
 
+  def confirmIndexedByIds(specName: String, localIds: Seq[String], runId: Long): Unit =
+    if (localIds.nonEmpty) spec(specName).confirmIndexedByIds(localIds, runId)
+
   def confirmDropped(specName: String, localIds: Seq[String]): Unit =
     if (localIds.nonEmpty) spec(specName).confirmDropped(localIds)
 
@@ -337,6 +340,26 @@ private[services] class SpecRegistry(val datasetDir: File) {
         ps.setLong(2, runId)
         ps.setString(3, ts)
         ps.setString(4, localId)
+        ps.addBatch()
+      }
+      ps.executeBatch()
+      conn.commit()
+    } finally ps.close()
+  }
+
+  def confirmIndexedByIds(localIds: Seq[String], runId: Long): Unit = synchronized {
+    // Mark each id as synced at its current content_hash — the caller just
+    // sent that exact version to Hub3, so last_sent_hash := content_hash.
+    val sql = """UPDATE records
+                    SET last_sent_hash = content_hash, last_sent_run_id = ?, updated_at = ?
+                  WHERE local_id = ?"""
+    val ps = conn.prepareStatement(sql)
+    try {
+      val ts = nowIso()
+      localIds.foreach { id =>
+        ps.setLong(1, runId)
+        ps.setString(2, ts)
+        ps.setString(3, id)
         ps.addBatch()
       }
       ps.executeBatch()

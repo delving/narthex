@@ -157,6 +157,17 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.pendingIndexBatch(spec, 100) shouldBe empty
   }
 
+  it should "mark rows synced at their current hash via confirmIndexedByIds" in {
+    val run1 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run1)
+    registry.confirmIndexedByIds(spec, Seq("a", "b"), run1)
+    registry.pendingIndexBatch(spec, 100) shouldBe empty
+
+    val run2 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1b"), run2)
+    registry.pendingIndexBatch(spec, 100).toSet shouldBe Set("a" -> "h1b")
+  }
+
   it should "respect the limit on pendingIndexBatch" in {
     val run = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, (1 to 50).map(i => s"id$i" -> s"h$i"), run)

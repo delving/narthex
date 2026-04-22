@@ -60,7 +60,8 @@ object SourceProcessor {
 
   case class ProcessingComplete(validRecords: Int,
                                 invalidRecords: Int,
-                                scheduledOpt: Option[Scheduled])
+                                scheduledOpt: Option[Scheduled],
+                                registryRunId: Option[Long] = None)
 
   def props(datasetContext: DatasetContext, orgContext: OrgContext) =
     Props(new SourceProcessor(datasetContext, orgContext))
@@ -416,20 +417,12 @@ class SourceProcessor(val datasetContext: DatasetContext,
         harvestingLogger.newLine()
         harvestingLogger.close()
 
-        Try(registry.completeRun(
-          spec, runId,
-          RecordRegistry.RunCounts(
-            seen = validRecords,
-            changed = validRecords,
-            deleted = tombstoneIds.size
-          )
-        )).recover { case e: Throwable =>
-          log.warning(s"Registry: failed to complete run $runId: ${e.getMessage}")
-        }
-
+        // Leave the registry run open so GraphSaver can stamp
+        // last_sent_run_id on confirmed records and close it on save success.
         context.parent ! ProcessingComplete(validRecords,
                                             invalidRecords,
-                                            scheduledOptOutput)
+                                            scheduledOptOutput,
+                                            Some(runId))
       }
   }
 

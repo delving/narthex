@@ -1074,7 +1074,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   when(Processing) {
 
-    case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt),
+    case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt, registryRunId),
                active: Active) =>
       dsInfo.setState(PROCESSED)
       if (scheduledOpt.isDefined || fastSaveAfterProcessing) {
@@ -1107,7 +1107,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         val graphSaver = createChildActor(
           GraphSaver.props(datasetContext, orgContext),
           "graph-saver")
-        graphSaver ! SaveGraphs(saveScheduledOpt)
+        graphSaver ! SaveGraphs(saveScheduledOpt, registryRunId)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       } else {
