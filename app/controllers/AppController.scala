@@ -262,7 +262,7 @@ class AppController @Inject() (
     import services.{TrendDelta, DatasetTrendSummary, OrganizationTrends}
 
     // Try to read from cached summary file first (fast path for 200+ datasets)
-    TrendTrackingService.readTrendsSummary(orgContext.trendsSummaryFile) match {
+    TrendTrackingService.readTrendsSummary(orgContext.trendsSummaryFile, orgContext.datasetsDir) match {
       case Some(summary) =>
         logger.debug(s"Using cached trends summary from ${summary.generatedAt}")
         val orgTrends = TrendTrackingService.buildOrganizationTrends(summary)
@@ -284,22 +284,26 @@ class AppController @Inject() (
             indexed = summaries.map(_.delta24h.indexed).sum
           )
 
-          // Categorize datasets
+          // Categorize datasets — include valid delta so datasets whose processed
+          // counts moved (even with unchanged source/indexed) don't hide in stable.
           val growing = summaries.filter(s =>
-            s.delta24h.source > 0 || s.delta24h.indexed > 0
-          ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+            s.delta24h.source > 0 || s.delta24h.indexed > 0 || s.delta24h.valid > 0
+          ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed + s.delta24h.valid))
 
           val shrinking = summaries.filter(s =>
-            s.delta24h.source < 0 || s.delta24h.indexed < 0
-          ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+            s.delta24h.source < 0 || s.delta24h.indexed < 0 || s.delta24h.valid < 0
+          ).sortBy(s => s.delta24h.source + s.delta24h.indexed + s.delta24h.valid)
 
           val stable = summaries.filter(s =>
-            s.delta24h.source == 0 && s.delta24h.indexed == 0
+            s.delta24h.source == 0 && s.delta24h.indexed == 0 && s.delta24h.valid == 0
           ).sortBy(_.spec)
 
           val orgTrends = OrganizationTrends(
-            generatedAt = DateTime.now(),
-            totalDatasets = datasets.size,
+            generatedAt = DateTime.now(org.joda.time.DateTimeZone.UTC),
+            // Use summaries.size so this matches the cached-path (buildOrganizationTrends)
+            // which also reports count of datasets with trend data, not count of
+            // all known datasets. Otherwise the number flickers on refresh.
+            totalDatasets = summaries.size,
             totalSourceRecords = summaries.map(_.currentSource.toLong).sum,
             totalIndexedRecords = summaries.map(_.currentIndexed.toLong).sum,
             netDelta24h = netDelta24h,
@@ -332,60 +336,70 @@ class AppController @Inject() (
   def triggerTrendSnapshot = Action.async { request =>
     import triplestore.GraphProperties._
 
-    val today = org.joda.time.LocalDate.now().toString("yyyy-MM-dd")
+    val today = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
 
     listDsInfo(orgContext).flatMap { datasets =>
-      indexStatsService.fetchHub3IndexCounts().map { case (_, hub3Counts) =>
-        var captured = 0
-        val specs = scala.collection.mutable.ListBuffer[String]()
+      indexStatsService.fetchHub3IndexCounts().map { hub3 =>
+        if (!hub3.reachable) {
+          logger.warn("Manual trend snapshot skipped: Hub3 unreachable")
+          ServiceUnavailable(Json.obj(
+            "error" -> "Hub3 unreachable",
+            "datasetsProcessed" -> 0,
+            "snapshotsCaptured" -> 0
+          ))
+        } else {
+          val hub3Counts = hub3.counts
+          var captured = 0
+          val specs = scala.collection.mutable.ListBuffer[String]()
 
-        datasets.foreach { dsInfo =>
+          datasets.foreach { dsInfo =>
+            try {
+              val ctx = orgContext.datasetContext(dsInfo.spec)
+              val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
+              val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
+              val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
+              val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
+              val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
+              val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
+
+              TrendTrackingService.captureEventSnapshot(
+                trendsLog = ctx.trendsLog,
+                event = "manual",
+                sourceRecords = sourceRecords,
+                acquiredRecords = acquiredRecords,
+                deletedRecords = deletedRecords,
+                validRecords = validRecords,
+                invalidRecords = invalidRecords,
+                indexedRecords = indexedRecords
+              )
+
+              TrendTrackingService.aggregateDay(ctx.trendsLog, ctx.trendsDailyLog, today)
+
+              specs += dsInfo.spec
+              captured += 1
+            } catch {
+              case e: Exception =>
+                logger.warn(s"Failed to capture snapshot for ${dsInfo.spec}: ${e.getMessage}")
+            }
+          }
+
           try {
-            val ctx = orgContext.datasetContext(dsInfo.spec)
-            val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
-            val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
-            val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
-            val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
-            val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
-            val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
-
-            TrendTrackingService.captureEventSnapshot(
-              trendsLog = ctx.trendsLog,
-              event = "manual",
-              sourceRecords = sourceRecords,
-              acquiredRecords = acquiredRecords,
-              deletedRecords = deletedRecords,
-              validRecords = validRecords,
-              invalidRecords = invalidRecords,
-              indexedRecords = indexedRecords
+            TrendTrackingService.generateTrendsSummaryFromDaily(
+              orgContext.trendsSummaryFile,
+              orgContext.datasetsDir,
+              specs.toList
             )
-
-            TrendTrackingService.aggregateDay(ctx.trendsLog, ctx.trendsDailyLog, today)
-
-            specs += dsInfo.spec
-            captured += 1
           } catch {
             case e: Exception =>
-              logger.warn(s"Failed to capture snapshot for ${dsInfo.spec}: ${e.getMessage}")
+              logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
           }
-        }
 
-        try {
-          TrendTrackingService.generateTrendsSummaryFromDaily(
-            orgContext.trendsSummaryFile,
-            orgContext.datasetsDir,
-            specs.toList
-          )
-        } catch {
-          case e: Exception =>
-            logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
+          Ok(Json.obj(
+            "success" -> true,
+            "datasetsProcessed" -> datasets.size,
+            "snapshotsCaptured" -> captured
+          ))
         }
-
-        Ok(Json.obj(
-          "success" -> true,
-          "datasetsProcessed" -> datasets.size,
-          "snapshotsCaptured" -> captured
-        ))
       }
     }.recover {
       case e: Exception =>

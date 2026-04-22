@@ -115,7 +115,11 @@ case class DatasetTrendSummary(
   currentIndexed: Int,
   delta24h: TrendDelta,
   delta7d: TrendDelta,
-  delta30d: TrendDelta
+  delta30d: TrendDelta,
+  // true when no daily summary exists yet and the summary was synthesized from
+  // the raw event log (so deltas are unreliable). UI renders "Initializing"
+  // instead of misleading zero deltas.
+  initializing: Option[Boolean] = None
 )
 
 object DatasetTrendSummary {
@@ -195,6 +199,15 @@ object TrendTrackingService extends Logging {
   private val MAX_HISTORY_DAYS = 30
 
   /**
+   * Trend timestamps are always captured and compared in UTC so that the
+   * "which day does this snapshot belong to" question has a stable answer
+   * regardless of the JVM's default timezone. Without this, snapshots taken
+   * near midnight in a non-UTC zone would be assigned to the wrong day by
+   * aggregateDay's string-prefix filter.
+   */
+  private def nowUtc: DateTime = DateTime.now(org.joda.time.DateTimeZone.UTC)
+
+  /**
    * Capture a trend snapshot for a dataset.
    * Called after SAVE operations complete.
    *
@@ -218,7 +231,7 @@ object TrendTrackingService extends Logging {
     indexedRecords: Int
   ): Unit = {
     val snapshot = TrendSnapshot(
-      timestamp = DateTime.now(),
+      timestamp = nowUtc,
       snapshotType = snapshotType,
       sourceRecords = sourceRecords,
       acquiredRecords = acquiredRecords,
@@ -260,7 +273,7 @@ object TrendTrackingService extends Logging {
    * Get snapshots within a time window.
    */
   def getSnapshotsInWindow(trendsLog: File, hoursAgo: Int): List[TrendSnapshot] = {
-    val cutoff = DateTime.now().minusHours(hoursAgo)
+    val cutoff = nowUtc.minusHours(hoursAgo)
     readSnapshots(trendsLog).filter(_.timestamp.isAfter(cutoff))
   }
 
@@ -280,7 +293,7 @@ object TrendTrackingService extends Logging {
    * Compares most recent snapshot to the most recent snapshot before the window.
    */
   def calculateDeltaForWindow(snapshots: List[TrendSnapshot], hoursAgo: Int): TrendDelta = {
-    val cutoff = DateTime.now().minusHours(hoursAgo)
+    val cutoff = nowUtc.minusHours(hoursAgo)
     val sorted = snapshots.sortBy(_.timestamp.getMillis)
 
     val current = sorted.lastOption
@@ -338,19 +351,72 @@ object TrendTrackingService extends Logging {
    * and recent event snapshots.
    */
   def cleanupOldSnapshots(trendsLog: File): Unit = {
-    val snapshots = readSnapshots(trendsLog)
-    val cutoff = DateTime.now().minusDays(MAX_HISTORY_DAYS)
+    withFileLock(trendsLog) {
+      val snapshots = readSnapshots(trendsLog)
+      val cutoff = nowUtc.minusDays(MAX_HISTORY_DAYS)
 
-    val toKeep = snapshots.filter { s =>
-      s.timestamp.isAfter(cutoff) || s.snapshotType == "daily"
-    }.sortBy(_.timestamp.getMillis).takeRight(MAX_HISTORY_DAYS * 2)  // Keep reasonable history
+      val toKeep = snapshots.filter { s =>
+        s.timestamp.isAfter(cutoff) || s.snapshotType == "daily"
+      }.sortBy(_.timestamp.getMillis).takeRight(MAX_HISTORY_DAYS * 2)  // Keep reasonable history
 
-    // Rewrite file with only kept snapshots
-    if (toKeep.size < snapshots.size) {
-      val tmpFile = new File(trendsLog.getParent, trendsLog.getName + ".tmp")
-      toKeep.foreach(s => appendSnapshot(tmpFile, s))
-      tmpFile.renameTo(trendsLog)
-      logger.info(s"Cleaned up trends file: ${snapshots.size} -> ${toKeep.size} snapshots")
+      // Rewrite file with only kept snapshots via ATOMIC_MOVE to avoid losing
+      // writes that land between read and rename. All appendSnapshot calls also
+      // acquire the same file lock, so the rewrite sees a consistent state.
+      if (toKeep.size < snapshots.size) {
+        val tmpFile = new File(trendsLog.getParent, trendsLog.getName + ".tmp")
+        // Build the tmp file directly (appendSnapshot here would recursively
+        // re-enter the lock — a no-op on re-entrant FileLock, but avoid relying
+        // on that).
+        val writer = appender(tmpFile)
+        try {
+          toKeep.foreach { s =>
+            writer.write(Json.stringify(Json.toJson(s)) + "\n")
+          }
+          writer.flush()
+        } finally {
+          writer.close()
+        }
+        java.nio.file.Files.move(
+          tmpFile.toPath,
+          trendsLog.toPath,
+          java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+          java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+        logger.info(s"Cleaned up trends file: ${snapshots.size} -> ${toKeep.size} snapshots")
+      }
+    }
+  }
+
+  /**
+   * Acquire an exclusive lock for a trends file while executing `body`.
+   *
+   * Uses a JVM-level ReentrantLock keyed by canonical path for intra-process
+   * mutual exclusion (FileChannel.lock is process-level; overlapping locks
+   * from threads in the same JVM throw OverlappingFileLockException).
+   *
+   * Layered on top is a FileChannel.lock on a sidecar .lock file so that
+   * separate Narthex processes (e.g., test suite + dev server sharing the
+   * same NarthexFiles dir) also serialize.
+   */
+  private val pathLocks = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.locks.ReentrantLock]()
+
+  private def withFileLock[A](trendsLog: File)(body: => A): A = {
+    val canonicalKey = trendsLog.getCanonicalPath
+    val jvmLock = pathLocks.computeIfAbsent(canonicalKey, _ => new java.util.concurrent.locks.ReentrantLock())
+    jvmLock.lock()
+    try {
+      val lockFile = new File(trendsLog.getParent, trendsLog.getName + ".lock")
+      val raf = new java.io.RandomAccessFile(lockFile, "rw")
+      val channel = raf.getChannel
+      val fileLock = channel.lock()
+      try body
+      finally {
+        fileLock.release()
+        channel.close()
+        raf.close()
+      }
+    } finally {
+      jvmLock.unlock()
     }
   }
 
@@ -358,13 +424,15 @@ object TrendTrackingService extends Logging {
    * Append a snapshot to the trends file.
    */
   private def appendSnapshot(trendsLog: File, snapshot: TrendSnapshot): Unit = {
-    val line = Json.stringify(Json.toJson(snapshot)) + "\n"
-    val writer = appender(trendsLog)
-    try {
-      writer.write(line)
-      writer.flush()
-    } finally {
-      writer.close()
+    withFileLock(trendsLog) {
+      val line = Json.stringify(Json.toJson(snapshot)) + "\n"
+      val writer = appender(trendsLog)
+      try {
+        writer.write(line)
+        writer.flush()
+      } finally {
+        writer.close()
+      }
     }
   }
 
@@ -383,7 +451,7 @@ object TrendTrackingService extends Logging {
     }
 
     val summary = TrendsSummaryFile(
-      generatedAt = DateTime.now(),
+      generatedAt = nowUtc,
       summaries = summaries
     )
 
@@ -411,7 +479,7 @@ object TrendTrackingService extends Logging {
    * @param summaryFile The trends_summary.json file at org level
    * @param maxAgeHours Maximum age in hours before considering stale (default 25 hours)
    */
-  def readTrendsSummary(summaryFile: File, maxAgeHours: Int = 25): Option[TrendsSummaryFile] = {
+  def readTrendsSummary(summaryFile: File, datasetsDir: File, maxAgeHours: Int = 25): Option[TrendsSummaryFile] = {
     if (!summaryFile.exists()) {
       logger.debug("Trends summary file does not exist")
       return None
@@ -424,13 +492,31 @@ object TrendTrackingService extends Logging {
       }.get
     } match {
       case scala.util.Success(summary) =>
-        // Check if summary is too old
-        val ageHours = (DateTime.now().getMillis - summary.generatedAt.getMillis) / (1000 * 60 * 60)
+        // Age check: a long-stale summary (aggregation failed or was off) is
+        // treated as missing so the fallback rebuild path runs.
+        val ageHours = (nowUtc.getMillis - summary.generatedAt.getMillis) / (1000 * 60 * 60)
         if (ageHours > maxAgeHours) {
           logger.debug(s"Trends summary is stale (${ageHours}h old)")
           None
         } else {
-          Some(summary)
+          // Cross-check: if any per-dataset trends-daily.jsonl is newer than
+          // the summary, the summary doesn't reflect the latest aggregation
+          // and we should rebuild rather than serve yesterday's answer.
+          val newestDailyMtime = Option(datasetsDir.listFiles())
+            .getOrElse(Array.empty[File])
+            .flatMap { specDir =>
+              val dailyLog = new File(specDir, "trends-daily.jsonl")
+              if (dailyLog.exists()) Some(dailyLog.lastModified()) else None
+            }
+            .maxOption
+            .getOrElse(0L)
+
+          if (newestDailyMtime > summary.generatedAt.getMillis) {
+            logger.info("Trends summary is stale (per-dataset daily logs newer than summary)")
+            None
+          } else {
+            Some(summary)
+          }
         }
       case scala.util.Failure(e) =>
         logger.warn(s"Failed to read trends summary: ${e.getMessage}")
@@ -452,17 +538,19 @@ object TrendTrackingService extends Logging {
       indexed = summaries.map(_.delta24h.indexed).sum
     )
 
-    // Categorize datasets by 24h delta
+    // Categorize datasets by 24h delta. Includes `valid` so datasets whose
+    // processed counts moved (without source/indexed movement) don't hide in
+    // the 'stable' bucket.
     val growing = summaries.filter(s =>
-      s.delta24h.source > 0 || s.delta24h.indexed > 0
-    ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed))
+      s.delta24h.source > 0 || s.delta24h.indexed > 0 || s.delta24h.valid > 0
+    ).sortBy(s => -(s.delta24h.source + s.delta24h.indexed + s.delta24h.valid))
 
     val shrinking = summaries.filter(s =>
-      s.delta24h.source < 0 || s.delta24h.indexed < 0
-    ).sortBy(s => s.delta24h.source + s.delta24h.indexed)
+      s.delta24h.source < 0 || s.delta24h.indexed < 0 || s.delta24h.valid < 0
+    ).sortBy(s => s.delta24h.source + s.delta24h.indexed + s.delta24h.valid)
 
     val stable = summaries.filter(s =>
-      s.delta24h.source == 0 && s.delta24h.indexed == 0
+      s.delta24h.source == 0 && s.delta24h.indexed == 0 && s.delta24h.valid == 0
     ).sortBy(_.spec)
 
     OrganizationTrends(
@@ -487,12 +575,47 @@ object TrendTrackingService extends Logging {
       return None
     }
 
-    Using(Source.fromFile(trendsLog)) { source =>
-      source.getLines()
-        .filter(_.nonEmpty)
-        .foldLeft(Option.empty[String])((_, line) => Some(line))
-        .flatMap(line => Try(Json.parse(line).as[TrendSnapshot]).toOption)
-    }.getOrElse(None)
+    // Tail-read the final line via RandomAccessFile so the cost is O(1) in
+    // file length. Per-SAVE captures used to stream the entire trends.jsonl
+    // which grew unbounded on busy datasets and could time out during the
+    // change-detection read, silently dropping new captures.
+    Try {
+      val raf = new java.io.RandomAccessFile(trendsLog, "r")
+      try {
+        val fileLength = raf.length()
+
+        // Walk back over trailing newline bytes to find the last byte of content.
+        var endOfContent = fileLength - 1
+        var done = false
+        while (!done && endOfContent >= 0) {
+          raf.seek(endOfContent)
+          val b = raf.readByte()
+          if (b == '\n' || b == '\r') endOfContent -= 1
+          else done = true
+        }
+
+        if (endOfContent < 0) None
+        else {
+          // Walk back to the byte just after the newline preceding the last line.
+          var startOfLastLine = endOfContent
+          var foundBoundary = false
+          while (!foundBoundary && startOfLastLine > 0) {
+            raf.seek(startOfLastLine - 1)
+            val b = raf.readByte()
+            if (b == '\n' || b == '\r') foundBoundary = true
+            else startOfLastLine -= 1
+          }
+
+          val length = (endOfContent - startOfLastLine + 1).toInt
+          val buf = new Array[Byte](length)
+          raf.seek(startOfLastLine)
+          raf.readFully(buf)
+          val line = new String(buf, "UTF-8").trim
+          if (line.isEmpty) None
+          else Try(Json.parse(line).as[TrendSnapshot]).toOption
+        }
+      } finally raf.close()
+    }.toOption.flatten
   }
 
   /**
@@ -511,41 +634,75 @@ object TrendTrackingService extends Logging {
     invalidRecords: Int,
     indexedRecords: Int
   ): Unit = {
-    if (sourceRecords == 0) {
-      logger.debug("Skipping event snapshot: sourceRecords is 0")
-      return
-    }
-
     val lastSnapshot = getLastSnapshot(trendsLog)
-    lastSnapshot.foreach { prev =>
-      if (prev.sourceRecords == sourceRecords &&
+
+    // Only skip when this is truly the pre-harvest state: no prior history at
+    // all AND the new counts are all zero. Legitimate depublications (dataset
+    // emptied after having content) must be recorded so the UI can show the
+    // drop. Likewise large drops >50% are no longer silently dropped; they are
+    // logged as a warning but still captured, so the UI reflects reality even
+    // when a partial harvest produced them.
+    val shouldSkip = lastSnapshot match {
+      case None =>
+        sourceRecords == 0 && validRecords == 0 && indexedRecords == 0
+      case Some(prev) =>
+        prev.sourceRecords == sourceRecords &&
           prev.acquiredRecords == acquiredRecords &&
           prev.deletedRecords == deletedRecords &&
           prev.validRecords == validRecords &&
           prev.invalidRecords == invalidRecords &&
-          prev.indexedRecords == indexedRecords) {
-        logger.debug("Skipping event snapshot: counts unchanged")
-        return
-      }
-
-      if (prev.sourceRecords > 0 && sourceRecords < prev.sourceRecords * 0.5) {
-        logger.warn(s"Skipping event snapshot: sourceRecords dropped from ${prev.sourceRecords} to $sourceRecords (>50% drop, likely partial harvest)")
-        return
-      }
+          prev.indexedRecords == indexedRecords
     }
 
-    val snapshot = TrendSnapshot(
-      timestamp = DateTime.now(),
-      snapshotType = event,
+    if (shouldSkip) {
+      logger.debug(s"Skipping event snapshot for $event: no change or pre-harvest zero state")
+    } else {
+      lastSnapshot.foreach { prev =>
+        if (prev.sourceRecords > 0 && sourceRecords < prev.sourceRecords * 0.5) {
+          logger.warn(s"Large sourceRecords drop for $event: ${prev.sourceRecords} -> $sourceRecords (recording anyway — verify upstream isn't a partial harvest)")
+        }
+      }
+      val snapshot = TrendSnapshot(
+        timestamp = nowUtc,
+        snapshotType = event,
+        sourceRecords = sourceRecords,
+        acquiredRecords = acquiredRecords,
+        deletedRecords = deletedRecords,
+        validRecords = validRecords,
+        invalidRecords = invalidRecords,
+        indexedRecords = indexedRecords
+      )
+      appendSnapshot(trendsLog, snapshot)
+      logger.debug(s"Captured event snapshot ($event): source=$sourceRecords, valid=$validRecords, indexed=$indexedRecords")
+    }
+  }
+
+  /**
+   * Like captureEventSnapshot but inherits indexedRecords from the previous snapshot.
+   * Use this at SAVE time because Hub3 indexing is async and the true indexed count
+   * is not yet known. The daily aggregation path (OrgContext.runDailyTrendAggregation)
+   * reconciles with Hub3 and writes the real indexed count.
+   */
+  def captureEventSnapshotCarryingIndexed(
+    trendsLog: File,
+    event: String,
+    sourceRecords: Int,
+    acquiredRecords: Int,
+    deletedRecords: Int,
+    validRecords: Int,
+    invalidRecords: Int
+  ): Unit = {
+    val carriedIndexed = getLastSnapshot(trendsLog).map(_.indexedRecords).getOrElse(0)
+    captureEventSnapshot(
+      trendsLog = trendsLog,
+      event = event,
       sourceRecords = sourceRecords,
       acquiredRecords = acquiredRecords,
       deletedRecords = deletedRecords,
       validRecords = validRecords,
       invalidRecords = invalidRecords,
-      indexedRecords = indexedRecords
+      indexedRecords = carriedIndexed
     )
-    appendSnapshot(trendsLog, snapshot)
-    logger.debug(s"Captured event snapshot ($event): source=$sourceRecords, valid=$validRecords, indexed=$indexedRecords")
   }
 
   // === Task 3: Daily summary read/write ===
@@ -592,43 +749,59 @@ object TrendTrackingService extends Logging {
   // === Task 4: Daily aggregation logic ===
 
   def aggregateDay(trendsLog: File, dailyLog: File, date: String): Unit = {
-    val lastSnapshot = getLastSnapshot(trendsLog)
-    if (lastSnapshot.isEmpty) {
-      logger.debug(s"No snapshots to aggregate for $date")
-      return
+    val allSnapshots = readSnapshots(trendsLog)
+
+    // Filter to snapshots whose UTC date matches the target. Forcing UTC
+    // eliminates midnight-boundary bugs that arise when the capture timestamp
+    // was recorded in the JVM's default zone but `date` is a UTC calendar day.
+    val daySnapshots = allSnapshots.filter { s =>
+      s.timestamp.withZone(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd") == date
     }
+    val endOfDaySnapshot = daySnapshots.sortBy(_.timestamp.getMillis).lastOption
 
-    val current = lastSnapshot.get
-    val endOfDay = EndOfDayCounts.fromSnapshot(current)
+    if (endOfDaySnapshot.isEmpty) {
+      // No snapshots on that date — carry forward the previous day's end-of-day
+      // counts so the chart has a continuous series. Zero delta by definition.
+      val previousSummary = getLastDailySummary(dailyLog)
+      previousSummary match {
+        case Some(prev) =>
+          val summary = DailySummary(
+            date = date,
+            endOfDay = prev.endOfDay,
+            delta = TrendDelta.zero,
+            events = 0
+          )
+          appendDailySummary(dailyLog, summary)
+          logger.info(s"Aggregated $date with carry-forward (no snapshots on that date): source=${prev.endOfDay.sourceRecords}")
+        case None =>
+          logger.debug(s"No snapshots or previous summary available for $date; skipping")
+      }
+    } else {
+      val endOfDay = EndOfDayCounts.fromSnapshot(endOfDaySnapshot.get)
+      val todayEvents = daySnapshots.size
 
-    // Count events for this specific date
-    val datePrefix = date
-    val todayEvents = readSnapshots(trendsLog).count { s =>
-      timeToString(s.timestamp).startsWith(datePrefix)
+      val previousSummary = getLastDailySummary(dailyLog)
+      val delta = previousSummary match {
+        case Some(prev) =>
+          TrendDelta(
+            source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
+            valid = endOfDay.validRecords - prev.endOfDay.validRecords,
+            indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
+          )
+        case None =>
+          TrendDelta.zero
+      }
+
+      val summary = DailySummary(
+        date = date,
+        endOfDay = endOfDay,
+        delta = delta,
+        events = todayEvents
+      )
+
+      appendDailySummary(dailyLog, summary)
+      logger.info(s"Aggregated daily summary for $date: source=${endOfDay.sourceRecords}, delta=${delta.source}, events=$todayEvents")
     }
-
-    val previousSummary = getLastDailySummary(dailyLog)
-
-    val delta = previousSummary match {
-      case Some(prev) =>
-        TrendDelta(
-          source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
-          valid = endOfDay.validRecords - prev.endOfDay.validRecords,
-          indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
-        )
-      case None =>
-        TrendDelta.zero
-    }
-
-    val summary = DailySummary(
-      date = date,
-      endOfDay = endOfDay,
-      delta = delta,
-      events = todayEvents
-    )
-
-    appendDailySummary(dailyLog, summary)
-    logger.info(s"Aggregated daily summary for $date: source=${endOfDay.sourceRecords}, delta=${delta.source}")
   }
 
   // === Task 5: Fix delta calculation ===
@@ -639,7 +812,12 @@ object TrendTrackingService extends Logging {
     val current = summaries.last
     val cutoffDate = org.joda.time.LocalDate.parse(current.date).minusDays(daysAgo).toString("yyyy-MM-dd")
 
+    // Prefer a baseline on or before the cutoff; when the history is too
+    // short (e.g., 3 days of data, asking for 7d), fall back to the oldest
+    // non-current entry so the UI shows accurate growth within the window
+    // that's actually available instead of a misleading zero.
     val baseline = summaries.reverse.find(_.date <= cutoffDate)
+      .orElse(summaries.headOption.filterNot(_ == current))
 
     baseline match {
       case Some(base) =>
@@ -674,7 +852,10 @@ object TrendTrackingService extends Logging {
         delta30d = calculateDeltaFromDailySummaries(dailySummaries, 30)
       ))
     } else {
-      getDatasetTrendSummary(trendsLog, spec)
+      // Fallback reads raw event log; deltas are best-effort when only 1-2
+      // snapshots exist. Flag as initializing so the UI can distinguish
+      // "genuinely flat" from "first aggregation hasn't run yet".
+      getDatasetTrendSummary(trendsLog, spec).map(_.copy(initializing = Some(true)))
     }
   }
 
@@ -687,7 +868,7 @@ object TrendTrackingService extends Logging {
     val lastSnapshot = getLastSnapshot(trendsLog)
 
     // Get recent event snapshots (last 48h) for detailed 24h chart
-    val cutoff48h = DateTime.now().minusHours(48)
+    val cutoff48h = nowUtc.minusHours(48)
     val recentEvents = readSnapshots(trendsLog)
       .filter(s => s.timestamp.isAfter(cutoff48h) && s.snapshotType != "daily")
       .sortBy(_.timestamp.getMillis)
@@ -701,7 +882,8 @@ object TrendTrackingService extends Logging {
         delta30d = calculateDeltaFromDailySummaries(dailySums, 30),
         history = dailySums.takeRight(MAX_HISTORY_DAYS).map { ds =>
           TrendSnapshot(
-            timestamp = DateTime.parse(ds.date + "T23:59:59.000Z"),
+            timestamp = org.joda.time.LocalDate.parse(ds.date)
+              .toDateTime(new org.joda.time.LocalTime(23, 59, 59, 999), org.joda.time.DateTimeZone.UTC),
             snapshotType = "daily",
             sourceRecords = ds.endOfDay.sourceRecords,
             acquiredRecords = ds.endOfDay.acquiredRecords,
@@ -727,7 +909,7 @@ object TrendTrackingService extends Logging {
     }
 
     val summary = TrendsSummaryFile(
-      generatedAt = DateTime.now(),
+      generatedAt = nowUtc,
       summaries = summaries
     )
 

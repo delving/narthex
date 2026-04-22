@@ -1093,24 +1093,25 @@ class DatasetActor(val datasetContext: DatasetContext,
       dsInfo.setState(SAVED)
       dsInfo.setRecordsSync(false)
 
-      // Capture trend snapshot after successful save (change-gated)
+      // Capture trend snapshot after successful save (change-gated).
+      // indexedRecords is carried forward from the previous snapshot because
+      // Hub3 indexing is async; the daily aggregation job reconciles against
+      // Hub3 and writes the real indexed count.
       try {
         val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
         val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
         val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
         val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
         val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
-        val indexedRecords = validRecords
 
-        TrendTrackingService.captureEventSnapshot(
+        TrendTrackingService.captureEventSnapshotCarryingIndexed(
           trendsLog = datasetContext.trendsLog,
           event = "save",
           sourceRecords = sourceRecords,
           acquiredRecords = acquiredRecords,
           deletedRecords = deletedRecords,
           validRecords = validRecords,
-          invalidRecords = invalidRecords,
-          indexedRecords = indexedRecords
+          invalidRecords = invalidRecords
         )
       } catch {
         case e: Exception =>

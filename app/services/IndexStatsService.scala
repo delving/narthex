@@ -70,6 +70,13 @@ object IndexStatsResponse {
 }
 
 /**
+ * Result of a Hub3 index counts fetch. `reachable` distinguishes genuine
+ * zero-record responses from network/API failures so trend aggregation can
+ * skip when Hub3 is unavailable rather than corrupting indexed counts.
+ */
+case class Hub3IndexCounts(total: Long, counts: Map[String, Int], reachable: Boolean)
+
+/**
  * Service for fetching and comparing dataset statistics between Narthex and Hub3 index
  */
 @Singleton
@@ -84,11 +91,11 @@ class IndexStatsService @Inject()(
    * Fetch index counts from Hub3 API using facet aggregation
    * @return Map of spec -> count, and total indexed documents
    */
-  def fetchHub3IndexCounts(): Future[(Long, Map[String, Int])] = {
+  def fetchHub3IndexCounts(): Future[Hub3IndexCounts] = {
     // Return empty data when in mock mode
     if (narthexConfig.mockBulkApi) {
       logger.debug("Mock mode enabled - returning empty Hub3 index counts")
-      return Future.successful((0L, Map.empty[String, Int]))
+      return Future.successful(Hub3IndexCounts(0L, Map.empty, reachable = true))
     }
 
     val url = s"${narthexConfig.naveApiUrl}/api/search/v2"
@@ -107,7 +114,7 @@ class IndexStatsService @Inject()(
       .map { response =>
         if (response.status != 200) {
           logger.error(s"Hub3 API error: ${response.status} - ${response.statusText}")
-          (0L, Map.empty[String, Int])
+          Hub3IndexCounts(0L, Map.empty, reachable = false)
         } else {
           try {
             val json = response.json
@@ -131,23 +138,26 @@ class IndexStatsService @Inject()(
                 }.toMap
 
                 logger.info(s"Fetched Hub3 index counts: $total total, ${specCounts.size} specs")
-                (total, specCounts)
+                Hub3IndexCounts(total, specCounts, reachable = true)
 
               case None =>
+                // Hub3 responded with a valid body, but the expected facet is missing.
+                // Treat as reachable-but-empty rather than unreachable so downstream
+                // callers still get an authoritative "no data for any spec" signal.
                 logger.warn("meta.spec facet not found in Hub3 response")
-                (0L, Map.empty[String, Int])
+                Hub3IndexCounts(0L, Map.empty, reachable = true)
             }
           } catch {
             case e: Exception =>
               logger.error(s"Failed to parse Hub3 response: ${e.getMessage}", e)
-              (0L, Map.empty[String, Int])
+              Hub3IndexCounts(0L, Map.empty, reachable = false)
           }
         }
       }
       .recover {
         case e: Exception =>
           logger.error(s"Failed to fetch Hub3 index counts: ${e.getMessage}", e)
-          (0L, Map.empty[String, Int])
+          Hub3IndexCounts(0L, Map.empty, reachable = false)
       }
   }
 
@@ -220,19 +230,19 @@ class IndexStatsService @Inject()(
   def getIndexAlertCounts(): Future[(Int, Int)] = {
     for {
       narthexDatasets <- fetchNarthexDatasets()
-      (_, hub3Counts) <- fetchHub3IndexCounts()
+      hub3 <- fetchHub3IndexCounts()
     } yield {
       val activeDatasets = narthexDatasets.filter(ds => !ds.deleted && !ds.disabled)
 
       // Wrong count: indexed but count doesn't match
       val wrongCount = activeDatasets.count { ds =>
-        val indexCount = hub3Counts.getOrElse(ds.spec, 0)
+        val indexCount = hub3.counts.getOrElse(ds.spec, 0)
         indexCount > 0 && !ds.processedValid.contains(indexCount)
       }
 
       // Not indexed: has valid records but not in index
       val notIndexedCount = activeDatasets.count { ds =>
-        val indexCount = hub3Counts.getOrElse(ds.spec, 0)
+        val indexCount = hub3.counts.getOrElse(ds.spec, 0)
         indexCount == 0 && ds.processedValid.exists(_ > 0)
       }
 
@@ -247,8 +257,11 @@ class IndexStatsService @Inject()(
   def getIndexStats(): Future[IndexStatsResponse] = {
     for {
       narthexDatasets <- fetchNarthexDatasets()
-      (totalIndexed, hub3Counts) <- fetchHub3IndexCounts()
+      hub3 <- fetchHub3IndexCounts()
     } yield {
+      val totalIndexed = hub3.total
+      val hub3Counts = hub3.counts
+
       // Merge Hub3 counts into Narthex datasets
       val mergedDatasets = narthexDatasets.map { ds =>
         ds.copy(indexCount = hub3Counts.getOrElse(ds.spec, 0))

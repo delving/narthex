@@ -103,65 +103,92 @@ class OrgContext @Inject() (
     )(new Runnable {
       override def run(): Unit = runDailyTrendAggregation()
     })(actorSystem.dispatcher)
+
+    // Bootstrap: on fresh installs (or when trend tracking has been off for a
+    // while) trends_summary.json is missing or empty, so the UI falls back to
+    // per-dataset logs that only have a handful of snapshots and shows 0 deltas
+    // for every dataset. Run one aggregation asynchronously at startup so the
+    // UI has usable data immediately instead of waiting until 00:30 tomorrow.
+    if (!trendsSummaryFile.exists() || trendsSummaryFile.length() == 0) {
+      logger.info("No trends summary found — scheduling bootstrap aggregation")
+      actorSystem.scheduler.scheduleOnce(10.seconds) {
+        runBootstrapTrendAggregation()
+      }(actorSystem.dispatcher)
+    }
+  }
+
+  private def runBootstrapTrendAggregation(): Unit = {
+    val today = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
+    logger.info(s"Running bootstrap trend aggregation for $today (UTC)")
+    runTrendAggregation(today)
   }
 
   private def runDailyTrendAggregation(): Unit = {
-    logger.info("Running daily trend aggregation...")
+    val yesterday = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).minusDays(1).toString("yyyy-MM-dd")
+    logger.info(s"Running daily trend aggregation for $yesterday (UTC)...")
+    runTrendAggregation(yesterday)
+  }
 
-    val yesterday = org.joda.time.LocalDate.now().minusDays(1).toString("yyyy-MM-dd")
-
+  private def runTrendAggregation(date: String): Unit = {
     val result = for {
       datasets <- DsInfo.listDsInfo(this)
-      (_, hub3Counts) <- indexStatsService.fetchHub3IndexCounts()
+      hub3 <- indexStatsService.fetchHub3IndexCounts()
     } yield {
-      var aggregated = 0
-      val specs = scala.collection.mutable.ListBuffer[String]()
+      if (!hub3.reachable) {
+        logger.warn(s"Skipping trend aggregation for $date: Hub3 unreachable. Indexed counts would be corrupted.")
+      } else {
+        var aggregated = 0
+        val specs = scala.collection.mutable.ListBuffer[String]()
 
-      datasets.foreach { dsInfo =>
-        try {
-          val ctx = datasetContext(dsInfo.spec)
-          val trendsLog = ctx.trendsLog
-          val dailyLog = ctx.trendsDailyLog
+        datasets.foreach { dsInfo =>
+          try {
+            val ctx = datasetContext(dsInfo.spec)
+            val trendsLog = ctx.trendsLog
+            val dailyLog = ctx.trendsDailyLog
 
-          val hub3Count = hub3Counts.getOrElse(dsInfo.spec, 0)
+            val hub3Count = hub3.counts.getOrElse(dsInfo.spec, 0)
 
-          val lastSnapshot = TrendTrackingService.getLastSnapshot(trendsLog)
-          lastSnapshot.foreach { last =>
-            if (last.indexedRecords != hub3Count && hub3Count > 0) {
-              TrendTrackingService.captureEventSnapshot(
-                trendsLog, "daily",
-                sourceRecords = last.sourceRecords,
-                acquiredRecords = last.acquiredRecords,
-                deletedRecords = last.deletedRecords,
-                validRecords = last.validRecords,
-                invalidRecords = last.invalidRecords,
-                indexedRecords = hub3Count
-              )
+            val lastSnapshot = TrendTrackingService.getLastSnapshot(trendsLog)
+            lastSnapshot.foreach { last =>
+              // Record a "daily" reconciliation snapshot whenever our stored indexed
+              // count disagrees with what Hub3 reports. A Hub3 count of 0 is meaningful
+              // when reachable=true (dataset fully de-indexed) so it is not guarded away.
+              if (last.indexedRecords != hub3Count) {
+                TrendTrackingService.captureEventSnapshot(
+                  trendsLog, "daily",
+                  sourceRecords = last.sourceRecords,
+                  acquiredRecords = last.acquiredRecords,
+                  deletedRecords = last.deletedRecords,
+                  validRecords = last.validRecords,
+                  invalidRecords = last.invalidRecords,
+                  indexedRecords = hub3Count
+                )
+              }
             }
-          }
 
-          TrendTrackingService.aggregateDay(trendsLog, dailyLog, yesterday)
-          specs += dsInfo.spec
-          aggregated += 1
+            TrendTrackingService.aggregateDay(trendsLog, dailyLog, date)
+            specs += dsInfo.spec
+            aggregated += 1
+          } catch {
+            case e: Exception =>
+              logger.warn(s"Failed to aggregate trends for ${dsInfo.spec}: ${e.getMessage}")
+          }
+        }
+
+        try {
+          TrendTrackingService.generateTrendsSummaryFromDaily(trendsSummaryFile, datasetsDir, specs.toList)
         } catch {
           case e: Exception =>
-            logger.warn(s"Failed to aggregate trends for ${dsInfo.spec}: ${e.getMessage}")
+            logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
         }
-      }
 
-      try {
-        TrendTrackingService.generateTrendsSummaryFromDaily(trendsSummaryFile, datasetsDir, specs.toList)
-      } catch {
-        case e: Exception =>
-          logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
+        logger.info(s"Trend aggregation for $date complete: $aggregated/${datasets.size} datasets")
       }
-
-      logger.info(s"Daily trend aggregation complete: $aggregated/${datasets.size} datasets")
     }
 
     val _ = result.recover {
       case e: Exception =>
-        logger.error(s"Daily trend aggregation failed: ${e.getMessage}", e)
+        logger.error(s"Trend aggregation for $date failed: ${e.getMessage}", e)
     }
   }
 
