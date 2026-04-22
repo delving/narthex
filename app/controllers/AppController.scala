@@ -335,57 +335,67 @@ class AppController @Inject() (
     val today = org.joda.time.LocalDate.now().toString("yyyy-MM-dd")
 
     listDsInfo(orgContext).flatMap { datasets =>
-      indexStatsService.fetchHub3IndexCounts().map { case (_, hub3Counts) =>
-        var captured = 0
-        val specs = scala.collection.mutable.ListBuffer[String]()
+      indexStatsService.fetchHub3IndexCounts().map { hub3 =>
+        if (!hub3.reachable) {
+          logger.warn("Manual trend snapshot skipped: Hub3 unreachable")
+          ServiceUnavailable(Json.obj(
+            "error" -> "Hub3 unreachable",
+            "datasetsProcessed" -> 0,
+            "snapshotsCaptured" -> 0
+          ))
+        } else {
+          val hub3Counts = hub3.counts
+          var captured = 0
+          val specs = scala.collection.mutable.ListBuffer[String]()
 
-        datasets.foreach { dsInfo =>
+          datasets.foreach { dsInfo =>
+            try {
+              val ctx = orgContext.datasetContext(dsInfo.spec)
+              val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
+              val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
+              val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
+              val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
+              val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
+              val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
+
+              TrendTrackingService.captureEventSnapshot(
+                trendsLog = ctx.trendsLog,
+                event = "manual",
+                sourceRecords = sourceRecords,
+                acquiredRecords = acquiredRecords,
+                deletedRecords = deletedRecords,
+                validRecords = validRecords,
+                invalidRecords = invalidRecords,
+                indexedRecords = indexedRecords
+              )
+
+              TrendTrackingService.aggregateDay(ctx.trendsLog, ctx.trendsDailyLog, today)
+
+              specs += dsInfo.spec
+              captured += 1
+            } catch {
+              case e: Exception =>
+                logger.warn(s"Failed to capture snapshot for ${dsInfo.spec}: ${e.getMessage}")
+            }
+          }
+
           try {
-            val ctx = orgContext.datasetContext(dsInfo.spec)
-            val sourceRecords = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt).getOrElse(0)
-            val acquiredRecords = dsInfo.getLiteralProp(acquiredRecordCount).map(_.toInt).getOrElse(0)
-            val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
-            val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
-            val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
-            val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
-
-            TrendTrackingService.captureEventSnapshot(
-              trendsLog = ctx.trendsLog,
-              event = "manual",
-              sourceRecords = sourceRecords,
-              acquiredRecords = acquiredRecords,
-              deletedRecords = deletedRecords,
-              validRecords = validRecords,
-              invalidRecords = invalidRecords,
-              indexedRecords = indexedRecords
+            TrendTrackingService.generateTrendsSummaryFromDaily(
+              orgContext.trendsSummaryFile,
+              orgContext.datasetsDir,
+              specs.toList
             )
-
-            TrendTrackingService.aggregateDay(ctx.trendsLog, ctx.trendsDailyLog, today)
-
-            specs += dsInfo.spec
-            captured += 1
           } catch {
             case e: Exception =>
-              logger.warn(s"Failed to capture snapshot for ${dsInfo.spec}: ${e.getMessage}")
+              logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
           }
-        }
 
-        try {
-          TrendTrackingService.generateTrendsSummaryFromDaily(
-            orgContext.trendsSummaryFile,
-            orgContext.datasetsDir,
-            specs.toList
-          )
-        } catch {
-          case e: Exception =>
-            logger.warn(s"Failed to generate trends summary: ${e.getMessage}")
+          Ok(Json.obj(
+            "success" -> true,
+            "datasetsProcessed" -> datasets.size,
+            "snapshotsCaptured" -> captured
+          ))
         }
-
-        Ok(Json.obj(
-          "success" -> true,
-          "datasetsProcessed" -> datasets.size,
-          "snapshotsCaptured" -> captured
-        ))
       }
     }.recover {
       case e: Exception =>
