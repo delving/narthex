@@ -222,23 +222,36 @@ class SourceProcessor(val datasetContext: DatasetContext,
           datasetContext.processedRepo.clear()
         }
 
+        val registryEnabled = orgContext.narthexConfig.registryEnabled
         val registry = orgContext.recordRegistry
         val spec = dsInfo.spec
         val registryKind =
           if (isIncrementalHarvest) RecordRegistry.KIND_INCREMENT
           else RecordRegistry.KIND_FULL
-        val runId = registry.beginRun(spec, registryKind)
-        log.info(s"Registry run $runId opened for $spec (kind=$registryKind)")
+        val runIdOpt: Option[Long] =
+          if (registryEnabled) {
+            val id = registry.beginRun(spec, registryKind)
+            log.info(s"Registry run $id opened for $spec (kind=$registryKind)")
+            Some(id)
+          } else {
+            log.info(s"Registry disabled by config — skipping beginRun for $spec")
+            None
+          }
 
         // Stamp OAI-PMH tombstones (from harvester's deleted.ids) into the
         // registry so the next save phase can diff them. Does not filter
         // pockets — SourceRepo still uses the file for that.
-        val tombstoneIds = datasetContext.sourceRepoOpt
-          .map(_.deletedIdSet.toSeq)
-          .getOrElse(Seq.empty)
-        if (tombstoneIds.nonEmpty) {
-          registry.upsertDeletedBatch(spec, tombstoneIds, runId)
-          log.info(s"Registry: stamped ${tombstoneIds.size} tombstoned records")
+        val tombstoneIds: Seq[String] =
+          if (registryEnabled)
+            datasetContext.sourceRepoOpt
+              .map(_.deletedIdSet.toSeq)
+              .getOrElse(Seq.empty)
+          else Seq.empty
+        runIdOpt.foreach { runId =>
+          if (tombstoneIds.nonEmpty) {
+            registry.upsertDeletedBatch(spec, tombstoneIds, runId)
+            log.info(s"Registry: stamped ${tombstoneIds.size} tombstoned records")
+          }
         }
 
         val processedOutput = datasetContext.processedRepo.createOutput
@@ -346,7 +359,9 @@ class SourceProcessor(val datasetContext: DatasetContext,
 
             batch.clear()
             if (seenBuf.nonEmpty) {
-              registry.upsertSeenBatch(spec, seenBuf.toSeq, runId)
+              runIdOpt.foreach { runId =>
+                registry.upsertSeenBatch(spec, seenBuf.toSeq, runId)
+              }
               seenBuf.clear()
             }
 
@@ -422,7 +437,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         context.parent ! ProcessingComplete(validRecords,
                                             invalidRecords,
                                             scheduledOptOutput,
-                                            Some(runId))
+                                            runIdOpt)
       }
   }
 

@@ -466,26 +466,40 @@ class DatasetActor(val datasetContext: DatasetContext,
           }
         }
 
+        def clearRegistryMirrorOfHub3State(): Unit = {
+          // Registry mirrors Hub3 state, so clear it only when Hub3 state
+          // is being wiped. Never on local-only resets (remove raw/source/
+          // processed/tree, FromScratch*).
+          scala.util.Try(orgContext.recordRegistry.dropDatasetDb(dsInfo.spec))
+            .recover { case ex: Throwable =>
+              log.warning(s"Registry: dropDatasetDb(${dsInfo.spec}) failed: ${ex.getMessage}")
+            }
+        }
+
         commandName match {
           case "delete" =>
             Await.ready(datasetContext.dsInfo.dropDataset, 2.minutes)
             deleteQuietly(datasetContext.rootDir)
             datasetContext.sipFiles.foreach(_.delete())
+            clearRegistryMirrorOfHub3State()
             self ! PoisonPill
             "deleted"
 
           case "delete records" =>
             Await.ready(datasetContext.dropRecords, 2.minutes)
+            clearRegistryMirrorOfHub3State()
             broadcastIdleState()
             "deleted records"
 
           case "delete index" =>
             Await.ready(datasetContext.dropIndex, 2.minutes)
+            clearRegistryMirrorOfHub3State()
             broadcastIdleState()
             "deleted index"
 
           case "disable dataset" =>
             Await.ready(datasetContext.disableDataSet, 2.minutes)
+            clearRegistryMirrorOfHub3State()
             broadcastIdleState()
             "disabled dataset"
 
