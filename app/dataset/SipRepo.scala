@@ -151,6 +151,68 @@ object Sip {
 
   def apply(datasetName: String, rdfBaseUrl: String, zipFile: File) = new Sip(datasetName, rdfBaseUrl, zipFile)
 
+  private val logger = Logger(getClass)
+
+  /**
+   * Load a RecDefTree from an on-disk record-definition XML file.
+   *
+   * Default-mapping XML is imported verbatim from DefaultMappingRepo templates. The
+   * templates have a `<facts>` block carrying stale values (e.g. `spec` = template
+   * source dataset, `dataProviderURL` = empty). `rewriteFactsInMappingXml` lets
+   * callers re-parse the XML, overwrite facts from the target dataset's
+   * SipGenerationFacts, and re-serialize before the mapping is placed in the SIP.
+   */
+  def loadRecDefTree(recordDefinition: File): RecDefTree = {
+    val in = new FileInputStream(recordDefinition)
+    try RecDefTree.create(RecDef.read(in))
+    finally in.close()
+  }
+
+  /**
+   * Re-parse a customMappingXml string, overwrite its `<facts>` entries from
+   * `factsMap`, and serialize back. Returns None if the mapping cannot be
+   * parsed against the given RecDefTree (caller should fall back to verbatim
+   * write + log a warning).
+   */
+  def rewriteFactsInMappingXml(
+    customXml: String,
+    recDefTree: RecDefTree,
+    factsMap: java.util.Map[String, String]
+  ): Option[Array[Byte]] = {
+    Try {
+      val in = new ByteArrayInputStream(customXml.getBytes("UTF-8"))
+      try {
+        val recMapping = RecMapping.read(in, recDefTree)
+        factsMap.entrySet().asScala.foreach { e =>
+          recMapping.setFact(e.getKey, e.getValue)
+        }
+        val baos = new ByteArrayOutputStream()
+        RecMapping.write(baos, recMapping)
+        baos.toByteArray
+      } finally in.close()
+    }.toOption
+  }
+
+  /**
+   * Fact map without `baseUrl` / `schemaVersions`. Use when no SipPrefixRepo
+   * is available. Covers the fields the mapping Groovy code actually reads
+   * (spec, orgId, provider, dataProvider, dataProviderURL, etc.).
+   */
+  def factsToMap(facts: SipGenerationFacts): java.util.HashMap[String, String] = {
+    val map = new java.util.HashMap[String, String]()
+    map.put("spec", facts.spec)
+    map.put("name", facts.name)
+    map.put("provider", facts.provider)
+    map.put("dataProvider", facts.dataProvider)
+    map.put("dataProviderURL", facts.dataProviderURL)
+    map.put("language", facts.language)
+    map.put("rights", facts.rights)
+    map.put("type", facts.edmType)
+    map.put("dataType", facts.dataType)
+    map.put("orgId", facts.orgId)
+    map
+  }
+
   val XMLNS = "http://www.w3.org/2000/xmlns/"
   val RDF_ROOT_TAG: String = "RDF"
   val RDF_RECORD_TAG: String = "Description"
@@ -444,10 +506,19 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
               customMappingXml match {
                 case Some(customXml) =>
-                  // Use custom mapping XML (e.g., from default mappings or DatasetMappingRepo)
+                  // Use custom mapping XML (e.g., from default mappings or
+                  // DatasetMappingRepo). Rewrite the `<facts>` block so the
+                  // target dataset's spec, orgId, dataProviderURL etc.
+                  // replace stale values copied from the template.
                   logger.debug(s"Using custom mapping XML for ${sipMapping.fileName}")
-                  val xmlBytes = customXml.getBytes("UTF-8")
-                  zos.write(xmlBytes)
+                  val factsMap = sipPrefixRepoOpt.map(_.toMap(facts)).getOrElse(Sip.factsToMap(facts))
+                  Sip.rewriteFactsInMappingXml(customXml, sipMapping.recDefTree, factsMap) match {
+                    case Some(bytes) =>
+                      zos.write(bytes)
+                    case None =>
+                      logger.warn(s"Could not parse customMappingXml for ${sipMapping.fileName}; writing verbatim (facts may be stale)")
+                      zos.write(customXml.getBytes("UTF-8"))
+                  }
 
                 case None =>
                   // if there is a new schema version, set it
@@ -470,7 +541,21 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
                 case Some(customXml) =>
                   logger.info(s"sipMappingOpt is None, using custom mapping XML for ${entry.getName}")
                   zos.putNextEntry(new ZipEntry(entry.getName))
-                  zos.write(customXml.getBytes("UTF-8"))
+                  // Best-effort fact rewrite: we need a RecDefTree, which only
+                  // the prefix repo can supply here. Without it, write
+                  // verbatim (unchanged from prior behaviour).
+                  val bytesOpt = sipPrefixRepoOpt.flatMap { prefixRepo =>
+                    Try(Sip.loadRecDefTree(prefixRepo.recordDefinition)).toOption.flatMap { tree =>
+                      Sip.rewriteFactsInMappingXml(customXml, tree, prefixRepo.toMap(facts))
+                    }
+                  }
+                  bytesOpt match {
+                    case Some(bytes) =>
+                      zos.write(bytes)
+                    case None =>
+                      logger.warn(s"Unable to rewrite facts in customMappingXml (no prefix repo or parse failed); writing verbatim")
+                      zos.write(customXml.getBytes("UTF-8"))
+                  }
                   zos.closeEntry()
                   mappingWritten = true
                 case None =>
@@ -534,7 +619,19 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
           val mappingFileName = s"mapping_$prefix.xml"
           logger.info(s"Adding default mapping to SIP: $mappingFileName")
           zos.putNextEntry(new ZipEntry(mappingFileName))
-          zos.write(mappingXml.getBytes("UTF-8"))
+          // Best-effort fact rewrite: requires a RecDefTree, which we obtain
+          // from the prefix repo's record definition.
+          val bytesOpt = sipPrefixRepoOpt.flatMap { prefixRepo =>
+            Try(Sip.loadRecDefTree(prefixRepo.recordDefinition)).toOption.flatMap { tree =>
+              Sip.rewriteFactsInMappingXml(mappingXml, tree, prefixRepo.toMap(facts))
+            }
+          }
+          bytesOpt match {
+            case Some(bytes) => zos.write(bytes)
+            case None =>
+              logger.warn(s"Unable to rewrite facts for $mappingFileName (no prefix repo or parse failed); writing verbatim")
+              zos.write(mappingXml.getBytes("UTF-8"))
+          }
           zos.closeEntry()
         }
       }

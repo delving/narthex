@@ -19,6 +19,7 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import dataset.SipRepo.FACTS_FILE
+import dataset.Sip
 import java.util.HashMap
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
@@ -227,13 +228,22 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
         copyIn(recordDefinition)
         copyIn(validation)
 
-        // Include mapping if provided (e.g., from default mappings)
+        // Include mapping if provided (e.g., from default mappings). Rewrite
+        // the `<facts>` block from the target dataset's facts so the template's
+        // stale spec / empty dataProviderURL don't leak into the new SIP.
         customMappingXml.foreach { mappingXml =>
           val mappingFileName = s"mapping_$prefix.xml"
           logger.info(s"Including default mapping in new SIP: $mappingFileName")
           zos.putNextEntry(new ZipEntry(mappingFileName))
-          val xmlBytes = mappingXml.getBytes("UTF-8")
-          zos.write(xmlBytes)
+          val bytesOpt = scala.util.Try(Sip.loadRecDefTree(recordDefinition)).toOption.flatMap { tree =>
+            Sip.rewriteFactsInMappingXml(mappingXml, tree, toMap(facts))
+          }
+          bytesOpt match {
+            case Some(bytes) => zos.write(bytes)
+            case None =>
+              logger.warn(s"Unable to rewrite facts for $mappingFileName; writing verbatim")
+              zos.write(mappingXml.getBytes("UTF-8"))
+          }
           zos.closeEntry()
         }
 
