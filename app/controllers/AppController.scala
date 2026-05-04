@@ -1528,6 +1528,17 @@ class AppController @Inject() (
         dsInfo.setMappingSource("manual")
         // 4. Drop current mapping pointer (history preserved on disk)
         datasetContext.datasetMappingRepo.clearCurrentVersion()
+        // 5. Archive old SIP zips so they don't appear in download lists. They
+        //    embed the OLD prefix's recdef + mapping and would mislead SIP-Creator.
+        //    Renaming to `.archived` keeps the bytes on disk for forensics
+        //    without matching the `.sip.zip` extension filter.
+        val archivedSips = datasetContext.sipFiles.toList.flatMap { f =>
+          val archived = new java.io.File(f.getParentFile, f.getName.stripSuffix(".sip.zip") + s".$oldPrefix.archived")
+          if (f.renameTo(archived)) Some(archived.getName) else None
+        }
+        if (archivedSips.nonEmpty) {
+          logger.info(s"Archived ${archivedSips.size} old SIP(s) for $spec after prefix switch: ${archivedSips.mkString(", ")}")
+        }
 
         logger.info(s"Switched $spec prefix: $oldPrefix → $newPrefix (rec-def: ${resolvedHashOpt.getOrElse("follow current")})")
 
@@ -1537,7 +1548,8 @@ class AppController @Inject() (
           "oldPrefix" -> oldPrefix,
           "newPrefix" -> newPrefix,
           "newRecDefHash" -> resolvedHashOpt,
-          "warning" -> "Current mapping has been cleared. Upload a new mapping or pick a default for the new prefix before regenerating SIP."
+          "archivedSips" -> archivedSips.size,
+          "warning" -> "Current mapping cleared. Old SIP zips archived. Upload a new mapping (or pick a default) and run 'Generate SIP' before downloading."
         ))
       }
     }
