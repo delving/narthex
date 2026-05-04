@@ -134,7 +134,16 @@ class SourceProcessor(val datasetContext: DatasetContext,
           }
 
           val recDefVersionHashOpt = dsInfo.getRecDefVersionHash
-          val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt
+          val targetPrefix = SipGenerationFacts(dsInfo).prefix
+          // Only reuse the latest SIP when its mapping prefix matches the
+          // dataset's CURRENT prefix. After a cross-prefix switch
+          // (datasetMapToPrefix changed), the old SIP's internals belong to
+          // the old prefix and must NOT be carried forward — fall through to
+          // the fresh-SIP branch instead.
+          val reusableLatestSip = datasetContext.sipRepo.latestSipOpt.filter { latestSip =>
+            latestSip.sipMappingOpt.map(_.prefix).contains(targetPrefix)
+          }
+          val sipFileOpt: Option[File] = reusableLatestSip
             .map { latestSip =>
               val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping =>
                 datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix, recDefVersionHashOpt))
@@ -145,6 +154,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
               Some(sipFile)
             } getOrElse {
             val facts = SipGenerationFacts(dsInfo)
+            log.info(s"Generating fresh SIP for ${dsInfo.spec} on prefix=${facts.prefix} (no reusable prior SIP for that prefix)")
             val sipPrefixRepo =
               datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix, recDefVersionHashOpt)
             sipPrefixRepo.map { prefixRepo =>
