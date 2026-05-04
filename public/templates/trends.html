@@ -76,8 +76,8 @@
                 <div class="input-group">
                     <span class="input-group-addon"><i class="fa fa-search"></i></span>
                     <input type="text" class="form-control input-sm" placeholder="Search datasets..."
-                           ng-model="searchQuery" ng-model-options="{ debounce: 150 }">
-                    <span class="input-group-btn" ng-show="searchQuery">
+                           ng-model="search.query" ng-model-options="{ debounce: 150 }">
+                    <span class="input-group-btn" ng-show="search.query">
                         <button class="btn btn-sm btn-default" type="button" ng-click="clearSearch()">
                             <i class="fa fa-times"></i>
                         </button>
@@ -111,10 +111,10 @@
         <!-- Empty state -->
         <div ng-if="getActiveDatasets().length === 0" class="alert alert-info">
             <i class="fa fa-info-circle"></i>
-            <span ng-if="searchQuery">No datasets matching "{{ searchQuery }}".</span>
-            <span ng-if="!searchQuery && activeTab === 'growing'">No datasets with growth in the last {{ getTimeWindowLabel() }}.</span>
-            <span ng-if="!searchQuery && activeTab === 'shrinking'">No datasets with decline in the last {{ getTimeWindowLabel() }}.</span>
-            <span ng-if="!searchQuery && activeTab === 'stable'">No datasets with changes in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="search.query">No datasets matching "{{ search.query }}".</span>
+            <span ng-if="!search.query && activeTab === 'growing'">No datasets with growth in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="!search.query && activeTab === 'shrinking'">No datasets with decline in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="!search.query && activeTab === 'stable'">No datasets with changes in the last {{ getTimeWindowLabel() }}.</span>
         </div>
 
         <!-- Data table -->

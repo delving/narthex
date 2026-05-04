@@ -23,7 +23,7 @@ define(["angular", "Chart"], function (angular, Chart) {
         $scope.trends = null;
         $scope.activeTab = 'growing';
         $scope.timeWindow = '24h';
-        $scope.searchQuery = '';
+        $scope.search = { query: '' };
 
         // Chart state
         $scope.expandedSpec = null;
@@ -154,10 +154,11 @@ define(["angular", "Chart"], function (angular, Chart) {
          * Filter datasets by search query
          */
         function filterBySearch(datasets) {
-            if (!$scope.searchQuery || $scope.searchQuery.trim() === '') {
+            var raw = ($scope.search && $scope.search.query) || '';
+            if (raw.trim() === '') {
                 return datasets;
             }
-            var query = $scope.searchQuery.toLowerCase().trim();
+            var query = raw.toLowerCase().trim();
             return datasets.filter(function(ds) {
                 return ds.spec.toLowerCase().indexOf(query) !== -1;
             });
@@ -183,7 +184,7 @@ define(["angular", "Chart"], function (angular, Chart) {
          * Clear search query
          */
         $scope.clearSearch = function () {
-            $scope.searchQuery = '';
+            $scope.search.query = '';
         };
 
         /**
