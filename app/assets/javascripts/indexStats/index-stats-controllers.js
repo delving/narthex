@@ -26,7 +26,7 @@ define(["angular"], function (angular) {
         $scope.activeTab = 'correct';
         $scope.loading = true;
         $scope.error = null;
-        $scope.searchQuery = '';
+        $scope.search = { query: '' };
 
         // Stats data
         $scope.stats = {
@@ -51,10 +51,11 @@ define(["angular"], function (angular) {
          * Filter datasets by search query
          */
         function filterBySearch(datasets) {
-            if (!$scope.searchQuery || $scope.searchQuery.trim() === '') {
+            var raw = ($scope.search && $scope.search.query) || '';
+            if (raw.trim() === '') {
                 return datasets;
             }
-            var query = $scope.searchQuery.toLowerCase().trim();
+            var query = raw.toLowerCase().trim();
             return datasets.filter(function(ds) {
                 return ds.spec.toLowerCase().indexOf(query) !== -1;
             });
@@ -64,7 +65,7 @@ define(["angular"], function (angular) {
          * Clear search query
          */
         $scope.clearSearch = function () {
-            $scope.searchQuery = '';
+            $scope.search.query = '';
         };
 
         /**
