@@ -1113,6 +1113,17 @@ class DatasetActor(val datasetContext: DatasetContext,
           validRecords = validRecords,
           invalidRecords = invalidRecords
         )
+
+        // Refresh today's row in trends-daily.jsonl so the UI shows source/valid
+        // movement immediately instead of waiting for the 00:30 UTC cron. The
+        // indexed column is still carried-forward here; the cron later pulls the
+        // real Hub3 count and writes a "daily" reconciliation snapshot.
+        val todayUtc = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
+        TrendTrackingService.aggregateDay(
+          datasetContext.trendsLog,
+          datasetContext.trendsDailyLog,
+          todayUtc
+        )
       } catch {
         case e: Exception =>
           log.warning(s"Failed to capture trend snapshot: ${e.getMessage}")

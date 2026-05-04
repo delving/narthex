@@ -553,4 +553,31 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     val concurrentCaptured = finalSnaps.map(_.sourceRecords).filter(_ >= 2001).toSet
     concurrentCaptured.size shouldBe 10
   }
+
+  it should "let a second aggregateDay call on the same date overwrite the effective summary" in withTempDir { tmpDir =>
+    val trendsLog = new File(tmpDir, "trends.jsonl")
+    val dailyLog = new File(tmpDir, "trends-daily.jsonl")
+    val today = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
+
+    // First save
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 1000, acquiredRecords = 1000, deletedRecords = 0,
+      validRecords = 900, invalidRecords = 100, indexedRecords = 800
+    )
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, today)
+
+    // Second save the same day with more records
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "save",
+      sourceRecords = 1500, acquiredRecords = 1500, deletedRecords = 0,
+      validRecords = 1400, invalidRecords = 100, indexedRecords = 800
+    )
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, today)
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.last.date shouldBe today
+    summaries.last.endOfDay.sourceRecords shouldBe 1500
+    summaries.last.endOfDay.validRecords shouldBe 1400
+  }
 }
