@@ -90,12 +90,13 @@ class OrgContext @Inject() (
   private def scheduleDailyTrendSnapshot(): Unit = {
     val minute = narthexConfig.trendAggregationMinute
 
-    val now = ZonedDateTime.now(ZoneId.systemDefault())
-    val targetTime = now.toLocalDate.atTime(LocalTime.of(0, minute)).atZone(ZoneId.systemDefault())
+    val zone = ZoneId.of("UTC")
+    val now = ZonedDateTime.now(zone)
+    val targetTime = now.toLocalDate.atTime(LocalTime.of(0, minute)).atZone(zone)
     val nextRun = if (now.isAfter(targetTime)) targetTime.plusDays(1) else targetTime
     val initialDelayMillis = java.time.Duration.between(now, nextRun).toMillis
 
-    logger.info(s"Scheduling daily trend aggregation at 00:$minute. First run in ${initialDelayMillis / 3600000} hours.")
+    logger.info(s"Scheduling daily trend aggregation at 00:$minute UTC. First run in ${initialDelayMillis / 3600000} hours.")
 
     actorSystem.scheduler.scheduleWithFixedDelay(
       initialDelayMillis.millis,
