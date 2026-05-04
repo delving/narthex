@@ -1,0 +1,171 @@
+<div class="container-fluid" style="padding: 15px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 15px;">
+        <div>
+            <h3 style="margin: 0 0 4px 0;">
+                <i class="fa fa-cubes"></i> Record Definitions
+            </h3>
+            <small class="text-muted">Versioned record-definition XML files per schema prefix.
+                One version per prefix is "current" and used by all datasets on that prefix.</small>
+        </div>
+        <a href="#/" class="btn btn-default btn-sm">
+            <i class="fa fa-arrow-left"></i> Back to Datasets
+        </a>
+    </div>
+
+    <!-- New prefix upload (collapsible) -->
+    <div class="panel panel-default" style="margin-bottom: 20px;">
+        <div class="panel-heading" style="cursor: pointer;" ng-click="showNewUpload = !showNewUpload">
+            <span style="font-weight: 600;">
+                <i class="fa" ng-class="showNewUpload ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                <i class="fa fa-plus" style="margin-left: 4px;"></i> Upload to a prefix
+            </span>
+        </div>
+        <div class="panel-body" ng-show="showNewUpload">
+            <div class="row">
+                <div class="col-sm-2">
+                    <label style="font-size: 12px;">Prefix</label>
+                    <input type="text" class="form-control input-sm"
+                           ng-model="newUploadPrefix"
+                           placeholder="e.g. edm, ace">
+                </div>
+                <div class="col-sm-3">
+                    <label style="font-size: 12px;">Record-Definition XML</label>
+                    <label class="btn btn-default btn-sm btn-block" style="margin-bottom:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <i class="fa fa-file-code-o"></i>
+                        <span ng-if="!newUpload.recdef">Choose .xml…</span>
+                        <span ng-if="newUpload.recdef">{{ newUpload.recdef.name }}</span>
+                        <input type="file" accept=".xml" style="display: none;"
+                               onchange="angular.element(this).scope().onNewRecDefSelect(this.files)">
+                    </label>
+                </div>
+                <div class="col-sm-3">
+                    <label style="font-size: 12px;">Validation XSD (optional)</label>
+                    <label class="btn btn-default btn-sm btn-block" style="margin-bottom:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <i class="fa fa-file-code-o"></i>
+                        <span ng-if="!newUpload.xsd">Choose .xsd…</span>
+                        <span ng-if="newUpload.xsd">{{ newUpload.xsd.name }}</span>
+                        <input type="file" accept=".xsd" style="display: none;"
+                               onchange="angular.element(this).scope().onNewXsdSelect(this.files)">
+                    </label>
+                </div>
+                <div class="col-sm-2">
+                    <label style="font-size: 12px;">Notes (optional)</label>
+                    <input type="text" class="form-control input-sm" ng-model="newUpload.notes">
+                </div>
+                <div class="col-sm-2">
+                    <label style="font-size: 12px;">&nbsp;</label>
+                    <button class="btn btn-primary btn-sm btn-block" ng-click="uploadNew()">
+                        <i class="fa fa-upload"></i> Upload
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-prefix list -->
+    <div ng-if="summaries.length === 0" class="alert alert-info">
+        No record-definitions found. Upload one to get started.
+    </div>
+
+    <div ng-repeat="s in summaries">
+        <div class="panel panel-default" style="margin-bottom: 15px;">
+            <div class="panel-heading" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;"
+                 ng-click="toggleExpand(s.prefix)">
+                <h4 class="panel-title" style="margin: 0;">
+                    <i class="fa" ng-class="{'fa-chevron-down': expandedPrefix === s.prefix, 'fa-chevron-right': expandedPrefix !== s.prefix}"></i>
+                    {{ s.prefix | uppercase }}
+                </h4>
+                <div>
+                    <span class="badge">{{ s.versionCount }} version(s)</span>
+                    <span class="badge" style="background-color: #5cb85c;" ng-if="s.currentVersion">
+                        current: {{ s.currentVersion }}
+                    </span>
+                </div>
+            </div>
+
+            <div ng-if="expandedPrefix === s.prefix" class="panel-body">
+
+                <!-- Versions table -->
+                <table class="table table-condensed table-hover" ng-if="versions[s.prefix].versions.length > 0">
+                    <thead>
+                        <tr>
+                            <th>Hash</th>
+                            <th>Schema Version</th>
+                            <th>Uploaded</th>
+                            <th>Source</th>
+                            <th>XSD</th>
+                            <th>Notes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="v in versions[s.prefix].versions"
+                            ng-class="{'success': v.hash === versions[s.prefix].currentVersion}">
+                            <td><code>{{ v.hash }}</code>
+                                <span class="label label-success" ng-if="v.hash === versions[s.prefix].currentVersion">current</span>
+                            </td>
+                            <td>{{ v.schemaVersion }}</td>
+                            <td><small>{{ v.uploadedAt }}</small></td>
+                            <td><small>{{ v.source }}</small></td>
+                            <td>
+                                <span ng-if="v.hasXsd"><i class="fa fa-check text-success"></i></span>
+                                <span ng-if="!v.hasXsd" class="text-muted">—</span>
+                            </td>
+                            <td><small>{{ v.notes }}</small></td>
+                            <td>
+                                <a class="btn btn-default btn-xs" ng-href="{{ downloadXmlUrl(s.prefix, v.hash) }}" target="_blank">
+                                    <i class="fa fa-download"></i> XML
+                                </a>
+                                <a class="btn btn-default btn-xs" ng-href="{{ downloadXsdUrl(s.prefix, v.hash) }}" target="_blank" ng-if="v.hasXsd">
+                                    <i class="fa fa-download"></i> XSD
+                                </a>
+                                <button class="btn btn-primary btn-xs"
+                                        ng-click="setCurrent(s.prefix, v.hash)"
+                                        ng-if="v.hash !== versions[s.prefix].currentVersion">
+                                    Set current
+                                </button>
+                                <button class="btn btn-danger btn-xs"
+                                        ng-click="deleteVersion(s.prefix, v.hash)"
+                                        ng-disabled="v.hash === versions[s.prefix].currentVersion">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Inline upload for this prefix -->
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-sm-3">
+                        <label class="btn btn-default btn-sm btn-block" style="margin-bottom:0; overflow:hidden;">
+                            <i class="fa fa-file-code-o"></i>
+                            <span ng-if="!uploadFiles[s.prefix].recdef">Choose .xml…</span>
+                            <span ng-if="uploadFiles[s.prefix].recdef">{{ uploadFiles[s.prefix].recdef.name }}</span>
+                            <input type="file" accept=".xml" style="display: none;"
+                                   onchange="angular.element(this).scope().onRecDefFileSelect('{{ s.prefix }}', this.files)">
+                        </label>
+                    </div>
+                    <div class="col-sm-3">
+                        <label class="btn btn-default btn-sm btn-block" style="margin-bottom:0; overflow:hidden;">
+                            <i class="fa fa-file-code-o"></i>
+                            <span ng-if="!uploadFiles[s.prefix].xsd">XSD (optional)</span>
+                            <span ng-if="uploadFiles[s.prefix].xsd">{{ uploadFiles[s.prefix].xsd.name }}</span>
+                            <input type="file" accept=".xsd" style="display: none;"
+                                   onchange="angular.element(this).scope().onXsdFileSelect('{{ s.prefix }}', this.files)">
+                        </label>
+                    </div>
+                    <div class="col-sm-3">
+                        <input type="text" class="form-control input-sm"
+                               ng-model="uploadFiles[s.prefix].notes" placeholder="Notes (optional)">
+                    </div>
+                    <div class="col-sm-3">
+                        <button class="btn btn-primary btn-sm btn-block" ng-click="upload(s.prefix)">
+                            <i class="fa fa-upload"></i> Upload new version
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

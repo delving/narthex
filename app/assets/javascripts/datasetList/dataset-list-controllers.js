@@ -2273,6 +2273,9 @@ define(["angular"], function () {
                 case 'default-mappings':
                     $location.path('/default-mappings');
                     break;
+                case 'recdefs':
+                    $location.path('/recdefs');
+                    break;
                 case 'discovery':
                     $location.path('/discovery');
                     break;
