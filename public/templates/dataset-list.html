@@ -222,9 +222,62 @@
         <button class="btn btn-sm btn-primary" ng-click="bulkFastSave()">
             <i class="fa fa-forward"></i> Fast Save
         </button>
+        <button class="btn btn-sm btn-info" ng-click="openBulkSetRecDef()">
+            <i class="fa fa-cubes"></i> Set Rec-Def…
+        </button>
         <button class="btn btn-sm btn-default" ng-click="clearSelection()">
             <i class="fa fa-times"></i> Clear
         </button>
+    </div>
+
+    <!-- Bulk Set Rec-Def Modal -->
+    <div ng-if="showBulkRecDefModal" class="modal" style="display: block; background: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" ng-click="closeBulkRecDef()">&times;</button>
+                    <h4 class="modal-title">Set Rec-Def Version (bulk)</h4>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Prefix:</strong> {{ bulkRecDef.selectedPrefix | uppercase }}</p>
+                    <div class="form-group">
+                        <label>Target Version</label>
+                        <select class="form-control" ng-model="bulkRecDef.selectedHash"
+                                ng-change="runBulkRecDefPreflight()"
+                                ng-options="v.hash as (v.schemaVersion + ' — ' + v.hash) for v in bulkRecDef.availableVersions">
+                            <option value="">Pick a version…</option>
+                        </select>
+                    </div>
+
+                    <div ng-if="bulkRecDef.preflight.length > 0">
+                        <h5>Compatibility Pre-Flight</h5>
+                        <ul>
+                            <li ng-repeat="r in bulkRecDef.preflight">
+                                <span ng-if="r.ok" class="text-success"><i class="fa fa-check"></i> {{ r.spec }}</span>
+                                <span ng-if="!r.ok" class="text-danger"><i class="fa fa-times"></i> {{ r.spec }} — {{ r.problem }}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="checkbox">
+                        <label><input type="checkbox" ng-model="bulkRecDef.force"> Force (skip compat check)</label>
+                    </div>
+                    <div class="checkbox">
+                        <label><input type="checkbox" ng-model="bulkRecDef.regenSip"> Also regenerate SIP after switch</label>
+                    </div>
+                    <div class="checkbox">
+                        <label><input type="checkbox" ng-model="bulkRecDef.fastSave"> Also run Fast Save (process + index)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-default" ng-click="closeBulkRecDef()" ng-disabled="bulkRecDef.running">Cancel</button>
+                    <button class="btn btn-primary" ng-click="applyBulkRecDef()"
+                            ng-disabled="!bulkRecDef.selectedHash || bulkRecDef.running">
+                        <i class="fa fa-check"></i> Apply to selected
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     <table class="dataset-list-table">
         <thead>
@@ -840,6 +893,44 @@
                                                                         </button>
                                                                     </div>
                                                                 </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Record Definition Version (per-dataset pin) -->
+                                                    <div class="panel panel-default" style="margin-top: 15px;">
+                                                        <div class="panel-heading">
+                                                            <h5 class="panel-title">
+                                                                <i class="fa fa-cubes"></i> Record Definition Version
+                                                            </h5>
+                                                        </div>
+                                                        <div class="panel-body">
+                                                            <p class="text-muted" style="margin: 0 0 8px 0;">
+                                                                <small>
+                                                                    Effective: <code>{{ recDefEffectiveHash() || 'no version available' }}</code>
+                                                                    <span ng-if="recDef.current"> (pinned for this dataset)</span>
+                                                                    <span ng-if="!recDef.current && recDef.prefixCurrent"> (follows prefix current)</span>
+                                                                </small>
+                                                            </p>
+                                                            <div ng-if="recDef.versions.length === 0" class="alert alert-warning" style="margin: 0;">
+                                                                <i class="fa fa-info-circle"></i> No rec-def versions available for prefix
+                                                                <strong>{{ datasetSchemaPrefix | uppercase }}</strong>.
+                                                                <a href="#/recdefs">Upload one</a>.
+                                                            </div>
+                                                            <div ng-if="recDef.versions.length > 0" class="form-inline">
+                                                                <select class="form-control input-sm" ng-model="recDef.selected"
+                                                                        ng-options="v.hash as (v.schemaVersion + ' — ' + v.hash + (v.hash === recDef.prefixCurrent ? ' (prefix current)' : '')) for v in recDef.versions">
+                                                                    <option value="">Pick a version…</option>
+                                                                </select>
+                                                                <button class="btn btn-sm btn-primary"
+                                                                        ng-click="applyRecDefVersion(false)"
+                                                                        ng-disabled="!recDef.selected || recDef.selected === recDef.current">
+                                                                    <i class="fa fa-check"></i> Apply
+                                                                </button>
+                                                                <small class="text-muted" style="display: block; margin-top: 6px;">
+                                                                    Switching clones the current mapping with the bumped schemaVersion.
+                                                                    Run "Generate SIP" + reprocess to apply.
+                                                                </small>
                                                             </div>
                                                         </div>
                                                     </div>

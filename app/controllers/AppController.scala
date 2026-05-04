@@ -1251,10 +1251,25 @@ class AppController @Inject() (
     request.body.file("file").map { file =>
       val xmlContent = FileUtils.readFileToString(file.ref.path.toFile, "UTF-8")
       val notes = request.body.dataParts.get("notes").flatMap(_.headOption)
-      val version = defaultMappingRepo.saveVersion(prefix, name, xmlContent, "upload", None, notes)
+      val targetRecDefHash = deriveTargetRecDefHash(prefix, xmlContent)
+      val version = defaultMappingRepo.saveVersion(prefix, name, xmlContent, "upload", None, notes, targetRecDefHash)
       Ok(Json.toJson(version))
     }.getOrElse {
       NotAcceptable(Json.obj("problem" -> "No file provided"))
+    }
+  }
+
+  /**
+   * Best-effort: parse `<rec-mapping schemaVersion="X.Y.Z">` from mapping XML
+   * and look up the matching RecDefRepo version. Returns None if unparseable
+   * or no matching version exists.
+   */
+  private def deriveTargetRecDefHash(prefix: String, mappingXml: String): Option[String] = {
+    val rx = """<rec-mapping\b[^>]*\bschemaVersion="([^"]+)"""".r
+    rx.findFirstMatchIn(mappingXml).flatMap { m =>
+      val versionPart = m.group(1)
+      val schemaVersionFull = s"${prefix}_${versionPart}"
+      recDefRepo.listVersions(prefix).find(_.schemaVersion == schemaVersionFull).map(_.hash)
     }
   }
 
@@ -1275,13 +1290,15 @@ class AppController @Inject() (
             val inputStream = sip.zipFile.getInputStream(entry)
             try {
               val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
+              val targetRecDefHash = deriveTargetRecDefHash(prefix, mappingXml)
               val version = defaultMappingRepo.saveVersion(
                 prefix,
                 name,
                 mappingXml,
                 "copy_from_dataset",
                 Some(spec),
-                notes.orElse(Some(s"Copied from dataset: $spec"))
+                notes.orElse(Some(s"Copied from dataset: $spec")),
+                targetRecDefHash
               )
               Ok(Json.toJson(version))
             } finally {

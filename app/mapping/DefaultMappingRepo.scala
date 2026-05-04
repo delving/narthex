@@ -39,7 +39,8 @@ object DefaultMappingRepo {
     filename: String,
     source: String,  // "upload" | "copy_from_dataset"
     sourceDataset: Option[String],
-    notes: Option[String]
+    notes: Option[String],
+    targetRecDefHash: Option[String] = None  // RecDef version this mapping was authored against (best-effort)
   )
 
   // Full info for a named mapping (prefix/name)
@@ -349,7 +350,9 @@ class DefaultMappingRepo(orgRoot: File) {
   }
 
   /**
-   * Save a new mapping version
+   * Save a new mapping version. `targetRecDefHash` (best-effort) tags the
+   * version with the RecDefRepo hash it was authored against, used for UI
+   * compat warnings when applying to a dataset on a different version.
    */
   def saveVersion(
     prefix: String,
@@ -357,7 +360,8 @@ class DefaultMappingRepo(orgRoot: File) {
     xmlContent: String,
     source: String,
     sourceDataset: Option[String],
-    notes: Option[String]
+    notes: Option[String],
+    targetRecDefHash: Option[String] = None
   ): MappingVersion = {
     val mappingDir = new File(new File(defaultMappingsDir, prefix), name)
     val versionsDir = new File(mappingDir, VERSIONS_DIR)
@@ -377,7 +381,8 @@ class DefaultMappingRepo(orgRoot: File) {
       filename = filename,
       source = source,
       sourceDataset = sourceDataset,
-      notes = notes
+      notes = notes,
+      targetRecDefHash = targetRecDefHash
     )
 
     // Update metadata

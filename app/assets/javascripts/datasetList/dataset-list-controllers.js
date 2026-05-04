@@ -1178,6 +1178,101 @@ define(["angular"], function () {
             });
         };
 
+        // ==================== Bulk Set Rec-Def Version ====================
+
+        $scope.bulkRecDef = {
+            availablePrefixes: [],
+            selectedPrefix: '',
+            availableVersions: [],
+            selectedHash: '',
+            preflight: [],            // [{spec, ok, problem?}]
+            force: false,
+            regenSip: false,
+            fastSave: false,
+            running: false
+        };
+
+        $scope.openBulkSetRecDef = function() {
+            var selected = $scope.datasets.filter(function(ds) { return ds.selected && ds.visible; });
+            if (selected.length === 0) {
+                modalAlert.error("Set Rec-Def", "Select at least one dataset first.");
+                return;
+            }
+            // Check all selected share a single prefix
+            var prefixes = {};
+            selected.forEach(function(ds) {
+                var p = ds.datasetMapToPrefix || ds.mappingPrefix || '';
+                if (p) prefixes[p] = true;
+            });
+            var prefixList = Object.keys(prefixes);
+            if (prefixList.length === 0) {
+                modalAlert.error("Set Rec-Def", "Selected datasets have no resolved prefix.");
+                return;
+            }
+            if (prefixList.length > 1) {
+                modalAlert.error("Set Rec-Def", "Mixed prefixes selected: " + prefixList.join(", ") +
+                    ". Pick datasets that share one prefix.");
+                return;
+            }
+            $scope.bulkRecDef.selectedPrefix = prefixList[0];
+            $scope.bulkRecDef.preflight = [];
+            $scope.bulkRecDef.selectedHash = '';
+            $scope.bulkRecDef.force = false;
+            $scope.bulkRecDef.regenSip = false;
+            $scope.bulkRecDef.fastSave = false;
+            $http.get('/narthex/app/rec-defs/' + $scope.bulkRecDef.selectedPrefix).then(function(response) {
+                $scope.bulkRecDef.availableVersions = response.data.versions || [];
+                $scope.showBulkRecDefModal = true;
+            });
+        };
+
+        $scope.closeBulkRecDef = function() {
+            $scope.showBulkRecDefModal = false;
+        };
+
+        $scope.runBulkRecDefPreflight = function() {
+            var selected = $scope.datasets.filter(function(ds) { return ds.selected && ds.visible; });
+            if (!$scope.bulkRecDef.selectedHash) return;
+            var specs = selected.map(function(ds) { return ds.datasetSpec; });
+            $http.get('/narthex/app/datasets/rec-def-preflight', {
+                params: {
+                    prefix: $scope.bulkRecDef.selectedPrefix,
+                    hash: $scope.bulkRecDef.selectedHash,
+                    datasets: specs.join(',')
+                }
+            }).then(function(response) {
+                $scope.bulkRecDef.preflight = response.data.results || [];
+            });
+        };
+
+        $scope.applyBulkRecDef = function() {
+            var selected = $scope.datasets.filter(function(ds) { return ds.selected && ds.visible; });
+            var specs = selected.map(function(ds) { return ds.datasetSpec; });
+            $scope.bulkRecDef.running = true;
+            $http.post('/narthex/app/datasets/bulk-set-rec-def', {
+                datasets: specs,
+                prefix: $scope.bulkRecDef.selectedPrefix,
+                hash: $scope.bulkRecDef.selectedHash,
+                force: $scope.bulkRecDef.force,
+                regenSip: $scope.bulkRecDef.regenSip,
+                fastSave: $scope.bulkRecDef.fastSave
+            }).then(function(response) {
+                $scope.bulkRecDef.running = false;
+                var results = response.data.results || [];
+                var ok = results.filter(function(r) { return r.ok; }).length;
+                var failed = results.length - ok;
+                modalAlert.info("Bulk Set Rec-Def Complete",
+                    "Switched: " + ok + " / " + results.length + ". Failed: " + failed +
+                    (failed > 0 ? "\n\nDetails: " + JSON.stringify(results.filter(function(r) { return !r.ok; })) : ""));
+                $scope.showBulkRecDefModal = false;
+                $scope.clearSelection();
+            }, function(error) {
+                $scope.bulkRecDef.running = false;
+                modalAlert.error("Bulk Set Rec-Def Failed",
+                    (error.data && error.data.problem) || error.statusText);
+            });
+        };
+
         $scope.openAllDatasets = false;
         $scope.$watch('openAllDatasets', function(newValue, oldValue, scope){
             var listRowHeaders = angular.element(document.getElementsByClassName("clickable"));
@@ -1914,6 +2009,12 @@ define(["angular"], function () {
             datasetVersions: []         // Dataset's own mapping versions
         };
         $scope.datasetSchemaPrefix = $scope.dataset.datasetMapToPrefix || '';
+        $scope.recDef = {
+            current: $scope.dataset.recDefVersionHash || '',
+            selected: $scope.dataset.recDefVersionHash || '',
+            versions: [],
+            prefixCurrent: ''
+        };
 
         // Initialize selected mapping from saved state
         if ($scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
@@ -1949,8 +2050,64 @@ define(["angular"], function () {
 
                 // Also load the dataset's own mapping versions (from SIP uploads)
                 loadDatasetMappingVersions();
+                // Load rec-def versions for this dataset's prefix
+                loadRecDefVersions();
             }
         });
+
+        // Load rec-def versions for the dataset's prefix
+        function loadRecDefVersions() {
+            var prefix = $scope.datasetSchemaPrefix;
+            if (!prefix) return;
+            $http.get('/narthex/app/rec-defs/' + prefix).then(function(response) {
+                $scope.recDef.versions = response.data.versions || [];
+                $scope.recDef.prefixCurrent = response.data.currentVersion || '';
+                // If dataset has no pin, "selected" reflects effective = prefix current
+                if (!$scope.recDef.current) {
+                    $scope.recDef.selected = '';  // empty = follow prefix current
+                }
+            });
+        }
+
+        $scope.recDefEffectiveHash = function() {
+            return $scope.recDef.current || $scope.recDef.prefixCurrent;
+        };
+
+        $scope.applyRecDefVersion = function(force) {
+            var hash = $scope.recDef.selected;
+            if (!hash) {
+                modalAlert.error("Rec-Def Version", "Pick a version first.");
+                return;
+            }
+            var spec = $scope.dataset.datasetSpec;
+            $http.post('/narthex/app/dataset/' + spec + '/rec-def-version', {hash: hash, force: !!force}).then(function(response) {
+                $scope.recDef.current = hash;
+                modalAlert.info("Rec-Def Switched",
+                    "Pinned to " + hash + (response.data.forced ? " (forced)" : "") +
+                    ". New mapping version: " + response.data.newMappingHash +
+                    ". Run 'Generate SIP' + reprocess to apply.");
+                loadDatasetMappingVersions();
+            }, function(error) {
+                if (error.status === 422 && error.data && error.data.problem) {
+                    modalAlert.confirm("Mapping incompatible",
+                        error.data.problem + "\n\nDetail: " + (error.data.detail || "?") +
+                        "\n\nForce-apply anyway? Mapping may need manual fixes before SIP regeneration.",
+                        function() { $scope.applyRecDefVersion(true); });
+                } else {
+                    modalAlert.error("Error", "Failed to switch rec-def version: " +
+                        ((error.data && error.data.problem) || error.statusText));
+                }
+            });
+        };
+
+        $scope.clearRecDefPin = function() {
+            var spec = $scope.dataset.datasetSpec;
+            // Send empty hash → server side: cannot — there is no "unset" endpoint yet.
+            // Workaround: setRecDefVersionHash via DsInfo property — implement as a separate clear route in phase 2b if needed.
+            modalAlert.info("Not yet supported",
+                "Clearing the per-dataset rec-def pin (returning to 'follow prefix current') is not yet exposed. " +
+                "For now, set the version explicitly to whichever you want.");
+        };
 
         // Load default mappings list (filtered by dataset's schema prefix)
         // Returns a promise that resolves when mappings are loaded
