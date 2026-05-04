@@ -129,6 +129,18 @@ POST        /narthex/app/default-mappings/:prefix/:name/set-current          con
 + nocsrf
 DELETE      /narthex/app/default-mappings/:prefix/:name/versions/:hash       controllers.AppController.deleteDefaultMappingVersion(prefix, name, hash)
 
+# Rec-Defs (versioned record definitions)
+GET         /narthex/app/rec-defs                                            controllers.AppController.listRecDefs
+GET         /narthex/app/rec-defs/:prefix                                    controllers.AppController.listRecDefVersions(prefix)
+GET         /narthex/app/rec-defs/:prefix/:hash/xml                          controllers.AppController.getRecDefXml(prefix, hash)
+GET         /narthex/app/rec-defs/:prefix/:hash/xsd                          controllers.AppController.getRecDefXsd(prefix, hash)
++ nocsrf
+POST        /narthex/app/rec-defs/:prefix/upload                             controllers.AppController.uploadRecDef(prefix)
++ nocsrf
+POST        /narthex/app/rec-defs/:prefix/set-current                        controllers.AppController.setCurrentRecDef(prefix)
++ nocsrf
+DELETE      /narthex/app/rec-defs/:prefix/versions/:hash                     controllers.AppController.deleteRecDefVersion(prefix, hash)
+
 # Dataset Mapping Source
 GET         /narthex/app/dataset/:spec/mapping-versions                      controllers.AppController.listDatasetMappingVersions(spec)
 GET         /narthex/app/dataset/:spec/mapping-xml/:version                  controllers.AppController.getDatasetMappingXml(spec, version)

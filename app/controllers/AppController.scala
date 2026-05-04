@@ -1311,6 +1311,80 @@ class AppController @Inject() (
     }
   }
 
+  // ==================== Rec-Defs (Versioned Record Definitions) ====================
+
+  private def recDefRepo: mapping.RecDefRepo = orgContext.sipFactory.recDefRepo
+
+  def listRecDefs = Action { request =>
+    Ok(Json.toJson(recDefRepo.listSummaries()))
+  }
+
+  def listRecDefVersions(prefix: String) = Action { request =>
+    val versions = recDefRepo.listVersions(prefix)
+    val current = recDefRepo.getCurrent(prefix).map(_.version.hash)
+    Ok(Json.obj(
+      "prefix" -> prefix,
+      "currentVersion" -> current,
+      "versions" -> Json.toJson(versions)
+    ))
+  }
+
+  def getRecDefXml(prefix: String, hash: String) = Action { request =>
+    recDefRepo.getVersion(prefix, hash) match {
+      case Some(resolved) =>
+        Ok(FileUtils.readFileToString(resolved.recordDefinitionFile, "UTF-8")).as("application/xml")
+      case None =>
+        NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+    }
+  }
+
+  def getRecDefXsd(prefix: String, hash: String) = Action { request =>
+    recDefRepo.getVersion(prefix, hash).flatMap(_.validationFileOpt) match {
+      case Some(xsd) =>
+        Ok(FileUtils.readFileToString(xsd, "UTF-8")).as("application/xml")
+      case None =>
+        NotFound(Json.obj("problem" -> s"No XSD for: $prefix/$hash"))
+    }
+  }
+
+  def uploadRecDef(prefix: String) = Action(parse.multipartFormData) { request =>
+    request.body.file("recdef") match {
+      case None =>
+        NotAcceptable(Json.obj("problem" -> "No recdef file provided (form field 'recdef')"))
+      case Some(recDefFile) =>
+        val recDefXml = FileUtils.readFileToString(recDefFile.ref.path.toFile, "UTF-8")
+        val xsdXmlOpt = request.body.file("xsd").map(f => FileUtils.readFileToString(f.ref.path.toFile, "UTF-8"))
+        val notes = request.body.dataParts.get("notes").flatMap(_.headOption)
+        try {
+          val v = recDefRepo.saveVersion(prefix, recDefXml, xsdXmlOpt, "upload", notes)
+          Ok(Json.toJson(v))
+        } catch {
+          case e: IllegalArgumentException =>
+            BadRequest(Json.obj("problem" -> e.getMessage))
+        }
+    }
+  }
+
+  def setCurrentRecDef(prefix: String) = Action(parse.json) { request =>
+    val hash = (request.body \ "hash").as[String]
+    if (recDefRepo.setCurrent(prefix, hash)) {
+      Ok(Json.obj("success" -> true))
+    } else {
+      NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+    }
+  }
+
+  def deleteRecDefVersion(prefix: String, hash: String) = Action { request =>
+    val current = recDefRepo.getCurrent(prefix).map(_.version.hash)
+    if (current.contains(hash)) {
+      Conflict(Json.obj("problem" -> s"Cannot delete the current version: $prefix/$hash. Set a different version as current first."))
+    } else if (recDefRepo.deleteVersion(prefix, hash)) {
+      Ok(Json.obj("success" -> true))
+    } else {
+      NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+    }
+  }
+
   // ==================== Dataset Mapping Source ====================
 
   def listDatasetMappingVersions(spec: String) = Action { request =>
