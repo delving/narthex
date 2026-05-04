@@ -21,6 +21,7 @@ import java.util.zip.{GZIPOutputStream, ZipEntry, ZipOutputStream}
 import dataset.SipRepo.FACTS_FILE
 import dataset.Sip
 import java.util.HashMap
+import mapping.RecDefRepo
 import org.apache.commons.io.{FileUtils, IOUtils}
 import play.api.Logger
 import play.api.libs.ws.WSClient
@@ -118,31 +119,62 @@ object SipFactory {
 
 }
 
-class SipFactory(home: File, rdfBaseUrl: String, wsApi: WSClient, orgId: String)(implicit ec: ExecutionContext) {
+class SipFactory(factoryDir: File, recDefsRoot: File, rdfBaseUrl: String, wsApi: WSClient, orgId: String)(implicit ec: ExecutionContext) {
 
-  lazy val prefixRepos = home.listFiles().filter(_.isDirectory).map( home => new SipPrefixRepo(home, rdfBaseUrl, wsApi, orgId))
+  private val logger = Logger(getClass)
 
-  def prefixRepo(prefix: String) = prefixRepos.find(_.prefix == prefix)
+  // RecDefRepo expects an org root under which it creates `rec-defs/`.
+  // We pass `recDefsRoot` (typically the same orgRoot OrgContext owns).
+  val recDefRepo = new RecDefRepo(recDefsRoot)
+
+  // One-shot migration on first access. Idempotent.
+  private lazy val migrated: Unit = recDefRepo.migrateFromFactoryOnce(factoryDir)
+
+  lazy val prefixRepos: Seq[SipPrefixRepo] = {
+    val _ = migrated
+    recDefRepo.listPrefixes().flatMap { prefix =>
+      recDefRepo.getCurrent(prefix) match {
+        case Some(resolved) =>
+          Some(new SipPrefixRepo(
+            prefix = prefix,
+            recordDefinition = resolved.recordDefinitionFile,
+            validationOpt = resolved.validationFileOpt,
+            schemaVersionsValue = resolved.version.schemaVersion,
+            rdfBaseUrl = rdfBaseUrl,
+            ws = wsApi,
+            orgId = orgId
+          ))
+        case None =>
+          logger.warn(s"No current rec-def for prefix=$prefix — skipping")
+          None
+      }
+    }
+  }
+
+  def prefixRepo(prefix: String): Option[SipPrefixRepo] = prefixRepos.find(_.prefix == prefix)
 
 }
 
-class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)(implicit ec: ExecutionContext) {
+class SipPrefixRepo(
+  val prefix: String,
+  val recordDefinition: File,
+  val validationOpt: Option[File],
+  schemaVersionsValue: String,
+  rdfBaseUrl: String,
+  ws: WSClient,
+  orgId: String
+)(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
 
   import dataset.SipFactory._
 
-  val prefix = home.getName
-
-  lazy val recordDefinition: File = home.listFiles().find(f => f.getName.endsWith(RECORD_DEFINITION_SUFFIX)).getOrElse(
-    throw new RuntimeException(s"Missing record definition in $home")
+  /** Throws if no XSD is available. Use validationOpt to test presence first. */
+  lazy val validation: File = validationOpt.getOrElse(
+    throw new RuntimeException(s"No validation XSD available for prefix=$prefix")
   )
 
-  lazy val validation: File = home.listFiles().find(f => f.getName.endsWith(VALIDATION_SUFFIX)).getOrElse(
-    throw new RuntimeException(s"Missing validation xsd in $home")
-  )
-
-  lazy val schemaVersions = recordDefinition.getName.substring(0, recordDefinition.getName.length - RECORD_DEFINITION_SUFFIX.length)
+  val schemaVersions: String = schemaVersionsValue
 
   def addFactsEntry(facts: SipGenerationFacts, zos: ZipOutputStream): Unit = {
     zos.putNextEntry(new ZipEntry(FACTS_FILE))
@@ -204,7 +236,9 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
 
   def compareWithSchemasDelvingEu() = {
     differenceWithSchemasDelvingEu(recordDefinition).map(diff => logger.warn(s"Rec Def Discrepancy: $diff"))
-    differenceWithSchemasDelvingEu(validation).map(diff => logger.warn(s"Validation Discrepancy: $diff"))
+    validationOpt.foreach { v =>
+      differenceWithSchemasDelvingEu(v).map(diff => logger.warn(s"Validation Discrepancy: $diff"))
+    }
   }
 
   def initiateSipZip(sipFile: File, sourceXmlFile: File, facts: SipGenerationFacts, customMappingXml: Option[String] = None) = {
@@ -226,7 +260,7 @@ class SipPrefixRepo(home: File, rdfBaseUrl: String, ws: WSClient, orgId: String)
           zos.closeEntry()
         }
         copyIn(recordDefinition)
-        copyIn(validation)
+        validationOpt.foreach(copyIn)
 
         // Include mapping if provided (e.g., from default mappings). Rewrite
         // the `<facts>` block from the target dataset's facts so the template's

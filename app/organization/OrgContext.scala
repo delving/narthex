@@ -70,7 +70,7 @@ class OrgContext @Inject() (
   val saveSemaphore = new Semaphore(narthexConfig.concurrencyLimit)
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, narthexConfig.orgId)
-  lazy val sipFactory = new SipFactory(factoryDir, narthexConfig.rdfBaseUrl, wsApi, narthexConfig.orgId)
+  lazy val sipFactory = new SipFactory(factoryDir, orgRoot, narthexConfig.rdfBaseUrl, wsApi, narthexConfig.orgId)
 
   orgRoot.mkdirs()
   factoryDir.mkdirs()

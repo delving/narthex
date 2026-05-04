@@ -572,7 +572,9 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
         case ValidationPattern() =>
           logger.debug(s"Validation: ${entry.getName}")
-          sipPrefixRepoOpt.map(_.validation).map(va => copyFileIn(va, va.getName, gzip = false)).getOrElse(copyEntry())
+          // Prefer prefix repo's xsd (may be absent for lenient uploads); fall
+          // back to copying the SIP's existing validation entry verbatim.
+          sipPrefixRepoOpt.flatMap(_.validationOpt).map(va => copyFileIn(va, va.getName, gzip = false)).getOrElse(copyEntry())
 
         case SourcePattern() =>
           logger.debug(s"Source: ${entry.getName}")
