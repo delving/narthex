@@ -2015,6 +2015,12 @@ define(["angular"], function () {
             versions: [],
             prefixCurrent: ''
         };
+        $scope.prefixSwitch = {
+            availablePrefixes: [],
+            selectedPrefix: '',
+            availableVersions: [],
+            selectedHash: ''
+        };
 
         // Initialize selected mapping from saved state
         if ($scope.mapping.defaultPrefix && $scope.mapping.defaultName) {
@@ -2052,6 +2058,7 @@ define(["angular"], function () {
                 loadDatasetMappingVersions();
                 // Load rec-def versions for this dataset's prefix
                 loadRecDefVersions();
+                $scope.loadAvailablePrefixes();
             }
         });
 
@@ -2107,6 +2114,57 @@ define(["angular"], function () {
             modalAlert.info("Not yet supported",
                 "Clearing the per-dataset rec-def pin (returning to 'follow prefix current') is not yet exposed. " +
                 "For now, set the version explicitly to whichever you want.");
+        };
+
+        // ==================== Switch Prefix (cross-prefix) ====================
+        $scope.loadAvailablePrefixes = function() {
+            $http.get('/narthex/app/rec-defs').then(function(response) {
+                $scope.prefixSwitch.availablePrefixes = (response.data || []).map(function(s) { return s.prefix; });
+            });
+        };
+
+        $scope.onPrefixSwitchChange = function() {
+            $scope.prefixSwitch.availableVersions = [];
+            $scope.prefixSwitch.selectedHash = '';
+            if (!$scope.prefixSwitch.selectedPrefix) return;
+            $http.get('/narthex/app/rec-defs/' + $scope.prefixSwitch.selectedPrefix).then(function(response) {
+                $scope.prefixSwitch.availableVersions = response.data.versions || [];
+            });
+        };
+
+        $scope.applyPrefixSwitch = function() {
+            var spec = $scope.dataset.datasetSpec;
+            var newPrefix = $scope.prefixSwitch.selectedPrefix;
+            if (!newPrefix) return;
+            if (newPrefix === $scope.datasetSchemaPrefix) {
+                modalAlert.error("Switch Prefix", "Already on prefix '" + newPrefix + "'. Use the version dropdown instead.");
+                return;
+            }
+            modalAlert.confirm("Switch Prefix",
+                "This will change the dataset prefix from " + ($scope.datasetSchemaPrefix || '?').toUpperCase() +
+                " to " + newPrefix.toUpperCase() +
+                " and CLEAR the current mapping. You will need to upload a new mapping or pick a default for the new prefix before regenerating SIP.\n\nProceed?",
+                function() {
+                    $http.post('/narthex/app/dataset/' + spec + '/switch-prefix', {
+                        prefix: newPrefix,
+                        hash: $scope.prefixSwitch.selectedHash || null
+                    }).then(function(response) {
+                        modalAlert.info("Prefix Switched",
+                            "Now on " + response.data.newPrefix.toUpperCase() +
+                            (response.data.newRecDefHash ? " (rec-def " + response.data.newRecDefHash + ")" : " (follows prefix current)") +
+                            ". " + response.data.warning);
+                        // Reload page state
+                        $scope.datasetSchemaPrefix = response.data.newPrefix;
+                        $scope.dataset.datasetMapToPrefix = response.data.newPrefix;
+                        $scope.dataset.recDefVersionHash = response.data.newRecDefHash || '';
+                        $scope.recDef.current = response.data.newRecDefHash || '';
+                        loadRecDefVersions();
+                        loadDatasetMappingVersions();
+                    }, function(error) {
+                        modalAlert.error("Switch Prefix Failed",
+                            (error.data && error.data.problem) || error.statusText);
+                    });
+                });
         };
 
         // Load default mappings list (filtered by dataset's schema prefix)

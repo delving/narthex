@@ -1492,6 +1492,58 @@ class AppController @Inject() (
   }
 
   /**
+   * Cross-prefix switch. Drops the dataset's current mapping (no clone is
+   * possible across prefixes), updates `datasetMapToPrefix` and optionally
+   * `datasetRecDefVersionHash`, resets mappingSource to "manual". User must
+   * then upload a new mapping or pick a default for the new prefix.
+   *
+   * Body: { "prefix": "ace", "hash": "<targetHash>"? }
+   */
+  def switchDatasetPrefix(spec: String) = Action(parse.json) { request =>
+    val newPrefix = (request.body \ "prefix").as[String]
+    val hashOpt = (request.body \ "hash").asOpt[String].filter(_.nonEmpty)
+
+    val datasetContext = orgContext.datasetContext(spec)
+    val dsInfo = datasetContext.dsInfo
+
+    // Validate target prefix exists in RecDefRepo
+    val recDefVersions = recDefRepo.listVersions(newPrefix)
+    if (recDefVersions.isEmpty) {
+      NotFound(Json.obj("problem" -> s"No rec-def versions for prefix '$newPrefix'. Upload one first."))
+    } else {
+      // Validate hash if provided
+      val resolvedHashOpt = hashOpt.flatMap { h =>
+        recDefVersions.find(_.hash == h).map(_.hash)
+      }
+      if (hashOpt.isDefined && resolvedHashOpt.isEmpty) {
+        NotFound(Json.obj("problem" -> s"Rec-def version not found: $newPrefix/${hashOpt.get}"))
+      } else {
+        val oldPrefix = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetMapToPrefix).getOrElse("(none)")
+
+        // 1. Update prefix
+        dsInfo.setSingularLiteralProps(triplestore.GraphProperties.datasetMapToPrefix -> newPrefix)
+        // 2. Update version pin (None → follow new prefix's current)
+        dsInfo.setRecDefVersionHash(resolvedHashOpt)
+        // 3. Reset mappingSource so default-mapping prefs from old prefix don't leak
+        dsInfo.setMappingSource("manual")
+        // 4. Drop current mapping pointer (history preserved on disk)
+        datasetContext.datasetMappingRepo.clearCurrentVersion()
+
+        logger.info(s"Switched $spec prefix: $oldPrefix → $newPrefix (rec-def: ${resolvedHashOpt.getOrElse("follow current")})")
+
+        Ok(Json.obj(
+          "ok" -> true,
+          "spec" -> spec,
+          "oldPrefix" -> oldPrefix,
+          "newPrefix" -> newPrefix,
+          "newRecDefHash" -> resolvedHashOpt,
+          "warning" -> "Current mapping has been cleared. Upload a new mapping or pick a default for the new prefix before regenerating SIP."
+        ))
+      }
+    }
+  }
+
+  /**
    * Pre-flight compat report for switching one or more datasets to a target
    * rec-def version. Returns per-dataset pass/fail without mutating state.
    * Query: ?prefix=...&hash=...&datasets=spec1,spec2,...

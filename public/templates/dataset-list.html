@@ -935,6 +935,43 @@
                                                         </div>
                                                     </div>
 
+                                                    <!-- Switch Prefix (cross-prefix migration) -->
+                                                    <div class="panel panel-warning" style="margin-top: 15px;">
+                                                        <div class="panel-heading">
+                                                            <h5 class="panel-title">
+                                                                <i class="fa fa-random"></i> Switch Schema Prefix
+                                                                <small class="text-muted">— migrate to a different rec-def family (e.g. crm-bib → ace)</small>
+                                                            </h5>
+                                                        </div>
+                                                        <div class="panel-body">
+                                                            <p class="text-muted" style="margin: 0 0 8px 0;">
+                                                                <small>
+                                                                    Drops the current dataset mapping. You will need to upload a new mapping
+                                                                    or pick a default mapping for the target prefix before regenerating SIP.
+                                                                </small>
+                                                            </p>
+                                                            <div class="form-inline">
+                                                                <select class="form-control input-sm"
+                                                                        ng-model="prefixSwitch.selectedPrefix"
+                                                                        ng-change="onPrefixSwitchChange()"
+                                                                        ng-options="p as (p | uppercase) for p in prefixSwitch.availablePrefixes">
+                                                                    <option value="">Pick a prefix…</option>
+                                                                </select>
+                                                                <select class="form-control input-sm"
+                                                                        ng-model="prefixSwitch.selectedHash"
+                                                                        ng-options="v.hash as (v.schemaVersion + ' — ' + v.hash) for v in prefixSwitch.availableVersions"
+                                                                        ng-disabled="!prefixSwitch.selectedPrefix">
+                                                                    <option value="">Use prefix current</option>
+                                                                </select>
+                                                                <button class="btn btn-sm btn-warning"
+                                                                        ng-click="applyPrefixSwitch()"
+                                                                        ng-disabled="!prefixSwitch.selectedPrefix || prefixSwitch.selectedPrefix === datasetSchemaPrefix">
+                                                                    <i class="fa fa-random"></i> Switch
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
                                                     <!-- Dataset Mapping Version History -->
                                                     <div ng-if="mapping.datasetVersions && mapping.datasetVersions.length > 0">
                                                         <hr>

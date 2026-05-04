@@ -177,6 +177,21 @@ class DatasetMappingRepo(datasetDir: File) {
   }
 
   /**
+   * Clear the current version pointer without deleting any version files.
+   * Used when changing the dataset's prefix — old mappings stay archived but
+   * none is "current" until the user uploads or picks a new default.
+   */
+  def clearCurrentVersion(): Boolean = {
+    getInfo match {
+      case Some(info) =>
+        saveMetadata(info.copy(currentVersion = None))
+        logger.info(s"Cleared current dataset mapping version")
+        true
+      case None => false
+    }
+  }
+
+  /**
    * Set the current/active version
    */
   def setCurrentVersion(hash: String): Boolean = {
