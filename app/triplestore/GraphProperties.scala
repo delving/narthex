@@ -71,6 +71,7 @@ object GraphProperties {
   val datasetRights = NXProp("datasetRights")
 
   val datasetMapToPrefix = NXProp("datasetMapToPrefix")
+  val datasetRecDefVersionHash = NXProp("datasetRecDefVersionHash")
 
   val datasetRecordCount = NXProp("datasetRecordCount", intProp)
   val datasetErrorTime = NXProp("datasetErrorTime")

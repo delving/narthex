@@ -194,6 +194,61 @@ object Sip {
   }
 
   /**
+   * Re-parse a mapping XML against a (potentially different) RecDefTree, bump
+   * its embedded schemaVersion, re-set facts, and serialize. Used for
+   * per-dataset rec-def version switches.
+   *
+   * Returns Right(bytes) on success, or Left(error message) describing why the
+   * stored mapping does not parse against the new tree. Callers can ignore
+   * the failure and force a re-serialize anyway by calling
+   * `cloneMappingForNewTreeForce`.
+   */
+  def cloneMappingForNewTree(
+    currentXml: String,
+    newTree: RecDefTree,
+    newSchemaVersion: String,
+    factsMap: java.util.Map[String, String]
+  ): Either[String, Array[Byte]] = {
+    Try {
+      val in = new ByteArrayInputStream(currentXml.getBytes("UTF-8"))
+      try {
+        val recMapping = RecMapping.read(in, newTree)
+        recMapping.setSchemaVersion(new SchemaVersion(newSchemaVersion))
+        factsMap.entrySet().asScala.foreach { e =>
+          recMapping.setFact(e.getKey, e.getValue)
+        }
+        val baos = new ByteArrayOutputStream()
+        RecMapping.write(baos, recMapping)
+        baos.toByteArray
+      } finally in.close()
+    }.toEither.left.map(e => Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+  }
+
+  /**
+   * Force path: bump only the `<rec-mapping schemaVersion="...">` attr on the
+   * stored XML without parsing against the new tree. Facts and node-mappings
+   * pass through unchanged. The fact rewrite at SIP-write time
+   * (`rewriteFactsInMappingXml`) handles `<facts>` later. Use only when the
+   * caller explicitly opts into bypassing the compat check.
+   *
+   * Schema version split: `edm_5.2.7` → prefix=edm, version=5.2.7. The XML's
+   * `<rec-mapping schemaVersion=...>` carries only the version part.
+   */
+  def cloneMappingForNewTreeForce(
+    currentXml: String,
+    newSchemaVersion: String
+  ): Array[Byte] = {
+    val versionPart = newSchemaVersion.split("_", 2) match {
+      case Array(_, v) => v
+      case Array(v) => v
+      case _ => newSchemaVersion
+    }
+    val schemaVersionAttrRegex = """(<rec-mapping\b[^>]*\bschemaVersion=")[^"]*(")""".r
+    val rewritten = schemaVersionAttrRegex.replaceFirstIn(currentXml, s"$$1${java.util.regex.Matcher.quoteReplacement(versionPart)}$$2")
+    rewritten.getBytes("UTF-8")
+  }
+
+  /**
    * Fact map without `baseUrl` / `schemaVersions`. Use when no SipPrefixRepo
    * is available. Covers the fields the mapping Groovy code actually reads
    * (spec, orgId, provider, dataProvider, dataProviderURL, etc.).

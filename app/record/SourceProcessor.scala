@@ -133,10 +133,11 @@ class SourceProcessor(val datasetContext: DatasetContext,
             }
           }
 
+          val recDefVersionHashOpt = dsInfo.getRecDefVersionHash
           val sipFileOpt: Option[File] = datasetContext.sipRepo.latestSipOpt
             .map { latestSip =>
               val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping =>
-                datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix))
+                datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix, recDefVersionHashOpt))
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile
               pocketOutput.close()
@@ -145,7 +146,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
             } getOrElse {
             val facts = SipGenerationFacts(dsInfo)
             val sipPrefixRepo =
-              datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix)
+              datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix, recDefVersionHashOpt)
             sipPrefixRepo.map { prefixRepo =>
               datasetContext.sipFiles.foreach(_.delete())
               val sipFile = datasetContext.createSipFile

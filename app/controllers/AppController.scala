@@ -45,6 +45,7 @@ import triplestore.Sparql.SkosifiedField
 import dataset.DatasetActor._
 import dataset.DsInfo
 import dataset.DsInfo._
+import dataset.{Sip, SipFactory}
 import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
@@ -1382,6 +1383,218 @@ class AppController @Inject() (
       Ok(Json.obj("success" -> true))
     } else {
       NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+    }
+  }
+
+  /**
+   * Per-dataset rec-def version switch.
+   * Body: { "hash": "<targetHash>", "force": false }
+   *   - Loads dataset's current mapping XML.
+   *   - Parses against the target version's RecDefTree.
+   *   - On parse failure + force=false: 422 with detail.
+   *   - On success (or force=true): clones mapping with bumped schemaVersion +
+   *     refreshed facts, saves as a new DatasetMappingRepo version (current),
+   *     sets datasetRecDefVersionHash on the dataset.
+   *   - Does NOT regenerate the SIP — UI must surface the next step.
+   */
+  def setDatasetRecDefVersion(spec: String) = Action(parse.json) { request =>
+    val hash = (request.body \ "hash").as[String]
+    val force = (request.body \ "force").asOpt[Boolean].getOrElse(false)
+
+    val datasetContext = orgContext.datasetContext(spec)
+    val dsInfo = datasetContext.dsInfo
+    val mappingRepo = datasetContext.datasetMappingRepo
+
+    val prefixOpt = mappingRepo.getPrefix.orElse(dsInfo.getLiteralProp(triplestore.GraphProperties.datasetMapToPrefix))
+    prefixOpt match {
+      case None =>
+        BadRequest(Json.obj("problem" -> s"Dataset $spec has no resolved prefix"))
+      case Some(prefix) =>
+        recDefRepo.getVersion(prefix, hash) match {
+          case None =>
+            NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+          case Some(resolved) =>
+            mappingRepo.getXml("current") match {
+              case None =>
+                BadRequest(Json.obj("problem" -> s"Dataset $spec has no current mapping XML to migrate"))
+              case Some(currentXml) =>
+                val tree = scala.util.Try(Sip.loadRecDefTree(resolved.recordDefinitionFile)).toOption
+                tree match {
+                  case None =>
+                    InternalServerError(Json.obj("problem" -> s"Failed to load record-definition tree for $prefix/$hash"))
+                  case Some(newTree) =>
+                    val facts = SipFactory.SipGenerationFacts(dsInfo)
+                    val factsMap = Sip.factsToMap(facts)
+                    Sip.cloneMappingForNewTree(currentXml, newTree, resolved.version.schemaVersion, factsMap) match {
+                      case Right(bytes) =>
+                        applySwitch(spec, prefix, resolved, bytes, mappingRepo, dsInfo, forced = false)
+                      case Left(err) if force =>
+                        val bytes = Sip.cloneMappingForNewTreeForce(currentXml, resolved.version.schemaVersion)
+                        applySwitch(spec, prefix, resolved, bytes, mappingRepo, dsInfo, forced = true, parseError = Some(err))
+                      case Left(err) =>
+                        UnprocessableEntity(Json.obj(
+                          "problem" -> s"Mapping does not parse against $prefix/$hash. Use force=true to override.",
+                          "detail" -> err
+                        ))
+                    }
+                }
+            }
+        }
+    }
+  }
+
+  private def applySwitch(
+    spec: String,
+    prefix: String,
+    resolved: mapping.RecDefRepo.RecDefVersionResolved,
+    newMappingBytes: Array[Byte],
+    mappingRepo: mapping.DatasetMappingRepo,
+    dsInfo: dataset.DsInfo,
+    forced: Boolean,
+    parseError: Option[String] = None
+  ): play.api.mvc.Result = {
+    val newXml = new String(newMappingBytes, "UTF-8")
+    val noteSuffix = if (forced) s" (forced; original parse error: ${parseError.getOrElse("?")})" else ""
+    val newVersion = mappingRepo.saveFromSipUpload(
+      newXml,
+      prefix,
+      Some(s"clone for rec-def ${resolved.version.hash} (${resolved.version.schemaVersion})$noteSuffix")
+    )
+    mappingRepo.setCurrentVersion(newVersion.hash)
+    dsInfo.setRecDefVersionHash(Some(resolved.version.hash))
+    logger.info(s"Set rec-def for $spec → $prefix/${resolved.version.hash} (forced=$forced); new mapping ${newVersion.hash}")
+    Ok(Json.obj(
+      "ok" -> true,
+      "spec" -> spec,
+      "prefix" -> prefix,
+      "newRecDefHash" -> resolved.version.hash,
+      "newSchemaVersion" -> resolved.version.schemaVersion,
+      "newMappingHash" -> newVersion.hash,
+      "forced" -> forced
+    ))
+  }
+
+  /**
+   * Pre-flight compat report for switching one or more datasets to a target
+   * rec-def version. Returns per-dataset pass/fail without mutating state.
+   * Query: ?prefix=...&hash=...&datasets=spec1,spec2,...
+   */
+  def recDefSwitchPreflight(prefix: String, hash: String, datasets: String) = Action { request =>
+    val specs = datasets.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    recDefRepo.getVersion(prefix, hash) match {
+      case None =>
+        NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+      case Some(resolved) =>
+        val treeOpt = scala.util.Try(Sip.loadRecDefTree(resolved.recordDefinitionFile)).toOption
+        treeOpt match {
+          case None =>
+            InternalServerError(Json.obj("problem" -> s"Failed to load tree for $prefix/$hash"))
+          case Some(newTree) =>
+            val results = specs.map { spec =>
+              val ctx = orgContext.datasetContext(spec)
+              val mappingRepo = ctx.datasetMappingRepo
+              val dsInfo = ctx.dsInfo
+              val factsMap = Sip.factsToMap(SipFactory.SipGenerationFacts(dsInfo))
+              val resJson = mappingRepo.getXml("current") match {
+                case None =>
+                  Json.obj("spec" -> spec, "ok" -> false, "problem" -> "no current mapping")
+                case Some(xml) =>
+                  Sip.cloneMappingForNewTree(xml, newTree, resolved.version.schemaVersion, factsMap) match {
+                    case Right(_) => Json.obj("spec" -> spec, "ok" -> true)
+                    case Left(err) => Json.obj("spec" -> spec, "ok" -> false, "problem" -> err)
+                  }
+              }
+              resJson
+            }
+            Ok(Json.obj(
+              "prefix" -> prefix,
+              "targetHash" -> hash,
+              "results" -> Json.toJson(results)
+            ))
+        }
+    }
+  }
+
+  /**
+   * Bulk switch. Body:
+   *   { "datasets": [...], "prefix": "edm", "hash": "...", "force": false,
+   *     "regenSip": false, "fastSave": false }
+   * Per dataset: same logic as setDatasetRecDefVersion. Failures collected,
+   * not aborted. regenSip / fastSave follow-on actions chained on success.
+   */
+  def bulkSetRecDefVersion = Action(parse.json) { implicit request =>
+    val body = request.body
+    val specs = (body \ "datasets").as[Seq[String]]
+    val prefix = (body \ "prefix").as[String]
+    val hash = (body \ "hash").as[String]
+    val force = (body \ "force").asOpt[Boolean].getOrElse(false)
+    val regenSip = (body \ "regenSip").asOpt[Boolean].getOrElse(false)
+    val fastSave = (body \ "fastSave").asOpt[Boolean].getOrElse(false)
+
+    recDefRepo.getVersion(prefix, hash) match {
+      case None =>
+        NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+      case Some(resolved) =>
+        val treeOpt = scala.util.Try(Sip.loadRecDefTree(resolved.recordDefinitionFile)).toOption
+        treeOpt match {
+          case None =>
+            InternalServerError(Json.obj("problem" -> s"Failed to load tree for $prefix/$hash"))
+          case Some(newTree) =>
+            val results = specs.map { spec =>
+              try {
+                val ctx = orgContext.datasetContext(spec)
+                val dsInfo = ctx.dsInfo
+                val mappingRepo = ctx.datasetMappingRepo
+                val facts = SipFactory.SipGenerationFacts(dsInfo)
+                val factsMap = Sip.factsToMap(facts)
+                mappingRepo.getXml("current") match {
+                  case None =>
+                    Json.obj("spec" -> spec, "ok" -> false, "problem" -> "no current mapping")
+                  case Some(xml) =>
+                    val bytesEither = Sip.cloneMappingForNewTree(xml, newTree, resolved.version.schemaVersion, factsMap) match {
+                      case Right(b) => Right((b, false))
+                      case Left(err) if force =>
+                        Right((Sip.cloneMappingForNewTreeForce(xml, resolved.version.schemaVersion), true))
+                      case Left(err) => Left(err)
+                    }
+                    bytesEither match {
+                      case Left(err) =>
+                        Json.obj("spec" -> spec, "ok" -> false, "problem" -> err)
+                      case Right((bytes, forced)) =>
+                        val newVersion = mappingRepo.saveFromSipUpload(
+                          new String(bytes, "UTF-8"),
+                          prefix,
+                          Some(s"bulk clone for rec-def ${resolved.version.hash}${if (forced) " (forced)" else ""}")
+                        )
+                        mappingRepo.setCurrentVersion(newVersion.hash)
+                        dsInfo.setRecDefVersionHash(Some(resolved.version.hash))
+                        if (regenSip) orgContext.orgActor ! DatasetMessage(spec, Command("start generating sip"))
+                        if (fastSave) {
+                          val stateName =
+                            if (dsInfo.getLiteralProp(triplestore.GraphProperties.stateAnalyzed).isDefined) "stateAnalyzed"
+                            else if (dsInfo.getLiteralProp(triplestore.GraphProperties.stateProcessed).isDefined) "stateProcessed"
+                            else if (dsInfo.getLiteralProp(triplestore.GraphProperties.stateProcessable).isDefined) "stateProcessable"
+                            else "stateSourced"
+                          orgContext.orgActor ! DatasetMessage(spec, Command(s"start fast save from $stateName"))
+                        }
+                        Json.obj(
+                          "spec" -> spec, "ok" -> true,
+                          "newMappingHash" -> newVersion.hash,
+                          "forced" -> forced
+                        )
+                    }
+                }
+              } catch {
+                case e: Exception =>
+                  Json.obj("spec" -> spec, "ok" -> false, "problem" -> Option(e.getMessage).getOrElse(e.getClass.getSimpleName).toString)
+              }
+            }
+            Ok(Json.obj(
+              "prefix" -> prefix,
+              "targetHash" -> hash,
+              "results" -> Json.toJson(results)
+            ))
+        }
     }
   }
 

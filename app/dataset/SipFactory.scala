@@ -153,6 +153,30 @@ class SipFactory(factoryDir: File, recDefsRoot: File, rdfBaseUrl: String, wsApi:
 
   def prefixRepo(prefix: String): Option[SipPrefixRepo] = prefixRepos.find(_.prefix == prefix)
 
+  /**
+   * Resolve a `SipPrefixRepo` for a specific rec-def version. None hash → use
+   * the prefix's "current" version (same as `prefixRepo(prefix)`).
+   * Returns None if the prefix is unknown or the requested hash is missing.
+   */
+  def prefixRepo(prefix: String, versionHashOpt: Option[String]): Option[SipPrefixRepo] = {
+    val _ = migrated
+    versionHashOpt match {
+      case None | Some("") => prefixRepo(prefix)
+      case Some(hash) =>
+        recDefRepo.getVersion(prefix, hash).map { resolved =>
+          new SipPrefixRepo(
+            prefix = prefix,
+            recordDefinition = resolved.recordDefinitionFile,
+            validationOpt = resolved.validationFileOpt,
+            schemaVersionsValue = resolved.version.schemaVersion,
+            rdfBaseUrl = rdfBaseUrl,
+            ws = wsApi,
+            orgId = orgId
+          )
+        }
+    }
+  }
+
 }
 
 class SipPrefixRepo(

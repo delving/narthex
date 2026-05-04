@@ -141,6 +141,13 @@ POST        /narthex/app/rec-defs/:prefix/set-current                        con
 + nocsrf
 DELETE      /narthex/app/rec-defs/:prefix/versions/:hash                     controllers.AppController.deleteRecDefVersion(prefix, hash)
 
+# Per-dataset rec-def version pinning
++ nocsrf
+POST        /narthex/app/dataset/:spec/rec-def-version                       controllers.AppController.setDatasetRecDefVersion(spec)
+GET         /narthex/app/datasets/rec-def-preflight                          controllers.AppController.recDefSwitchPreflight(prefix: String, hash: String, datasets: String)
++ nocsrf
+POST        /narthex/app/datasets/bulk-set-rec-def                           controllers.AppController.bulkSetRecDefVersion
+
 # Dataset Mapping Source
 GET         /narthex/app/dataset/:spec/mapping-versions                      controllers.AppController.listDatasetMappingVersions(spec)
 GET         /narthex/app/dataset/:spec/mapping-xml/:version                  controllers.AppController.getDatasetMappingXml(spec, version)

@@ -1002,6 +1002,13 @@ class DsInfo(
 
   def getDefaultMappingVersion: Option[String] = getLiteralProp(datasetDefaultMappingVersion)
 
+  /** Per-dataset rec-def version pin. None = follow the prefix's current version. */
+  def getRecDefVersionHash: Option[String] = getLiteralProp(datasetRecDefVersionHash).filter(_.nonEmpty)
+
+  def setRecDefVersionHash(hashOpt: Option[String]): Unit = {
+    setSingularLiteralProps(datasetRecDefVersionHash -> hashOpt.getOrElse(""))
+  }
+
   def setMappingSource(
     source: String,
     prefix: Option[String] = None,
@@ -1742,6 +1749,8 @@ class DsInfo(
       "defaultMappingName" -> getDefaultMappingName.map(JsString(_)).getOrElse(JsNull),
       "datasetDefaultMappingVersion" -> getDefaultMappingVersion.map(JsString(_)).getOrElse(JsNull),
       "defaultMappingVersion" -> getDefaultMappingVersion.map(JsString(_)).getOrElse(JsNull),
+      "datasetRecDefVersionHash" -> getRecDefVersionHash.map(JsString(_)).getOrElse(JsNull),
+      "recDefVersionHash" -> getRecDefVersionHash.map(JsString(_)).getOrElse(JsNull),
       // Duplicate error message field for backward compatibility
       "errorMessage" -> getLiteralProp(triplestore.GraphProperties.datasetErrorMessage).map(JsString(_)).getOrElse(JsNull)
     ).filterNot(_._2 == JsNull)
