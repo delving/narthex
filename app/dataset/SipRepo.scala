@@ -425,17 +425,22 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   lazy val sipMappingOpt: Option[SipMapping] = schemaVersionOpt.flatMap { schemaVersion =>
     val PrefixVersion(prefix, version) = schemaVersion
-    val tree = recDefTree(s"${schemaVersion}_record-definition.xml")
-    recMappingOpt(s"mapping_$prefix.xml", tree).map { mapping =>
-      SipMapping(
-        spec = dsInfoSpec,
-        prefix = prefix,
-        version = version,
-        recDefTree = tree,
-        recMapping = mapping,
-        validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None,
-        sip = this
-      )
+    // Recover gracefully when the SIP's recdef entry is missing or has a
+    // non-legacy filename (e.g. SIPs generated before the entry-name fix
+    // shipped with versioned RecDefRepo). Returning None lets the caller
+    // (SourceProcessor) fall through to a fresh-SIP path instead of failing.
+    Try(recDefTree(s"${schemaVersion}_record-definition.xml")).toOption.flatMap { tree =>
+      recMappingOpt(s"mapping_$prefix.xml", tree).map { mapping =>
+        SipMapping(
+          spec = dsInfoSpec,
+          prefix = prefix,
+          version = version,
+          recDefTree = tree,
+          recMapping = mapping,
+          validatorOpt = if (XSD_VALIDATION) validator(s"${schemaVersion}_validation.xsd", prefix) else None,
+          sip = this
+        )
+      }
     }
   }
 
