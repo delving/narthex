@@ -92,14 +92,22 @@ class DatasetMappingRepo(datasetDir: File) {
   }
 
   /**
-   * Get mapping XML content for a specific version
-   * @param version Either a hash or "current" or "latest"
+   * Get mapping XML content for a specific version.
+   *
+   * @param version "current" returns ONLY the explicit currentVersion (None if cleared).
+   *                "latest" returns the most recent version regardless of currentVersion.
+   *                Anything else is treated as a hash.
+   *
+   * Strict "current" prevents stale-mapping leakage after cross-prefix switches:
+   * `clearCurrentVersion()` sets currentVersion=None to mean "no mapping", and
+   * the previous fallback to latest would resurrect the old prefix's mapping.
    */
   def getXml(version: String): Option[String] = {
     getInfo.flatMap { info =>
       val targetHash = version match {
-        case "current" | "latest" => info.currentVersion.orElse(info.versions.sortBy(_.timestamp.getMillis).lastOption.map(_.hash))
-        case hash => Some(hash)
+        case "current" => info.currentVersion
+        case "latest"  => info.currentVersion.orElse(info.versions.sortBy(_.timestamp.getMillis).lastOption.map(_.hash))
+        case hash      => Some(hash)
       }
 
       targetHash.flatMap { hash =>

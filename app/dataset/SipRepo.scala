@@ -623,13 +623,16 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
         case RecordDefinitionPattern() =>
           logger.debug(s"Record definition: ${entry.getName}")
-          sipPrefixRepoOpt.map(_.recordDefinition).map(rd => copyFileIn(rd, rd.getName, gzip = false)).getOrElse(copyEntry())
+          // Use legacy `<schemaVersions>_record-definition.xml` entry name so
+          // SIP-Creator can find it (RecDefRepo's on-disk filename is
+          // timestamp-prefixed).
+          sipPrefixRepoOpt.map(p => copyFileIn(p.recordDefinition, s"${p.schemaVersions}_record-definition.xml", gzip = false)).getOrElse(copyEntry())
 
         case ValidationPattern() =>
           logger.debug(s"Validation: ${entry.getName}")
-          // Prefer prefix repo's xsd (may be absent for lenient uploads); fall
-          // back to copying the SIP's existing validation entry verbatim.
-          sipPrefixRepoOpt.flatMap(_.validationOpt).map(va => copyFileIn(va, va.getName, gzip = false)).getOrElse(copyEntry())
+          sipPrefixRepoOpt.flatMap { p =>
+            p.validationOpt.map(v => copyFileIn(v, s"${p.schemaVersions}_validation.xsd", gzip = false))
+          }.getOrElse(copyEntry())
 
         case SourcePattern() =>
           logger.debug(s"Source: ${entry.getName}")

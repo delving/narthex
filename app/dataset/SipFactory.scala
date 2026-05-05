@@ -272,9 +272,13 @@ class SipPrefixRepo(
       try {
         addFactsEntry(facts, zos)
 
-        // record definition and validation
-        def copyIn(fileToCopy: File) = {
-          zos.putNextEntry(new ZipEntry(fileToCopy.getName))
+        // record definition + validation. Entry name uses the legacy
+        // `<schemaVersions>_record-definition.xml` / `_validation.xsd`
+        // shape so SIP-Creator (which expects that filename pattern) can
+        // still find them — even though the repo stores files under
+        // `<timestamp>_<hash>_<schemaVersion>.xml`.
+        def copyIn(fileToCopy: File, entryName: String) = {
+          zos.putNextEntry(new ZipEntry(entryName))
           val fileIn = new FileInputStream(fileToCopy)
           try {
             IOUtils.copy(fileIn, zos)
@@ -283,8 +287,8 @@ class SipPrefixRepo(
           }
           zos.closeEntry()
         }
-        copyIn(recordDefinition)
-        validationOpt.foreach(copyIn)
+        copyIn(recordDefinition, s"${schemaVersions}${RECORD_DEFINITION_SUFFIX}")
+        validationOpt.foreach(v => copyIn(v, s"${schemaVersions}${VALIDATION_SUFFIX}"))
 
         // Include mapping if provided (e.g., from default mappings). Rewrite
         // the `<facts>` block from the target dataset's facts so the template's
