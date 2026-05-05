@@ -130,7 +130,13 @@ class SipFactory(factoryDir: File, recDefsRoot: File, rdfBaseUrl: String, wsApi:
   // One-shot migration on first access. Idempotent.
   private lazy val migrated: Unit = recDefRepo.migrateFromFactoryOnce(factoryDir)
 
-  lazy val prefixRepos: Seq[SipPrefixRepo] = {
+  /**
+   * Resolve the current `SipPrefixRepo` for every prefix in RecDefRepo.
+   * Recomputed on each call so newly-uploaded prefixes show up immediately
+   * without a process restart. Cheap — listPrefixes + getCurrent each read
+   * one metadata.json per prefix.
+   */
+  def prefixRepos: Seq[SipPrefixRepo] = {
     val _ = migrated
     recDefRepo.listPrefixes().flatMap { prefix =>
       recDefRepo.getCurrent(prefix) match {
