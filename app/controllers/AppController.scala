@@ -1691,25 +1691,9 @@ class AppController @Inject() (
     // Auto-migrate: if no versions in repo but SIP exists with mapping, import it
     if (versions.isEmpty) {
       datasetContext.sipRepo.latestSipOpt.foreach { sip =>
-        sip.sipMappingOpt.foreach { sipMapping =>
-          val prefix = sipMapping.prefix
-          val mappingFileName = s"mapping_$prefix.xml"
-          sip.entries.get(mappingFileName).foreach { entry =>
-            try {
-              val inputStream = sip.zipFile.getInputStream(entry)
-              try {
-                val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
-                repo.saveFromSipUpload(mappingXml, prefix, Some("Auto-migrated from existing SIP"))
-                logger.info(s"Auto-migrated mapping from SIP for dataset $spec (prefix: $prefix)")
-                versions = repo.listVersions // Reload after migration
-              } finally {
-                inputStream.close()
-              }
-            } catch {
-              case e: Exception =>
-                logger.warn(s"Failed to auto-migrate mapping from SIP for $spec: ${e.getMessage}")
-            }
-          }
+        repo.ensureMigratedFromSip(sip).foreach { v =>
+          logger.info(s"Auto-migrated mapping from SIP for dataset $spec (hash=${v.hash})")
+          versions = repo.listVersions // Reload after migration
         }
       }
     }

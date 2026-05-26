@@ -22,6 +22,8 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json._
 
+import scala.io.Source
+
 object DatasetMappingRepo {
 
   private val logger = Logger(getClass)
@@ -136,6 +138,39 @@ class DatasetMappingRepo(datasetDir: File) {
    */
   def saveFromSipUpload(xmlContent: String, prefix: String, description: Option[String] = None): DatasetMappingVersion = {
     saveVersion(xmlContent, prefix, "sip_upload", None, description)
+  }
+
+  /**
+   * One-shot migration from a SIP's embedded mapping into this repo. Returns
+   * `Some(version)` if a new version was saved, `None` if the repo already had
+   * versions or the SIP lacks a usable mapping.
+   *
+   * Legacy datasets created before `DatasetMappingRepo` existed have no entry
+   * here; without this migration the harvest/process path would silently keep
+   * regenerating SIPs from the prior SIP's mapping forever (stale-mapping
+   * risk). Re-used by the mapping-versions UI endpoint.
+   */
+  def ensureMigratedFromSip(sip: dataset.Sip): Option[DatasetMappingVersion] = {
+    if (listVersions.nonEmpty) return None
+    sip.sipMappingOpt.flatMap { sipMapping =>
+      val prefix = sipMapping.prefix
+      val mappingFileName = s"mapping_$prefix.xml"
+      sip.entries.get(mappingFileName).flatMap { entry =>
+        try {
+          val inputStream = sip.zipFile.getInputStream(entry)
+          try {
+            val mappingXml = Source.fromInputStream(inputStream, "UTF-8").mkString
+            Some(saveFromSipUpload(mappingXml, prefix, Some("Auto-migrated from existing SIP")))
+          } finally {
+            inputStream.close()
+          }
+        } catch {
+          case e: Exception =>
+            logger.warn(s"Failed to auto-migrate mapping from SIP: ${e.getMessage}")
+            None
+        }
+      }
+    }
   }
 
   /**

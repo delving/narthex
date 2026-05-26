@@ -125,11 +125,30 @@ class SourceProcessor(val datasetContext: DatasetContext,
               None
             }
           } else {
-            // Manual mode: check DatasetMappingRepo for saved mapping (e.g., from SIP upload)
-            // This provides a fallback if the SIP's sipMappingOpt can't parse the mapping
-            datasetContext.datasetMappingRepo.getXml("current").map { xml =>
-              log.info(s"Using mapping from DatasetMappingRepo for dataset ${dsInfo.spec} (manual mode)")
-              xml
+            // Manual mode: check DatasetMappingRepo for saved mapping (e.g.,
+            // from SIP upload or web editor). For legacy datasets that pre-date
+            // DatasetMappingRepo, auto-migrate the mapping out of the current
+            // SIP first so subsequent regenerations don't carry a stale mapping
+            // from the original SIP forever.
+            val repo = datasetContext.datasetMappingRepo
+            if (repo.listVersions.isEmpty) {
+              datasetContext.sipRepo.latestSipOpt.foreach { sip =>
+                repo.ensureMigratedFromSip(sip).foreach { v =>
+                  log.info(s"Auto-migrated mapping from SIP for ${dsInfo.spec} (hash=${v.hash})")
+                }
+              }
+            }
+            repo.getXml("current") match {
+              case Some(xml) =>
+                log.info(s"Using mapping from DatasetMappingRepo for dataset ${dsInfo.spec} (manual mode)")
+                Some(xml)
+              case None =>
+                log.warning(
+                  s"Dataset ${dsInfo.spec}: manual mode but DatasetMappingRepo has no current mapping — " +
+                    s"SIP regeneration will reuse the prior SIP's mapping (stale-mapping risk). " +
+                    s"Open the mapping editor or upload a fresh SIP to register a current version."
+                )
+                None
             }
           }
 
