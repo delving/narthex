@@ -964,6 +964,12 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(SipZipGenerationComplete(recordCount), active: Active) =>
       log.info(s"Generated $recordCount pockets")
+      // Externally-processed datasets (SIP-Creator upload-processed) must keep
+      // PROCESSED as their effective state. getState() returns the state with
+      // the latest timestamp, so any setState() call here would race PROCESSED
+      // and win. Capture the externally-processed marker BEFORE touching state
+      // and use it to gate the transition + re-stamp PROCESSED at the end.
+      val externallyProcessed = dsInfo.getLiteralProp(processedExternally).isDefined
       dsInfo.setState(MAPPABLE)
       dsInfo.setRecordCount(recordCount)
 
@@ -979,15 +985,14 @@ class DatasetActor(val datasetContext: DatasetContext,
         }
       }
 
-      if (datasetContext.sipMapperOpt.isDefined) {
-        // Don't overwrite PROCESSED state (e.g., from upload-processed endpoint)
-        val currentState = dsInfo.getState()
-        if (currentState != PROCESSED) {
-          log.info(s"There is a mapper, so setting to processable")
-          dsInfo.setState(PROCESSABLE)
-        } else {
-          log.info(s"Keeping PROCESSED state (externally processed)")
-        }
+      if (externallyProcessed) {
+        // Re-stamp PROCESSED so its timestamp beats the MAPPABLE one we just
+        // wrote — externally-processed datasets must surface as PROCESSED.
+        log.info(s"Keeping PROCESSED state (externally processed)")
+        dsInfo.setState(PROCESSED)
+      } else if (datasetContext.sipMapperOpt.isDefined) {
+        log.info(s"There is a mapper, so setting to processable")
+        dsInfo.setState(PROCESSABLE)
       } else {
         log.info("No mapper, not processing")
       }
