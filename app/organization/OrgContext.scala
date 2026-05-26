@@ -215,9 +215,18 @@ class OrgContext @Inject() (
     withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this, this.wsApi))
   }
 
-  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq.filter(
-    _.getName.endsWith(SIP_EXTENSION)
-  ).map(AvailableSip).sortBy(_.dateTime.getMillis).reverse
+  // Group by dataset and keep newest per group so the sip-app listing never shows
+  // two SIPs for the same dataset (timestamped Narthex-generated form vs bare
+  // direct-drop / legacy SIP-Creator upload form).
+  def availableSips: Seq[AvailableSip] = sipsDir.listFiles.toSeq
+    .filter(_.getName.endsWith(SIP_EXTENSION))
+    .map(AvailableSip)
+    .groupBy(_.datasetName)
+    .values
+    .map(_.maxBy(_.dateTime.getMillis))
+    .toSeq
+    .sortBy(_.dateTime.getMillis)
+    .reverse
 
   def uploadedSips: Future[Seq[Sip]] = {
     DsInfo.listDsInfo(this).map { list =>

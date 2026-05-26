@@ -66,7 +66,14 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def createSipFile = new File(orgContext.sipsDir, s"${dsInfo}__${DATE_FORMAT.format(new Date())}.sip.zip")
 
-  def sipFiles = orgContext.sipsDir.listFiles.filter(file => file.getName.startsWith(s"${dsInfo}__")).sortBy(_.getName).reverse
+  // Match both timestamped Narthex-generated SIPs (`${spec}__YYYY_..sip.zip`) and
+  // bare uploaded SIPs (`${spec}.sip.zip`) — direct file drops and old SIP-Creator
+  // pushes use the bare form. Missing the bare form caused old uploads to never get
+  // cleaned and to show up as duplicates in the sip-app listing.
+  def sipFiles = orgContext.sipsDir.listFiles.filter { file =>
+    val name = file.getName
+    name.endsWith(".sip.zip") && (name.startsWith(s"${dsInfo}__") || name == s"${dsInfo}.sip.zip")
+  }.sortBy(_.getName).reverse
 
   val treeRoot = new NodeRepo(this, treeDir)
   val sourceTreeRoot = new NodeRepo(this, sourceTreeDir)

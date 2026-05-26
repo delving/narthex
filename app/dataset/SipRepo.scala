@@ -448,10 +448,14 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
 
   def copySourceToTempFile: Option[File] = {
     entries.get("source.xml.gz").map { sourceXmlGz =>
-      val sourceFile = new File(file.getParentFile, "source.xml.gz")
+      // Write to a true temp file. Writing into `file.getParentFile` (the
+      // org-wide sipsDir) leaks a stray `source.xml.gz` sibling that never
+      // gets cleaned and clutters the sip-app listing surface.
+      val sourceFile = File.createTempFile("sip-source-", ".xml.gz")
+      sourceFile.deleteOnExit()
       val inputStream = zipFile.getInputStream(sourceXmlGz)
-      FileUtils.copyInputStreamToFile(inputStream, sourceFile)
-      inputStream.close()
+      try FileUtils.copyInputStreamToFile(inputStream, sourceFile)
+      finally inputStream.close()
       sourceFile
     }
   }
