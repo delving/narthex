@@ -98,7 +98,14 @@ object SipFactory {
         rights = info(datasetRights),
         edmType = info(edmType),
         dataType = info(datasetType),
-        orgId =info(orgId) 
+        // Prefer the config-level orgId (dsInfo.orgId pulls it from appConfig)
+        // over a per-dataset literal — the per-dataset triple is almost never
+        // populated, and Sip.rewriteFactsInMappingXml uses this value to
+        // overwrite the mapping XML's <facts> block. Falling back to "" here
+        // wiped a hand-edited orgId from the user's current mapping every
+        // time SIP regeneration ran, so processing kept emitting records
+        // with an empty orgId.
+        orgId = Option(dsInfo.orgId).filter(_.nonEmpty).getOrElse(info(orgId))
       )
       val factsString =
         s"""DsInfo->spec=${facts.spec}
