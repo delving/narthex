@@ -109,7 +109,19 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def createSourceRepo(sourceFacts: SourceFacts): SourceRepo = SourceRepo.createClean(sourceDir, sourceFacts, orgContext)
 
-  def sourceRepoOpt: Option[SourceRepo] = if (sourceDir.exists()) Some(new SourceRepo(sourceDir, orgContext)) else None
+  def sourceRepoOpt: Option[SourceRepo] = {
+    if (sourceDir.exists()) {
+      if (SourceRepo.sourceFactsFile(sourceDir).exists()) {
+        Some(new SourceRepo(sourceDir, orgContext))
+      } else {
+        logger.warn(
+          s"source/ directory exists for ${dsInfo.spec} but ${SourceRepo.SOURCE_FACTS_FILE} is missing — " +
+            s"SourceRepo unavailable. Re-run analysis (set record root / unique ID) or upload to repair."
+        )
+        None
+      }
+    } else None
+  }
 
   def acceptUpload(fileName: String, setTargetFile: File => File): Option[String] = {
 

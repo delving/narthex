@@ -124,6 +124,12 @@ object SourceRepo {
 
   def sourceFactsFromHomedir(home: File): SourceFacts = {
     val file = sourceFactsFile(home)
+    if (!file.exists()) {
+      throw new RuntimeException(
+        s"Missing $SOURCE_FACTS_FILE in ${home.getAbsolutePath} — " +
+          s"dataset source state is incomplete. Re-run analysis or upload to repair."
+      )
+    }
     val source = Source.fromFile(file, "UTF-8")
     try {
       readSourceFacts(source)
@@ -171,7 +177,8 @@ class SourceRepo(home: File, orgContext: OrgContext) {
     val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     val sub = newSubdirectory(dirs)
-    files.foreach(file => Files.move(file.toPath, new File(sub, file.getName).toPath))
+    files.filter(_.getName != SOURCE_FACTS_FILE).foreach(file =>
+      Files.move(file.toPath, new File(sub, file.getName).toPath))
     Seq.empty[File]
   }
 
