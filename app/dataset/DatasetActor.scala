@@ -985,11 +985,24 @@ class DatasetActor(val datasetContext: DatasetContext,
         }
       }
 
-      if (externallyProcessed) {
+      if (externallyProcessed && datasetContext.processedRepo.nonEmpty) {
         // Re-stamp PROCESSED so its timestamp beats the MAPPABLE one we just
         // wrote — externally-processed datasets must surface as PROCESSED.
         log.info(s"Keeping PROCESSED state (externally processed)")
         dsInfo.setState(PROCESSED)
+      } else if (externallyProcessed) {
+        // Stale processedExternally marker: the processed/ tree is gone (e.g.
+        // dropped by a workflow reset), so the dataset is no longer actually
+        // processed. Clear the marker and fall through to the normal mapper
+        // gating below.
+        log.warning(
+          s"Clearing stale processedExternally marker for ${dsInfo.spec}: " +
+            s"processed/ tree is empty"
+        )
+        dsInfo.removeLiteralProp(processedExternally)
+        if (datasetContext.sipMapperOpt.isDefined) {
+          dsInfo.setState(PROCESSABLE)
+        }
       } else if (datasetContext.sipMapperOpt.isDefined) {
         log.info(s"There is a mapper, so setting to processable")
         dsInfo.setState(PROCESSABLE)

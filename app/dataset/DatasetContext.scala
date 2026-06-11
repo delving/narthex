@@ -240,6 +240,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     dropTree()
     deleteQuietly(processedDir)
     dsInfo.removeState(PROCESSED)
+    // Clear externally-processed marker so SipZipGenerationComplete does not
+    // re-stamp PROCESSED for a dataset whose processed/ tree is gone.
+    dsInfo.removeLiteralProp(GraphProperties.processedExternally)
   }
 
   def dropTree() = {
