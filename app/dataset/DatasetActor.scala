@@ -219,6 +219,10 @@ class DatasetActor(val datasetContext: DatasetContext,
   // Track if we're in fast process mode (process only, no save)
   private var fastProcessOnly: Boolean = false
 
+  // Track manual fast-save chaining after full processing. Scheduled is reserved
+  // for real incremental harvests, where a single source/processed file is valid.
+  private var fastSaveAfterProcessing: Boolean = false
+
   // Track if we should auto-continue to processing after first harvest (discovery imports)
   private var autoProcessAfterFirstHarvest: Boolean = false
 
@@ -523,6 +527,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           case "start processing" =>
             workStarted = true
+            fastSaveAfterProcessing = false
             self ! StartProcessing(None)
             "processing started"
 
@@ -548,7 +553,8 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           case cmd if cmd.startsWith("start fast save") =>
             // Smart workflow continuation based on specified or current state
-            // Uses Scheduled context to enable automatic chaining (Process → Save)
+            // Manual fast-save uses explicit flags for chaining. Scheduled is
+            // reserved for real incremental harvests.
             // Command format: "start fast save" or "start fast save from stateXxx"
             val fromState = if (cmd.contains(" from ")) {
               cmd.split(" from ").lastOption.getOrElse("")
@@ -556,59 +562,61 @@ class DatasetActor(val datasetContext: DatasetContext,
               "" // Auto-detect
             }
 
-            val scheduledOpt = datasetContext.sourceRepoOpt
-              .flatMap(_.latestSourceFileOpt)
-              .map(file => Scheduled(None, file))
+            // Use specified state or fall back to current state
+            val targetState = fromState match {
+              case "stateAnalyzed" => ANALYZED
+              case "stateProcessed" => PROCESSED
+              case "stateProcessable" => PROCESSABLE
+              case "stateSourced" => SOURCED
+              case _ => dsInfo.getState() // Auto-detect
+            }
 
-            scheduledOpt match {
-              case Some(scheduled) =>
-                // Use specified state or fall back to current state
-                val targetState = fromState match {
-                  case "stateAnalyzed" => ANALYZED
-                  case "stateProcessed" => PROCESSED
-                  case "stateProcessable" => PROCESSABLE
-                  case "stateSourced" => SOURCED
-                  case _ => dsInfo.getState() // Auto-detect
-                }
+            val latestSourceFileOpt = datasetContext.sourceRepoOpt.flatMap(_.latestSourceFileOpt)
 
-                targetState match {
-                  case ANALYZED =>
-                    log.info(s"Fast save from ANALYZED: Save only (${dsInfo.spec})")
-                    workStarted = true
-                    self ! StartSaving(Some(scheduled))
-                    "Fast save: Saving"
+            targetState match {
+              case ANALYZED =>
+                log.info(s"Fast save from ANALYZED: Save only (${dsInfo.spec})")
+                workStarted = true
+                self ! StartSaving(None)
+                "Fast save: Saving"
 
-                  case PROCESSED =>
-                    log.info(s"Fast save from PROCESSED: Save (${dsInfo.spec})")
-                    workStarted = true
-                    self ! StartSaving(Some(scheduled))
-                    "Fast save: Saving"
+              case PROCESSED =>
+                log.info(s"Fast save from PROCESSED: Save (${dsInfo.spec})")
+                workStarted = true
+                self ! StartSaving(None)
+                "Fast save: Saving"
 
-                  case PROCESSABLE =>
-                    log.info(s"Fast save from PROCESSABLE: Process → Save (${dsInfo.spec})")
-                    workStarted = true
-                    self ! StartProcessing(Some(scheduled))
-                    "Fast save: Process → Save"
+              case PROCESSABLE if latestSourceFileOpt.isDefined =>
+                log.info(s"Fast save from PROCESSABLE: Process -> Save (${dsInfo.spec})")
+                workStarted = true
+                fastSaveAfterProcessing = true
+                self ! StartProcessing(None)
+                "Fast save: Process -> Save"
 
-                  case SOURCED =>
-                    log.info(s"Fast save from SOURCED: Make SIP → Process → Save (${dsInfo.spec})")
+              case PROCESSABLE =>
+                "No source file found for fast save"
+
+              case SOURCED =>
+                latestSourceFileOpt match {
+                  case Some(file) =>
+                    log.info(s"Fast save from SOURCED: Make SIP -> Process -> Save (${dsInfo.spec})")
                     // Set flag to continue processing after SIP generation
                     workStarted = true
-                    fastSaveScheduledOpt = Some(scheduled)
+                    fastSaveScheduledOpt = Some(Scheduled(None, file))
                     self ! GenerateSipZip
-                    "Fast save: Make SIP → Process → Save"
-
-                  case _ =>
-                    "Dataset not ready for fast save"
+                    "Fast save: Make SIP -> Process -> Save"
+                  case None =>
+                    "No source file found for fast save"
                 }
 
-              case None =>
-                "No source file found for fast save"
+              case _ =>
+                "Dataset not ready for fast save"
             }
 
           case "start fast process" =>
             // Workflow: Make SIP → Process (stops at PROCESSED, does NOT save)
             // Used by discovery import to prepare datasets for review
+            fastSaveAfterProcessing = false
             val currentState = dsInfo.getState()
 
             currentState match {
@@ -1022,7 +1030,8 @@ class DatasetActor(val datasetContext: DatasetContext,
           log.info(s"Fast save mode: continuing to processing after SIP generation")
           fastSaveScheduledOpt = None // Clear the flag
           fastProcessOnly = false
-          self ! StartProcessing(Some(scheduled))
+          fastSaveAfterProcessing = true
+          self ! StartProcessing(None)
           goto(Idle) using Dormant
         case _ if fastProcessOnly && datasetContext.sipMapperOpt.isDefined =>
           log.info(s"Fast process mode: continuing to processing after SIP generation (no save)")
@@ -1068,28 +1077,37 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt),
                active: Active) =>
       dsInfo.setState(PROCESSED)
-      if (scheduledOpt.isDefined) {
-        dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
-        // Update total record count from filesystem for scheduled/incremental harvests
-        val (_, _, totalSourceRecords) = dsInfo.updatedSpecCountFromFile(dsInfo.spec,
-                                        orgContext.appConfig.narthexDataDir,
-                                        orgContext.appConfig.orgId)
+      if (scheduledOpt.isDefined || fastSaveAfterProcessing) {
+        val saveScheduledOpt = scheduledOpt
+        fastSaveAfterProcessing = false
 
-        // Set acquisition counts for incremental harvests (since SipZipGeneration was skipped)
-        datasetContext.sourceRepoOpt.foreach { sourceRepo =>
-          val deletedCount = sourceRepo.deletedCount
-          val acquiredCount = totalSourceRecords + deletedCount
-          val acquisitionMethod = dsInfo.getLiteralProp(harvestType).map(_ => "harvest").getOrElse("upload")
-          dsInfo.setAcquisitionCounts(acquiredCount, deletedCount, totalSourceRecords, acquisitionMethod)
-          if (deletedCount > 0 || acquiredCount > 0) {
-            log.info(s"Acquisition counts set during ProcessingComplete: acquired=$acquiredCount, deleted=$deletedCount, source=$totalSourceRecords, method=$acquisitionMethod")
+        if (saveScheduledOpt.isDefined) {
+          dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
+          // Update total record count from filesystem for scheduled/incremental harvests
+          val (_, _, totalSourceRecords) = dsInfo.updatedSpecCountFromFile(dsInfo.spec,
+                                          orgContext.appConfig.narthexDataDir,
+                                          orgContext.appConfig.orgId)
+
+          // Set acquisition counts for incremental harvests (since SipZipGeneration was skipped)
+          datasetContext.sourceRepoOpt.foreach { sourceRepo =>
+            val deletedCount = sourceRepo.deletedCount
+            val acquiredCount = totalSourceRecords + deletedCount
+            val acquisitionMethod = dsInfo.getLiteralProp(harvestType).map(_ => "harvest").getOrElse("upload")
+            dsInfo.setAcquisitionCounts(acquiredCount, deletedCount, totalSourceRecords, acquisitionMethod)
+            if (deletedCount > 0 || acquiredCount > 0) {
+              log.info(s"Acquisition counts set during ProcessingComplete: acquired=$acquiredCount, deleted=$deletedCount, source=$totalSourceRecords, method=$acquisitionMethod")
+            }
           }
+          dsInfo.setState(INCREMENTAL_SAVED)
+        } else {
+          dsInfo.removeState(INCREMENTAL_SAVED)
+          dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         }
+
         val graphSaver = createChildActor(
           GraphSaver.props(datasetContext, orgContext),
           "graph-saver")
-        graphSaver ! SaveGraphs(scheduledOpt)
-        dsInfo.setState(INCREMENTAL_SAVED)
+        graphSaver ! SaveGraphs(saveScheduledOpt)
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       } else {
@@ -1389,6 +1407,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         log.info(s"Clearing error for ${dsInfo.spec}: $message")
+        fastSaveAfterProcessing = false
         dsInfo.clearError()
         log.info(s"clear error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
@@ -1426,6 +1445,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         stay() using active.copy(interrupt = true)
       } else {
         log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
+        fastSaveAfterProcessing = false
         // kill active actors
         active.childOpt.foreach(_ ! PoisonPill)
         // Release semaphores since we're aborting the operation
@@ -1438,6 +1458,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
+      fastSaveAfterProcessing = false
 
       // Check if this is a harvest failure (candidate for retry)
       if (isHarvestFailure(active)) {
@@ -1502,6 +1523,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(WorkFailure(message, exceptionOpt), _) =>
       log.warning(s"Work failure $message while dormant")
+      fastSaveAfterProcessing = false
       exceptionOpt match {
         case Some(exception) => log.error(exception, message)
         case None            => log.error(message)

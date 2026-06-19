@@ -61,6 +61,8 @@ POST        /narthex/app/dataset/:spec/set-delimiter                         con
 GET         /narthex/app/dataset/:spec/index                                 controllers.AppController.index(spec)
 GET         /narthex/app/dataset/:spec/info                                  controllers.AppController.datasetInfo(spec)
 GET         /narthex/app/dataset/:spec/command/:command                      controllers.AppController.command(spec, command)
++ nocsrf
+POST        /narthex/app/dataset/:spec/fast-save                            controllers.AppController.fastSave(spec)
 GET         /narthex/app/dataset/:spec/status/*path                          controllers.AppController.nodeStatus(spec, path)
 GET         /narthex/app/dataset/:spec/sample/:size/*path                    controllers.AppController.sample(spec, path, size:Int)
 GET         /narthex/app/dataset/:spec/histogram/:size/*path                 controllers.AppController.histogram(spec, path, size:Int)

@@ -60,6 +60,8 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   val startSave = timeToString(new DateTime())
   var isScheduled = false
   var isIncremental = false
+  var isExplicitFileSave = false
+  var chunksSaved = 0
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
@@ -160,31 +162,43 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         val progressReporter = ProgressReporter(SAVING, context.parent)
         progressOpt = Some(progressReporter)
         isScheduled = !scheduledOpt.isEmpty
+        isExplicitFileSave = scheduledOpt.isDefined
         isIncremental = isScheduled && !scheduledOpt.head.modifiedAfter.isEmpty
-        reader = Some(
-          datasetContext.processedRepo.createGraphReaderXML(
-            scheduledOpt.map(_.file),
-            saveTime,
-            progressReporter))
-        if (!isIncremental) {
-          log.info(s"Only increment dataset revision when not in incremental mode")
-          // IMPORTANT: Wait for increment_revision to complete before sending records.
-          // Otherwise, the first batch may be indexed with the OLD revision and then
-          // deleted as an orphan when clear_orphans runs.
-          // Use message-passing to avoid accessing actor state from Future thread
-          val selfRef = self
-          val incrementFuture = datasetContext.dsInfo.updateDatasetRevision()
-          incrementFuture.onComplete {
-            case Success(_) =>
-              log.info("Dataset revision incremented, starting to send graph chunks")
-              selfRef ! RevisionReady
-            case Failure(ex) =>
-              selfRef ! AsyncFailure(ex)
-          }
-        } else {
-          sendGraphChunkOpt()
+
+        val invalidFileOpt = scheduledOpt.map(_.file).filterNot { file =>
+          file.getName.endsWith(".xml") || file.getName.endsWith(".xml.zst")
         }
-      }
+
+        invalidFileOpt match {
+          case Some(file) =>
+            failure(new RuntimeException(
+              s"SaveGraphs received non-processed file ${file.getName}; expected .xml or .xml.zst"))
+          case None =>
+            reader = Some(
+              datasetContext.processedRepo.createGraphReaderXML(
+                scheduledOpt.map(_.file),
+                saveTime,
+                progressReporter))
+            if (!isIncremental) {
+              log.info(s"Only increment dataset revision when not in incremental mode")
+              // IMPORTANT: Wait for increment_revision to complete before sending records.
+              // Otherwise, the first batch may be indexed with the OLD revision and then
+              // deleted as an orphan when clear_orphans runs.
+              // Use message-passing to avoid accessing actor state from Future thread
+              val selfRef = self
+              val incrementFuture = datasetContext.dsInfo.updateDatasetRevision()
+              incrementFuture.onComplete {
+                case Success(_) =>
+                  log.info("Dataset revision incremented, starting to send graph chunks")
+                  selfRef ! RevisionReady
+                case Failure(ex) =>
+                  selfRef ! AsyncFailure(ex)
+              }
+            } else {
+              sendGraphChunkOpt()
+            }
+          }
+        }
 
     case RevisionReady =>
       actorWork(context) {
@@ -193,6 +207,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
 
     case ChunkSaved =>
       actorWork(context) {
+        chunksSaved += 1
         sendGraphChunkOpt()
       }
 
@@ -231,30 +246,34 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
       actorWork(context) {
         reader.foreach(_.close())
         reader = None
-        if (!isIncremental){
-          datasetContext.dsInfo.removeNaveOrphans(startSave)
-          log.info(s"Only drop orphans when not in incremental mode")
-        }
-
-        // Log deleted record IDs for future orphan control (Hub3 bulk delete)
-        // TODO: Implement actual Hub3 bulk delete API call in future iteration
-        datasetContext.sourceRepoOpt.foreach { sourceRepo =>
-          val deletedIds = sourceRepo.deletedIdSet
-          if (deletedIds.nonEmpty) {
-            log.info(s"Found ${deletedIds.size} deleted record IDs for future orphan control in Hub3")
-            // Future: Call Hub3 bulk delete API here
-            // datasetContext.dsInfo.deleteRecordsByIds(deletedIds.toList)
+        if (isExplicitFileSave && chunksSaved == 0) {
+          failure(new RuntimeException("Explicit processed-file save completed with zero graph chunks"))
+        } else {
+          if (!isIncremental){
+            datasetContext.dsInfo.removeNaveOrphans(startSave)
+            log.info(s"Only drop orphans when not in incremental mode")
           }
-        }
 
-        // Release BOTH semaphores on successful completion to be safe
-        orgContext.semaphore.release(datasetContext.dsInfo.spec)
-        orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
-        log.info(
-          s"${datasetContext.dsInfo.spec} both semaphores released. Active specs - semaphore: ${orgContext.semaphore.activeSpecs().toString()}, saveSemaphore: ${orgContext.saveSemaphore.activeSpecs().toString()}"
-        )
-        log.info("All graphs saved")
-        context.parent ! GraphSaveComplete
+          // Log deleted record IDs for future orphan control (Hub3 bulk delete)
+          // TODO: Implement actual Hub3 bulk delete API call in future iteration
+          datasetContext.sourceRepoOpt.foreach { sourceRepo =>
+            val deletedIds = sourceRepo.deletedIdSet
+            if (deletedIds.nonEmpty) {
+              log.info(s"Found ${deletedIds.size} deleted record IDs for future orphan control in Hub3")
+              // Future: Call Hub3 bulk delete API here
+              // datasetContext.dsInfo.deleteRecordsByIds(deletedIds.toList)
+            }
+          }
+
+          // Release BOTH semaphores on successful completion to be safe
+          orgContext.semaphore.release(datasetContext.dsInfo.spec)
+          orgContext.saveSemaphore.release(datasetContext.dsInfo.spec)
+          log.info(
+            s"${datasetContext.dsInfo.spec} both semaphores released. Active specs - semaphore: ${orgContext.semaphore.activeSpecs().toString()}, saveSemaphore: ${orgContext.saveSemaphore.activeSpecs().toString()}"
+          )
+          log.info("All graphs saved")
+          context.parent ! GraphSaveComplete
+        }
       }
   }
 }

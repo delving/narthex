@@ -59,6 +59,19 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
+                fastSave: function (spec) {
+                    return app.fastSave(spec).post().then(
+                        function (response) {
+                            return response.data;
+                        },
+                        function (reply) {
+                            if (reply.status == 401) {
+                                $location.path('/');
+                            }
+                            return $q.reject(reply);
+                        }
+                    );
+                },
                 listDatasets: function () {
                     return app.listDatasets().get().then(
                         function (response) {

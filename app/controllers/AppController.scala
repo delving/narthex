@@ -45,6 +45,7 @@ import triplestore.Sparql.SkosifiedField
 import dataset.DatasetActor._
 import dataset.DsInfo
 import dataset.DsInfo._
+import dataset.DsInfo.DsState._
 import dataset.{Sip, SipFactory}
 import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.SkosMappingStore.SkosMapping
@@ -710,6 +711,39 @@ class AppController @Inject() (
   def command(spec: String, command: String) = Action { request =>
     orgContext.orgActor ! DatasetMessage(spec, Command(command))
     Ok
+  }
+
+  def fastSave(spec: String) = Action { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val dsInfo = datasetContext.dsInfo
+    val state = dsInfo.getState()
+    val hasProcessedOutput = datasetContext.processedRepo.nonEmpty
+    val hasSourceFile = datasetContext.sourceRepoOpt.exists(_.latestSourceFileOpt.isDefined)
+
+    val problemOpt = state match {
+      case ANALYZED | PROCESSED if !hasProcessedOutput =>
+        Some(s"Dataset $spec is $state but has no processed output to save")
+      case ANALYZED | PROCESSED =>
+        None
+      case PROCESSABLE if !hasSourceFile =>
+        Some(s"Dataset $spec is processable but has no source file to process")
+      case PROCESSABLE =>
+        None
+      case SOURCED if !hasSourceFile =>
+        Some(s"Dataset $spec is sourced but has no source file")
+      case SOURCED =>
+        None
+      case _ =>
+        Some(s"Dataset $spec is not ready for fast save: $state")
+    }
+
+    problemOpt match {
+      case Some(problem) =>
+        BadRequest(Json.obj("problem" -> problem, "state" -> state.toString))
+      case None =>
+        orgContext.orgActor ! DatasetMessage(spec, Command(s"start fast save from ${state.toString}"))
+        Accepted(Json.obj("status" -> "queued", "state" -> state.toString))
+    }
   }
 
   def uploadDataset(spec: String) = Action(parse.multipartFormData) { request =>
@@ -2605,4 +2639,3 @@ $nodeMappingsXml
   }
 
 }
-

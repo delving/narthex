@@ -1114,10 +1114,10 @@ define(["angular"], function () {
             console.log("Showing confirm modal");
             modalAlert.confirm("Fast Save Confirmation", confirmMessage, function() {
                 console.log("Confirm callback executed");
-                // On confirm - execute fast save (no modal, just start silently)
-                datasetListService.command(dataset.datasetSpec, "start fast save from " + state)
+                // On confirm - execute fast save after server-side readiness checks
+                datasetListService.fastSave(dataset.datasetSpec)
                     .then(function(reply) {
-                        console.log("Fast save started: " + stepsList);
+                        console.log("Fast save queued: " + stepsList, reply);
                     })
                     .catch(function(error) {
                         console.log("Fast save error:", error);
@@ -1163,9 +1163,9 @@ define(["angular"], function () {
                     if (state) {
                         // Stagger commands slightly to avoid overwhelming the queue
                         $timeout(function() {
-                            datasetListService.command(ds.datasetSpec, "start fast save from " + state)
-                                .then(function() {
-                                    console.log("Bulk fast save queued: " + ds.datasetSpec);
+                            datasetListService.fastSave(ds.datasetSpec)
+                                .then(function(reply) {
+                                    console.log("Bulk fast save queued: " + ds.datasetSpec, reply);
                                 })
                                 .catch(function(error) {
                                     console.log("Bulk fast save error for " + ds.datasetSpec + ":", error);
