@@ -339,19 +339,14 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           log.info(s"Revision sweep: clear_orphans emitted (keepRevisionSweep=$keepRevisionSweep)")
         }
 
-        // Close the registry run started by SourceProcessor. Counts are a
-        // best-effort summary; downstream observability relies on the
-        // per-record rows, not on these aggregates.
+        // Close the registry run started by SourceProcessor. The registry
+        // computes the real per-run diff (added/changed/deleted) internally.
         if (registryEnabled) {
           registryRunIdOpt.foreach { runId =>
-            val seen = registry.count(spec, RecordRegistry.STATUS_SEEN)
-            val deleted = registry.count(spec, RecordRegistry.STATUS_DELETED)
-            scala.util.Try(registry.completeRun(
-              spec, runId,
-              RecordRegistry.RunCounts(seen = seen, changed = seen, deleted = deleted)
-            )).recover { case ex: Throwable =>
-              log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
-            }
+            scala.util.Try(registry.completeRun(spec, runId))
+              .recover { case ex: Throwable =>
+                log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
+              }
           }
         }
 

@@ -12,7 +12,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 
 object RecordRegistry {
-  val SCHEMA_VERSION = "1"
+  val SCHEMA_VERSION = "2"
   val DB_FILENAME = "records.db"
 
   val STATUS_SEEN    = "seen"
@@ -24,14 +24,40 @@ object RecordRegistry {
 
   val KIND_FULL      = "full"
   val KIND_INCREMENT = "incremental"
-  val KIND_FSI       = "from_scratch_incremental"
 
-  case class RunCounts(seen: Int, changed: Int, deleted: Int)
+  val NOTE_BASELINE = "baseline"
+
+  /** Per-run diff: what this run actually did, derived from the records table. */
+  case class RunDiff(added: Int, changed: Int, deleted: Int, seenTotal: Int)
+
+  /** One row of harvest_runs, for the trends API. */
+  case class RunSummary(
+    runId: Long,
+    kind: String,
+    startedAt: String,
+    completedAt: Option[String],
+    status: String,
+    added: Int,
+    changed: Int,
+    deleted: Int,
+    seen: Int,
+    baseline: Boolean
+  )
+
+  /** Completed-run diffs summed per UTC day, for the trends API. */
+  case class DailyRunDiff(date: String, added: Int, changed: Int, deleted: Int, runs: Int)
+
+  import play.api.libs.json.{Json, OWrites}
+  implicit val runSummaryWrites: OWrites[RunSummary] = Json.writes[RunSummary]
+  implicit val dailyRunDiffWrites: OWrites[DailyRunDiff] = Json.writes[DailyRunDiff]
 
   private val TS_FORMAT =
     DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC)
 
   def nowIso(): String = TS_FORMAT.format(Instant.now())
+
+  def isoDaysAgo(days: Int): String =
+    TS_FORMAT.format(Instant.now().minus(java.time.Duration.ofDays(days.toLong)))
 }
 
 @Singleton
@@ -53,8 +79,20 @@ class RecordRegistry(datasetsDir: File) {
   def beginRun(specName: String, kind: String): Long =
     spec(specName).beginRun(kind)
 
-  def completeRun(specName: String, runId: Long, counts: RunCounts): Unit =
-    spec(specName).completeRun(runId, counts)
+  def completeRun(specName: String, runId: Long): Unit =
+    spec(specName).completeRun(runId)
+
+  // Read paths guard on file existence: spec() would CREATE an empty
+  // records.db, so browsing trends must never go through it for datasets
+  // that have no registry yet.
+  private def dbFileExists(specName: String): Boolean =
+    new File(new File(datasetsDir, specName), DB_FILENAME).exists()
+
+  def listRuns(specName: String, sinceDays: Int): Seq[RunSummary] =
+    if (dbFileExists(specName)) spec(specName).listRuns(sinceDays) else Seq.empty
+
+  def dailyRunDiffs(specName: String, sinceDays: Int): Seq[DailyRunDiff] =
+    if (dbFileExists(specName)) spec(specName).dailyRunDiffs(sinceDays) else Seq.empty
 
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
@@ -153,19 +191,21 @@ private[services] class SpecRegistry(val datasetDir: File) {
         k TEXT PRIMARY KEY,
         v TEXT NOT NULL
       )""")
+      // Fresh dbs get the v2 shape directly; existing tables are untouched
+      // here and upgraded by the version branch below.
       s.executeUpdate("""CREATE TABLE IF NOT EXISTS records (
-        local_id          TEXT PRIMARY KEY,
-        content_hash      TEXT NOT NULL,
-        status            TEXT NOT NULL,
-        last_seen_run_id  INTEGER NOT NULL,
-        last_seen_ts      TEXT NOT NULL,
-        last_sent_hash    TEXT,
-        last_sent_run_id  INTEGER,
-        created_at        TEXT NOT NULL,
-        updated_at        TEXT NOT NULL
+        local_id            TEXT PRIMARY KEY,
+        content_hash        TEXT NOT NULL,
+        status              TEXT NOT NULL,
+        first_seen_run_id   INTEGER,
+        last_changed_run_id INTEGER,
+        last_seen_run_id    INTEGER NOT NULL,
+        last_seen_ts        TEXT NOT NULL,
+        last_sent_hash      TEXT,
+        last_sent_run_id    INTEGER,
+        created_at          TEXT NOT NULL,
+        updated_at          TEXT NOT NULL
       )""")
-      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_status ON records(status)")
-      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_last_seen_run_id ON records(last_seen_run_id)")
       s.executeUpdate("""CREATE TABLE IF NOT EXISTS harvest_runs (
         run_id        INTEGER PRIMARY KEY AUTOINCREMENT,
         kind          TEXT NOT NULL,
@@ -175,22 +215,38 @@ private[services] class SpecRegistry(val datasetDir: File) {
         seen_count    INTEGER,
         changed_count INTEGER,
         deleted_count INTEGER,
+        added_count   INTEGER,
         note          TEXT
       )""")
-      s.executeUpdate(
-        s"INSERT OR IGNORE INTO schema_meta (k, v) VALUES ('schema_version', '$SCHEMA_VERSION')"
-      )
+
+      val storedVersion: Option[String] = {
+        val rs = s.executeQuery("SELECT v FROM schema_meta WHERE k = 'schema_version'")
+        try { if (rs.next()) Option(rs.getString(1)) else None } finally rs.close()
+      }
+
+      storedVersion match {
+        case None =>
+          s.executeUpdate(s"INSERT INTO schema_meta (k, v) VALUES ('schema_version', '$SCHEMA_VERSION')")
+        case Some("1") =>
+          logger.info(s"Migrating $dbFile from schema v1 to v$SCHEMA_VERSION")
+          s.executeUpdate("ALTER TABLE records ADD COLUMN first_seen_run_id INTEGER")
+          s.executeUpdate("ALTER TABLE records ADD COLUMN last_changed_run_id INTEGER")
+          s.executeUpdate("ALTER TABLE harvest_runs ADD COLUMN added_count INTEGER")
+          // Best-effort backfill: v1 never recorded first-seen, so the oldest
+          // known association is last_seen. Prevents pre-migration records
+          // from ever counting as "added" retroactively.
+          s.executeUpdate("UPDATE records SET first_seen_run_id = last_seen_run_id WHERE first_seen_run_id IS NULL")
+          s.executeUpdate(s"UPDATE schema_meta SET v = '$SCHEMA_VERSION' WHERE k = 'schema_version'")
+        case Some(SCHEMA_VERSION) => // current
+        case Some(other) =>
+          sys.error(s"records.db schema_version $other, expected $SCHEMA_VERSION: ${datasetDir.getAbsolutePath}")
+      }
+
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_status ON records(status)")
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_last_seen_run_id ON records(last_seen_run_id)")
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_first_seen_run_id ON records(first_seen_run_id)")
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_last_changed_run_id ON records(last_changed_run_id)")
       c.commit()
-      // Fail loud on version drift instead of running new queries on an old
-      // schema; a future v2 adds its migration steps above before this check.
-      val rs = s.executeQuery("SELECT v FROM schema_meta WHERE k = 'schema_version'")
-      try {
-        if (rs.next()) {
-          val found = rs.getString(1)
-          if (found != SCHEMA_VERSION)
-            sys.error(s"records.db schema_version $found, expected $SCHEMA_VERSION: ${datasetDir.getAbsolutePath}")
-        }
-      } finally rs.close()
     } finally s.close()
   }
 
@@ -232,22 +288,127 @@ private[services] class SpecRegistry(val datasetDir: File) {
     }
   }
 
-  def completeRun(runId: Long, counts: RunCounts): Unit = synchronized {
+  def completeRun(runId: Long): Unit = synchronized {
     commitTx {
+      val diff = computeRunDiff(runId)
+      // First completed run that introduced every record it saw = the
+      // baseline import of a pre-existing dataset, not "+N records added".
+      val isBaseline =
+        diff.added > 0 && diff.added == diff.seenTotal && !hasOtherCompletedRun(runId)
       val sql = """UPDATE harvest_runs
-                      SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?
+                      SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?, added_count = ?,
+                          note = COALESCE(?, note)
                     WHERE run_id = ?"""
       val ps = conn.prepareStatement(sql)
       try {
         ps.setString(1, nowIso())
         ps.setString(2, RUN_COMPLETED)
-        ps.setInt(3, counts.seen)
-        ps.setInt(4, counts.changed)
-        ps.setInt(5, counts.deleted)
-        ps.setLong(6, runId)
+        ps.setInt(3, diff.seenTotal)
+        ps.setInt(4, diff.changed)
+        ps.setInt(5, diff.deleted)
+        ps.setInt(6, diff.added)
+        if (isBaseline) ps.setString(7, NOTE_BASELINE) else ps.setNull(7, java.sql.Types.VARCHAR)
+        ps.setLong(8, runId)
         ps.executeUpdate()
       } finally ps.close()
     }
+  }
+
+  // What this run actually did, derived from the records table.
+  // Caller must hold the lock.
+  private def computeRunDiff(runId: Long): RunDiff = {
+    def one(sql: String, bind: java.sql.PreparedStatement => Unit): Int = {
+      val ps = conn.prepareStatement(sql)
+      try {
+        bind(ps)
+        val rs = ps.executeQuery()
+        try { rs.next(); rs.getInt(1) } finally rs.close()
+      } finally ps.close()
+    }
+    val added = one(
+      "SELECT COUNT(*) FROM records WHERE first_seen_run_id = ? AND status = ?",
+      ps => { ps.setLong(1, runId); ps.setString(2, STATUS_SEEN) })
+    val changed = one(
+      "SELECT COUNT(*) FROM records WHERE last_changed_run_id = ? AND first_seen_run_id <> ? AND status = ?",
+      ps => { ps.setLong(1, runId); ps.setLong(2, runId); ps.setString(3, STATUS_SEEN) })
+    val deleted = one(
+      "SELECT COUNT(*) FROM records WHERE status = ? AND last_seen_run_id = ?",
+      ps => { ps.setString(1, STATUS_DELETED); ps.setLong(2, runId) })
+    val seenTotal = one(
+      "SELECT COUNT(*) FROM records WHERE status = ?",
+      ps => ps.setString(1, STATUS_SEEN))
+    RunDiff(added, changed, deleted, seenTotal)
+  }
+
+  private def hasOtherCompletedRun(runId: Long): Boolean = {
+    val ps = conn.prepareStatement(
+      "SELECT COUNT(*) FROM harvest_runs WHERE status = ? AND run_id <> ?")
+    try {
+      ps.setString(1, RUN_COMPLETED)
+      ps.setLong(2, runId)
+      val rs = ps.executeQuery()
+      try { rs.next(); rs.getInt(1) > 0 } finally rs.close()
+    } finally ps.close()
+  }
+
+  def listRuns(sinceDays: Int): Seq[RunSummary] = synchronized {
+    val ps = conn.prepareStatement(
+      """SELECT run_id, kind, started_at, completed_at, status,
+                COALESCE(added_count, 0), COALESCE(changed_count, 0),
+                COALESCE(deleted_count, 0), COALESCE(seen_count, 0), note
+           FROM harvest_runs
+          WHERE started_at >= ?
+          ORDER BY run_id""")
+    try {
+      ps.setString(1, isoDaysAgo(sinceDays))
+      val rs = ps.executeQuery()
+      try {
+        val buf = scala.collection.mutable.ArrayBuffer.empty[RunSummary]
+        while (rs.next()) {
+          buf += RunSummary(
+            runId = rs.getLong(1),
+            kind = rs.getString(2),
+            startedAt = rs.getString(3),
+            completedAt = Option(rs.getString(4)),
+            status = rs.getString(5),
+            added = rs.getInt(6),
+            changed = rs.getInt(7),
+            deleted = rs.getInt(8),
+            seen = rs.getInt(9),
+            baseline = rs.getString(10) == NOTE_BASELINE
+          )
+        }
+        buf.toSeq
+      } finally rs.close()
+    } finally ps.close()
+  }
+
+  def dailyRunDiffs(sinceDays: Int): Seq[DailyRunDiff] = synchronized {
+    // Baseline runs are excluded from the added sum — enabling the registry
+    // on an existing dataset must not chart as "+90,000 added that day".
+    val ps = conn.prepareStatement(
+      """SELECT substr(started_at, 1, 10) AS day,
+                SUM(CASE WHEN COALESCE(note, '') = ? THEN 0 ELSE COALESCE(added_count, 0) END),
+                SUM(COALESCE(changed_count, 0)),
+                SUM(COALESCE(deleted_count, 0)),
+                COUNT(*)
+           FROM harvest_runs
+          WHERE status = ? AND started_at >= ?
+          GROUP BY day
+          ORDER BY day""")
+    try {
+      ps.setString(1, NOTE_BASELINE)
+      ps.setString(2, RUN_COMPLETED)
+      ps.setString(3, isoDaysAgo(sinceDays))
+      val rs = ps.executeQuery()
+      try {
+        val buf = scala.collection.mutable.ArrayBuffer.empty[DailyRunDiff]
+        while (rs.next()) {
+          buf += DailyRunDiff(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5))
+        }
+        buf.toSeq
+      } finally rs.close()
+    } finally ps.close()
   }
 
   // Fail every run still 'running' for this dataset. Failure paths (actor
@@ -287,10 +448,20 @@ private[services] class SpecRegistry(val datasetDir: File) {
 
   def upsertSeen(rows: Seq[(String, String)], runId: Long): Unit = synchronized {
     commitTx {
+      // last_changed_run_id moves when the content hash changes OR when a
+      // tombstoned record reappears (resurrection counts as a change for the
+      // per-run diff, since it is re-sent to Hub3). first_seen_run_id is set
+      // once at insert and never updated.
       val sql = """INSERT INTO records
-                     (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                     (local_id, content_hash, status, first_seen_run_id, last_changed_run_id,
+                      last_seen_run_id, last_seen_ts, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(local_id) DO UPDATE SET
+                     last_changed_run_id = CASE
+                       WHEN records.content_hash <> excluded.content_hash
+                         OR records.status = 'deleted'
+                       THEN excluded.last_seen_run_id
+                       ELSE records.last_changed_run_id END,
                      content_hash     = excluded.content_hash,
                      status           = excluded.status,
                      last_seen_run_id = excluded.last_seen_run_id,
@@ -304,9 +475,11 @@ private[services] class SpecRegistry(val datasetDir: File) {
           ps.setString(2, hash)
           ps.setString(3, STATUS_SEEN)
           ps.setLong(4, runId)
-          ps.setString(5, ts)
-          ps.setString(6, ts)
+          ps.setLong(5, runId)
+          ps.setLong(6, runId)
           ps.setString(7, ts)
+          ps.setString(8, ts)
+          ps.setString(9, ts)
           ps.addBatch()
         }
         ps.executeBatch()
@@ -321,8 +494,8 @@ private[services] class SpecRegistry(val datasetDir: File) {
       // without the guard the same tombstones would bump last_seen_run_id
       // every run and be re-emitted as drop_records forever.
       val sql = """INSERT INTO records
-                     (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
-                   VALUES (?, '', ?, ?, ?, ?, ?)
+                     (local_id, content_hash, status, first_seen_run_id, last_seen_run_id, last_seen_ts, created_at, updated_at)
+                   VALUES (?, '', ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(local_id) DO UPDATE SET
                      status           = excluded.status,
                      last_seen_run_id = excluded.last_seen_run_id,
@@ -336,9 +509,10 @@ private[services] class SpecRegistry(val datasetDir: File) {
           ps.setString(1, localId)
           ps.setString(2, STATUS_DELETED)
           ps.setLong(3, runId)
-          ps.setString(4, ts)
+          ps.setLong(4, runId)
           ps.setString(5, ts)
           ps.setString(6, ts)
+          ps.setString(7, ts)
           ps.addBatch()
         }
         ps.executeBatch()

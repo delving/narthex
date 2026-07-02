@@ -328,11 +328,35 @@ class AppController @Inject() (
 
   /**
    * Get trend history for a specific dataset.
+   *
+   * When the record registry is enabled, the response additionally carries
+   * true per-run deltas (`runs`, `dailyDiffs`) — exact added/changed/removed
+   * counts per processing run, which net snapshot deltas cannot express.
    */
   def getDatasetTrends(spec: String) = Action { request =>
+    import services.RecordRegistry.{runSummaryWrites, dailyRunDiffWrites}
+
     val ctx = orgContext.datasetContext(spec)
     val trends = TrendTrackingService.getDatasetTrendsFromDaily(ctx.trendsDailyLog, ctx.trendsLog, spec)
-    Ok(Json.toJson(trends))
+    val base = Json.toJson(trends).as[JsObject]
+
+    val enriched = if (orgContext.narthexConfig.registryEnabled) {
+      try {
+        base ++ Json.obj(
+          "registry" -> true,
+          "runs" -> orgContext.recordRegistry.listRuns(spec, 30),
+          "dailyDiffs" -> orgContext.recordRegistry.dailyRunDiffs(spec, 30)
+        )
+      } catch {
+        case e: Exception =>
+          logger.warn(s"Failed to read registry runs for $spec: ${e.getMessage}")
+          base ++ Json.obj("registry" -> false)
+      }
+    } else {
+      base ++ Json.obj("registry" -> false)
+    }
+
+    Ok(enriched)
   }
 
   /**

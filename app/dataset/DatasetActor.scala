@@ -1131,14 +1131,10 @@ class DatasetActor(val datasetContext: DatasetContext,
         // it would sit 'running' forever in harvest_runs.
         if (orgContext.narthexConfig.registryEnabled) {
           registryRunId.foreach { runId =>
-            scala.util.Try {
-              val reg = orgContext.recordRegistry
-              val seen = reg.count(dsInfo.spec, RecordRegistry.STATUS_SEEN)
-              val deleted = reg.count(dsInfo.spec, RecordRegistry.STATUS_DELETED)
-              reg.completeRun(dsInfo.spec, runId, RecordRegistry.RunCounts(seen = seen, changed = seen, deleted = deleted))
-            }.recover { case ex: Throwable =>
-              log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
-            }
+            scala.util.Try(orgContext.recordRegistry.completeRun(dsInfo.spec, runId))
+              .recover { case ex: Throwable =>
+                log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
+              }
           }
         }
         // Success emails disabled - only send emails on errors

@@ -49,7 +49,7 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val run1 = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1"), run1)
     registry.confirmIndexed(spec, Seq("a" -> "h1"), run1)
-    registry.completeRun(spec, run1, RunCounts(1, 1, 0))
+    registry.completeRun(spec, run1)
 
     val run2 = registry.beginRun(spec, KIND_INCREMENT)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1"), run2)       // unchanged
@@ -108,7 +108,7 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val run1 = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2", "c" -> "h3"), run1)
     registry.confirmIndexed(spec, Seq("a" -> "h1", "b" -> "h2", "c" -> "h3"), run1)
-    registry.completeRun(spec, run1, RunCounts(3, 3, 0))
+    registry.completeRun(spec, run1)
 
     // New full run: source no longer contains "b"
     val run2 = registry.beginRun(spec, KIND_FULL)
@@ -124,7 +124,7 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val run1 = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run1)
     registry.confirmIndexed(spec, Seq("a" -> "h1", "b" -> "h2"), run1)
-    registry.completeRun(spec, run1, RunCounts(2, 2, 0))
+    registry.completeRun(spec, run1)
 
     // Incremental run touches only "a" (edit)
     val run2 = registry.beginRun(spec, KIND_INCREMENT)
@@ -172,7 +172,7 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val run = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1"), run)
     registry.confirmIndexed(spec, Seq("a" -> "h1"), run)
-    registry.completeRun(spec, run, RunCounts(1, 1, 0))
+    registry.completeRun(spec, run)
     registry.close()
 
     registry = new RecordRegistry(tempDir)
@@ -201,7 +201,7 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
 
     // completed runs are untouched
     val run2 = registry.beginRun(spec, KIND_FULL)
-    registry.completeRun(spec, run2, RunCounts(0, 0, 0))
+    registry.completeRun(spec, run2)
     registry.failOpenRuns(spec, "boom again") shouldBe 0
     registry.runStatus(spec, run2) shouldBe Some(RUN_COMPLETED)
   }
@@ -218,5 +218,120 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.upsertSeenBatch(spec, (1 to 50).map(i => s"id$i" -> s"h$i"), run)
     registry.pendingIndexBatch(spec, 10).size shouldBe 10
     registry.pendingIndexBatch(spec, 100).size shouldBe 50
+  }
+
+  // === Phase 2: per-run diffs ===
+
+  it should "mark the first full run as baseline, not as added" in {
+    val run1 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2", "c" -> "h3"), run1)
+    registry.completeRun(spec, run1)
+
+    val runs = registry.listRuns(spec, 30)
+    runs.size shouldBe 1
+    runs.head.baseline shouldBe true
+    runs.head.added shouldBe 3
+    runs.head.seen shouldBe 3
+
+    // Baseline excluded from daily diff sums
+    val diffs = registry.dailyRunDiffs(spec, 30)
+    diffs.size shouldBe 1
+    diffs.head.added shouldBe 0
+    diffs.head.runs shouldBe 1
+  }
+
+  it should "compute real added/changed/deleted per run" in {
+    val run1 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2", "c" -> "h3"), run1)
+    registry.completeRun(spec, run1)
+
+    // Run 2: d added, a changed, b unchanged, c deleted via sweep
+    val run2 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1x", "b" -> "h2", "d" -> "h4"), run2)
+    registry.markMissingForFullRun(spec, run2)
+    registry.completeRun(spec, run2)
+
+    val runs = registry.listRuns(spec, 30)
+    runs.size shouldBe 2
+    val r2 = runs.last
+    r2.baseline shouldBe false
+    r2.added shouldBe 1     // d
+    r2.changed shouldBe 1   // a (hash change); b unchanged
+    r2.deleted shouldBe 1   // c (sweep)
+    r2.seen shouldBe 3      // a, b, d
+
+    val diffs = registry.dailyRunDiffs(spec, 30)
+    diffs.size shouldBe 1   // both runs today
+    diffs.head.added shouldBe 1   // baseline run contributes 0
+    diffs.head.changed shouldBe 1
+    diffs.head.deleted shouldBe 1
+    diffs.head.runs shouldBe 2
+  }
+
+  it should "count a resurrected record as changed, not added" in {
+    val run1 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run1)
+    registry.completeRun(spec, run1)
+
+    val run2 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertDeleted(spec, "a", run2)
+    registry.confirmDropped(spec, Seq("a"))
+    registry.completeRun(spec, run2)
+
+    val run3 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1"), run3)   // reappears, same hash
+    registry.completeRun(spec, run3)
+
+    val r3 = registry.listRuns(spec, 30).last
+    r3.added shouldBe 0
+    r3.changed shouldBe 1
+    r3.deleted shouldBe 0
+  }
+
+  it should "return empty run lists without creating a db for unknown specs" in {
+    registry.listRuns("never-seen", 30) shouldBe empty
+    registry.dailyRunDiffs("never-seen", 30) shouldBe empty
+    new File(new File(tempDir, "never-seen"), DB_FILENAME).exists() shouldBe false
+  }
+
+  // === Phase 2: v1 -> v2 migration ===
+
+  it should "migrate a v1 records.db in place" in {
+    val v1Dir = new File(tempDir, "v1spec")
+    v1Dir.mkdirs()
+    val v1Db = new File(v1Dir, DB_FILENAME)
+    val conn = java.sql.DriverManager.getConnection(s"jdbc:sqlite:${v1Db.getAbsolutePath}")
+    try {
+      val s = conn.createStatement()
+      s.executeUpdate("CREATE TABLE schema_meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)")
+      s.executeUpdate("""CREATE TABLE records (
+        local_id TEXT PRIMARY KEY, content_hash TEXT NOT NULL, status TEXT NOT NULL,
+        last_seen_run_id INTEGER NOT NULL, last_seen_ts TEXT NOT NULL,
+        last_sent_hash TEXT, last_sent_run_id INTEGER,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+      s.executeUpdate("""CREATE TABLE harvest_runs (
+        run_id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL,
+        started_at TEXT NOT NULL, completed_at TEXT, status TEXT NOT NULL,
+        seen_count INTEGER, changed_count INTEGER, deleted_count INTEGER, note TEXT)""")
+      s.executeUpdate("INSERT INTO schema_meta (k, v) VALUES ('schema_version', '1')")
+      // The v1 run that saw old1 — keeps run-id autoincrement realistic
+      s.executeUpdate("""INSERT INTO harvest_runs (kind, started_at, status, seen_count, changed_count, deleted_count)
+        VALUES ('full', '2026-01-01T00:00:00Z', 'completed', 1, 1, 0)""")
+      s.executeUpdate("""INSERT INTO records
+        (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
+        VALUES ('old1', 'h1', 'seen', 1, 't', 't', 't')""")
+      s.close()
+    } finally conn.close()
+
+    // Opening through the registry migrates in place
+    val run = registry.beginRun("v1spec", KIND_FULL)
+    registry.upsertSeenBatch("v1spec", Seq("old1" -> "h1", "new1" -> "h9"), run)
+    registry.completeRun("v1spec", run)
+
+    val r = registry.listRuns("v1spec", 30).last
+    // Pre-migration record was backfilled first_seen=last_seen(=1), so only
+    // new1 counts as added
+    r.added shouldBe 1
+    r.seen shouldBe 2
   }
 }
