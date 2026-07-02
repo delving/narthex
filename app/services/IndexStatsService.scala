@@ -74,7 +74,17 @@ object IndexStatsResponse {
  * zero-record responses from network/API failures so trend aggregation can
  * skip when Hub3 is unavailable rather than corrupting indexed counts.
  */
-case class Hub3IndexCounts(total: Long, counts: Map[String, Int], reachable: Boolean)
+case class Hub3IndexCounts(total: Long, counts: Map[String, Int], reachable: Boolean) {
+  // The facet query is capped at IndexStatsService.FACET_LIMIT specs. A spec
+  // absent from a full facet response may just have fallen off the truncated
+  // list — treating that as 0 would record a fake full de-index.
+  def countFor(spec: String): Option[Int] =
+    counts.get(spec).orElse(if (counts.size < IndexStatsService.FACET_LIMIT) Some(0) else None)
+}
+
+object IndexStatsService {
+  val FACET_LIMIT = 1000
+}
 
 /**
  * Service for fetching and comparing dataset statistics between Narthex and Hub3 index
@@ -107,7 +117,7 @@ class IndexStatsService @Inject()(
       .withQueryStringParameters(
         "rows" -> "0",
         "facet.field" -> "meta.spec",
-        "facet.limit" -> "1000"
+        "facet.limit" -> IndexStatsService.FACET_LIMIT.toString
       )
       .withRequestTimeout(hub3Timeout)
       .get()

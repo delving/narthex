@@ -274,9 +274,12 @@ class AppController @Inject() (
         // Fallback: compute from individual dataset files (slower but always current)
         logger.debug("Computing trends from individual dataset files")
         listDsInfo(orgContext).map { datasets =>
-          val summaries = datasets.flatMap { dsInfo =>
+          val summaries = datasets.map { dsInfo =>
             val ctx = orgContext.datasetContext(dsInfo.spec)
+            // Include untracked datasets as initializing so totals match the
+            // dataset list (mirrors generateTrendsSummaryFromDaily).
             TrendTrackingService.getDatasetTrendSummaryFromDaily(ctx.trendsDailyLog, ctx.trendsLog, dsInfo.spec)
+              .getOrElse(DatasetTrendSummary(dsInfo.spec, 0, 0, 0, TrendDelta.zero, TrendDelta.zero, TrendDelta.zero, initializing = Some(true)))
           }
 
           // Calculate net delta across all datasets
@@ -350,7 +353,6 @@ class AppController @Inject() (
             "snapshotsCaptured" -> 0
           ))
         } else {
-          val hub3Counts = hub3.counts
           var captured = 0
           val specs = scala.collection.mutable.ListBuffer[String]()
 
@@ -362,7 +364,11 @@ class AppController @Inject() (
               val deletedRecords = dsInfo.getLiteralProp(deletedRecordCount).map(_.toInt).getOrElse(0)
               val validRecords = dsInfo.getLiteralProp(processedValid).map(_.toInt).getOrElse(0)
               val invalidRecords = dsInfo.getLiteralProp(processedInvalid).map(_.toInt).getOrElse(0)
-              val indexedRecords = hub3Counts.getOrElse(dsInfo.spec, 0)
+              // countFor is None when the spec is missing from a possibly
+              // truncated facet — carry the last known indexed count instead
+              // of recording a fake full de-index.
+              val indexedRecords = hub3.countFor(dsInfo.spec).getOrElse(
+                TrendTrackingService.getLastSnapshot(ctx.trendsLog).map(_.indexedRecords).getOrElse(0))
 
               TrendTrackingService.captureEventSnapshot(
                 trendsLog = ctx.trendsLog,
@@ -375,7 +381,7 @@ class AppController @Inject() (
                 indexedRecords = indexedRecords
               )
 
-              TrendTrackingService.aggregateDay(ctx.trendsLog, ctx.trendsDailyLog, today)
+              TrendTrackingService.aggregateThrough(ctx.trendsLog, ctx.trendsDailyLog, today)
 
               specs += dsInfo.spec
               captured += 1

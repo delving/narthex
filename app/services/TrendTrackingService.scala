@@ -632,7 +632,12 @@ object TrendTrackingService extends Logging {
     deletedRecords: Int,
     validRecords: Int,
     invalidRecords: Int,
-    indexedRecords: Int
+    indexedRecords: Int,
+    // The 00:30 cron reconciles YESTERDAY's indexed count; stamping that
+    // snapshot with "now" would land it on today and make indexed deltas lag
+    // source/valid by exactly one day. Callers reconciling a past day pass
+    // that day's end-of-day timestamp instead.
+    timestampOverride: Option[DateTime] = None
   ): Unit = {
     val lastSnapshot = getLastSnapshot(trendsLog)
 
@@ -663,7 +668,7 @@ object TrendTrackingService extends Logging {
         }
       }
       val snapshot = TrendSnapshot(
-        timestamp = nowUtc,
+        timestamp = timestampOverride.getOrElse(nowUtc),
         snapshotType = event,
         sourceRecords = sourceRecords,
         acquiredRecords = acquiredRecords,
@@ -723,7 +728,7 @@ object TrendTrackingService extends Logging {
       return List.empty
     }
 
-    Using(Source.fromFile(dailyLog)) { source =>
+    val raw = Using(Source.fromFile(dailyLog)) { source =>
       source.getLines()
         .filter(_.nonEmpty)
         .flatMap { line =>
@@ -731,6 +736,12 @@ object TrendTrackingService extends Logging {
         }
         .toList
     }.getOrElse(List.empty)
+
+    // Normalize: historical files contain multiple (and out-of-order) rows per
+    // date because every save/cron/manual call used to append. Keep the last
+    // occurrence per date (latest written = most complete) and sort by date so
+    // `summaries.last` is always the newest day, never a late-written older row.
+    raw.groupBy(_.date).map(_._2.last).toList.sortBy(_.date)
   }
 
   def getLastDailySummary(dailyLog: File): Option[DailySummary] = {
@@ -748,7 +759,37 @@ object TrendTrackingService extends Logging {
 
   // === Task 4: Daily aggregation logic ===
 
-  def aggregateDay(trendsLog: File, dailyLog: File, date: String): Unit = {
+  /**
+   * Rewrite the daily log atomically with exactly one row per date, sorted.
+   */
+  private def writeDailySummaries(dailyLog: File, summaries: List[DailySummary]): Unit = {
+    val tmpFile = new File(dailyLog.getParent, dailyLog.getName + ".tmp")
+    val writer = appender(tmpFile)
+    try {
+      summaries.foreach { s =>
+        writer.write(Json.stringify(Json.toJson(s)) + "\n")
+      }
+      writer.flush()
+    } finally writer.close()
+    java.nio.file.Files.move(
+      tmpFile.toPath,
+      dailyLog.toPath,
+      java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+      java.nio.file.StandardCopyOption.REPLACE_EXISTING
+    )
+  }
+
+  /**
+   * Aggregate one UTC calendar day into the daily log.
+   *
+   * UPSERTS by date: every caller (per-save, 00:30 cron, manual trigger,
+   * bootstrap) used to append a row, so one date accumulated many rows with
+   * fragmented intra-day deltas, and the cron could append yesterday's row
+   * AFTER today's — readers taking `summaries.last` as "current" then showed
+   * yesterday's counts. Now the file always has one row per date, sorted, and
+   * the delta is computed against the previous DATE, not the previous row.
+   */
+  def aggregateDay(trendsLog: File, dailyLog: File, date: String): Unit = withFileLock(dailyLog) {
     val allSnapshots = readSnapshots(trendsLog)
 
     // Filter to snapshots whose UTC date matches the target. Forcing UTC
@@ -759,48 +800,61 @@ object TrendTrackingService extends Logging {
     }
     val endOfDaySnapshot = daySnapshots.sortBy(_.timestamp.getMillis).lastOption
 
-    if (endOfDaySnapshot.isEmpty) {
-      // No snapshots on that date — carry forward the previous day's end-of-day
-      // counts so the chart has a continuous series. Zero delta by definition.
-      val previousSummary = getLastDailySummary(dailyLog)
-      previousSummary match {
-        case Some(prev) =>
-          val summary = DailySummary(
-            date = date,
-            endOfDay = prev.endOfDay,
-            delta = TrendDelta.zero,
-            events = 0
-          )
-          appendDailySummary(dailyLog, summary)
-          logger.info(s"Aggregated $date with carry-forward (no snapshots on that date): source=${prev.endOfDay.sourceRecords}")
-        case None =>
-          logger.debug(s"No snapshots or previous summary available for $date; skipping")
-      }
-    } else {
-      val endOfDay = EndOfDayCounts.fromSnapshot(endOfDaySnapshot.get)
-      val todayEvents = daySnapshots.size
+    val existing = readDailySummaries(dailyLog)   // normalized: unique dates, sorted
+    val others = existing.filterNot(_.date == date)
+    val previousDay = others.filter(_.date < date).lastOption
 
-      val previousSummary = getLastDailySummary(dailyLog)
-      val delta = previousSummary match {
-        case Some(prev) =>
-          TrendDelta(
-            source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
-            valid = endOfDay.validRecords - prev.endOfDay.validRecords,
-            indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
-          )
-        case None =>
-          TrendDelta.zero
-      }
+    val rowOpt: Option[DailySummary] = endOfDaySnapshot match {
+      case Some(snapshot) =>
+        val endOfDay = EndOfDayCounts.fromSnapshot(snapshot)
+        val delta = previousDay match {
+          case Some(prev) =>
+            TrendDelta(
+              source = endOfDay.sourceRecords - prev.endOfDay.sourceRecords,
+              valid = endOfDay.validRecords - prev.endOfDay.validRecords,
+              indexed = endOfDay.indexedRecords - prev.endOfDay.indexedRecords
+            )
+          case None => TrendDelta.zero
+        }
+        Some(DailySummary(date, endOfDay, delta, daySnapshots.size))
+      case None =>
+        // No snapshots on that date — carry forward the previous day's
+        // end-of-day counts so the chart has a continuous series.
+        previousDay.map { prev =>
+          DailySummary(date, prev.endOfDay, TrendDelta.zero, 0)
+        }
+    }
 
-      val summary = DailySummary(
-        date = date,
-        endOfDay = endOfDay,
-        delta = delta,
-        events = todayEvents
-      )
+    rowOpt match {
+      case Some(row) =>
+        writeDailySummaries(dailyLog, (others :+ row).sortBy(_.date))
+        logger.info(s"Aggregated daily summary for ${row.date}: source=${row.endOfDay.sourceRecords}, delta=${row.delta.source}, events=${row.events}")
+      case None =>
+        logger.debug(s"No snapshots or previous summary available for $date; skipping")
+    }
+  }
 
-      appendDailySummary(dailyLog, summary)
-      logger.info(s"Aggregated daily summary for $date: source=${endOfDay.sourceRecords}, delta=${delta.source}, events=$todayEvents")
+  /**
+   * Aggregate every missing date from the last daily row up to and including
+   * targetDate. A missed cron night (server down, Hub3 unreachable) used to
+   * leave that date unaggregated forever, silently turning the next "24h"
+   * delta into a multi-day delta. Backfilled dates carry forward.
+   */
+  def aggregateThrough(trendsLog: File, dailyLog: File, targetDate: String): Unit = {
+    val target = org.joda.time.LocalDate.parse(targetDate)
+    val startOpt = readDailySummaries(dailyLog).lastOption
+      .map(last => org.joda.time.LocalDate.parse(last.date).plusDays(1))
+    val start = startOpt.getOrElse(target)
+    // Cap backfill at the chart horizon; older gaps have no reader.
+    val cappedStart =
+      if (org.joda.time.Days.daysBetween(start, target).getDays > MAX_HISTORY_DAYS)
+        target.minusDays(MAX_HISTORY_DAYS)
+      else start
+
+    var day = cappedStart
+    while (!day.isAfter(target)) {
+      aggregateDay(trendsLog, dailyLog, day.toString("yyyy-MM-dd"))
+      day = day.plusDays(1)
     }
   }
 
@@ -867,10 +921,12 @@ object TrendTrackingService extends Logging {
     val dailySums = readDailySummaries(dailyLog)
     val lastSnapshot = getLastSnapshot(trendsLog)
 
-    // Get recent event snapshots (last 48h) for detailed 24h chart
+    // Recent snapshots (last 48h) for the detailed 24h chart. Reconciliation
+    // ("daily") snapshots are included — they are where the indexed count
+    // actually moves; excluding them made the chart contradict the Δ column.
     val cutoff48h = nowUtc.minusHours(48)
     val recentEvents = readSnapshots(trendsLog)
-      .filter(s => s.timestamp.isAfter(cutoff48h) && s.snapshotType != "daily")
+      .filter(_.timestamp.isAfter(cutoff48h))
       .sortBy(_.timestamp.getMillis)
 
     if (dailySums.nonEmpty) {
@@ -902,10 +958,14 @@ object TrendTrackingService extends Logging {
   }
 
   def generateTrendsSummaryFromDaily(summaryFile: File, datasetsDir: File, specs: List[String]): Unit = {
-    val summaries = specs.flatMap { spec =>
+    val summaries = specs.map { spec =>
       val dailyLog = new File(datasetsDir, s"$spec/trends-daily.jsonl")
       val trendsLog = new File(datasetsDir, s"$spec/trends.jsonl")
-      getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, spec)
+      // Datasets with no trend data yet are included as initializing rather
+      // than silently dropped, so "Total Datasets" matches the dataset list.
+      getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, spec).getOrElse(
+        DatasetTrendSummary(spec, 0, 0, 0, TrendDelta.zero, TrendDelta.zero, TrendDelta.zero, initializing = Some(true))
+      )
     }
 
     val summary = TrendsSummaryFile(

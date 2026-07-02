@@ -225,6 +225,123 @@ class TrendTrackingServiceSpec extends AnyFlatSpec with should.Matchers {
     dailyLog.exists() shouldBe false
   }
 
+  private def writeSnapshot(trendsLog: File, ts: DateTime, source: Int, valid: Int, indexed: Int): Unit = {
+    val snap = TrendSnapshot(
+      timestamp = ts, snapshotType = "harvest",
+      sourceRecords = source, acquiredRecords = source, deletedRecords = 0,
+      validRecords = valid, invalidRecords = source - valid, indexedRecords = indexed
+    )
+    val w = services.FileHandling.appender(trendsLog)
+    try { w.write(Json.stringify(Json.toJson(snap)) + "\n") } finally { w.close() }
+  }
+
+  it should "upsert exactly one row per date across repeated calls" in withTempDir { dir =>
+    val trendsLog = new File(dir, "trends.jsonl")
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 18, 10, 0, 0), 100, 90, 80)
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 18, 14, 0, 0), 150, 140, 80)
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.size shouldBe 1
+    summaries.head.endOfDay.sourceRecords shouldBe 150
+    // Delta stays vs the previous DATE (none here), not the previous row
+    summaries.head.delta shouldBe TrendDelta.zero
+  }
+
+  it should "keep the file date-sorted when an older date is aggregated after a newer one" in withTempDir { dir =>
+    val trendsLog = new File(dir, "trends.jsonl")
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 18, 12, 0, 0), 100, 90, 80)
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 19, 12, 0, 0), 200, 190, 80)
+
+    // Cron ordering bug scenario: today aggregated first (save at 00:10),
+    // yesterday aggregated after (00:30 cron)
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-19")
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.map(_.date) shouldBe List("2026-02-18", "2026-02-19")
+    // "current" (last) must be the newest DATE, not the last-written row
+    summaries.last.endOfDay.sourceRecords shouldBe 200
+  }
+
+  it should "compute delta vs the previous date even when stale same-date rows exist" in withTempDir { dir =>
+    val trendsLog = new File(dir, "trends.jsonl")
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+
+    TrendTrackingService.appendDailySummary(dailyLog,
+      DailySummary("2026-02-17", EndOfDayCounts(100, 100, 0, 90, 10, 80), TrendDelta.zero, 1))
+    // Stale intra-day row for the 18th from an earlier save
+    TrendTrackingService.appendDailySummary(dailyLog,
+      DailySummary("2026-02-18", EndOfDayCounts(120, 120, 0, 110, 10, 80), TrendDelta(20, 20, 0), 1))
+
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 18, 16, 0, 0), 200, 190, 80)
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.size shouldBe 2
+    summaries.last.date shouldBe "2026-02-18"
+    summaries.last.delta.source shouldBe 100   // 200 - 100 (day 17), not 200 - 120 (stale row)
+  }
+
+  "readDailySummaries" should "normalize legacy duplicate and out-of-order rows" in withTempDir { dir =>
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+    def row(date: String, source: Int) =
+      DailySummary(date, EndOfDayCounts(source, source, 0, source, 0, source), TrendDelta.zero, 1)
+
+    // Legacy append-only file: duplicates and a late-written older date
+    TrendTrackingService.appendDailySummary(dailyLog, row("2026-02-18", 100))
+    TrendTrackingService.appendDailySummary(dailyLog, row("2026-02-18", 150))
+    TrendTrackingService.appendDailySummary(dailyLog, row("2026-02-19", 200))
+    TrendTrackingService.appendDailySummary(dailyLog, row("2026-02-17", 50))
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.map(_.date) shouldBe List("2026-02-17", "2026-02-18", "2026-02-19")
+    // Last occurrence wins for duplicates
+    summaries(1).endOfDay.sourceRecords shouldBe 150
+  }
+
+  "aggregateThrough" should "backfill missed dates with carry-forward" in withTempDir { dir =>
+    val trendsLog = new File(dir, "trends.jsonl")
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+
+    TrendTrackingService.appendDailySummary(dailyLog,
+      DailySummary("2026-02-15", EndOfDayCounts(100, 100, 0, 90, 10, 80), TrendDelta.zero, 1))
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 18, 12, 0, 0), 200, 190, 80)
+
+    // Cron missed the 16th and 17th (downtime); next run targets the 18th
+    TrendTrackingService.aggregateThrough(trendsLog, dailyLog, "2026-02-18")
+
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.map(_.date) shouldBe List("2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18")
+    summaries(1).endOfDay.sourceRecords shouldBe 100   // carry-forward
+    summaries(1).events shouldBe 0
+    summaries(2).delta shouldBe TrendDelta.zero
+    summaries(3).delta.source shouldBe 100             // real change lands on the 18th
+  }
+
+  "captureEventSnapshot with timestampOverride" should "attribute the snapshot to the overridden day" in withTempDir { dir =>
+    val trendsLog = new File(dir, "trends.jsonl")
+    val dailyLog = new File(dir, "trends-daily.jsonl")
+
+    writeSnapshot(trendsLog, new DateTime(2026, 2, 18, 12, 0, 0), 100, 90, 0)
+    // Reconciliation running at 00:30 on the 19th, stamped end-of-18th
+    TrendTrackingService.captureEventSnapshot(
+      trendsLog, "daily", 100, 100, 0, 90, 10, 85,
+      timestampOverride = Some(new DateTime(2026, 2, 18, 23, 59, 59, org.joda.time.DateTimeZone.UTC))
+    )
+
+    TrendTrackingService.aggregateDay(trendsLog, dailyLog, "2026-02-18")
+    val summaries = TrendTrackingService.readDailySummaries(dailyLog)
+    summaries.size shouldBe 1
+    summaries.head.endOfDay.indexedRecords shouldBe 85
+  }
+
   // === Task 5: calculateDeltaFromDailySummaries ===
 
   "calculateDeltaFromDailySummaries" should "return zero when not enough data" in {

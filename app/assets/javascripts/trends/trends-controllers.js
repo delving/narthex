@@ -79,9 +79,12 @@ define(["angular", "Chart"], function (angular, Chart) {
                 netValid += delta.valid || 0;
                 netIndexed += delta.indexed || 0;
 
-                if ((delta.source > 0) || (delta.indexed > 0)) {
+                // Include valid so datasets whose processed counts moved
+                // (without source/indexed movement) don't hide in stable —
+                // mirrors the backend categorization.
+                if ((delta.source > 0) || (delta.indexed > 0) || (delta.valid > 0)) {
                     growing.push(ds);
-                } else if ((delta.source < 0) || (delta.indexed < 0)) {
+                } else if ((delta.source < 0) || (delta.indexed < 0) || (delta.valid < 0)) {
                     shrinking.push(ds);
                 } else {
                     stable.push(ds);
@@ -91,12 +94,12 @@ define(["angular", "Chart"], function (angular, Chart) {
             growing.sort(function(a, b) {
                 var deltaA = getDeltaForDataset(a);
                 var deltaB = getDeltaForDataset(b);
-                return (deltaB.source + deltaB.indexed) - (deltaA.source + deltaA.indexed);
+                return (deltaB.source + deltaB.indexed + deltaB.valid) - (deltaA.source + deltaA.indexed + deltaA.valid);
             });
             shrinking.sort(function(a, b) {
                 var deltaA = getDeltaForDataset(a);
                 var deltaB = getDeltaForDataset(b);
-                return (deltaA.source + deltaA.indexed) - (deltaB.source + deltaB.indexed);
+                return (deltaA.source + deltaA.indexed + deltaA.valid) - (deltaB.source + deltaB.indexed + deltaB.valid);
             });
             stable.sort(function(a, b) {
                 return a.spec.localeCompare(b.spec);
@@ -208,11 +211,16 @@ define(["angular", "Chart"], function (angular, Chart) {
         };
 
         /**
-         * Format a delta value with +/- prefix
+         * Format a delta value with +/- prefix.
+         * A confirmed zero renders as "0" (muted), distinct from "—" for
+         * missing data — customers could not tell "+0 change" from "not tracked".
          */
         $scope.formatDelta = function (value) {
-            if (value === null || value === undefined || value === 0) {
-                return '-';
+            if (value === null || value === undefined) {
+                return '—';
+            }
+            if (value === 0) {
+                return '0';
             }
             var sign = value > 0 ? '+' : '';
             return sign + value.toLocaleString();

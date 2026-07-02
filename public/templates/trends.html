@@ -51,11 +51,15 @@
                     <h4 style="margin: 0;">{{ formatNumber(trends.totalIndexedRecords) }}</h4>
                     <small class="text-muted">Total Indexed Records</small>
                 </div>
-                <div class="col-md-3 text-center">
-                    <h4 style="margin: 0;" ng-class="getDeltaClass(currentNetDelta.indexed)">
-                        {{ formatDelta(currentNetDelta.indexed) }}
+                <div class="col-md-3 text-center"
+                     title="Net difference between end-of-day totals. Records added and removed within the same period cancel out.">
+                    <h4 style="margin: 0;">
+                        <span ng-class="getDeltaClass(currentNetDelta.source)">{{ formatDelta(currentNetDelta.source) }}</span>
+                        <small class="text-muted">src</small>
+                        <span ng-class="getDeltaClass(currentNetDelta.indexed)" style="margin-left: 8px;">{{ formatDelta(currentNetDelta.indexed) }}</span>
+                        <small class="text-muted">idx</small>
                     </h4>
-                    <small class="text-muted">Net {{ getTimeWindowLabel() }} Change (Indexed)</small>
+                    <small class="text-muted">Net {{ getTimeWindowLabel() }} Change</small>
                 </div>
             </div>
         </div>
@@ -114,7 +118,7 @@
             <span ng-if="search.query">No datasets matching "{{ search.query }}".</span>
             <span ng-if="!search.query && activeTab === 'growing'">No datasets with growth in the last {{ getTimeWindowLabel() }}.</span>
             <span ng-if="!search.query && activeTab === 'shrinking'">No datasets with decline in the last {{ getTimeWindowLabel() }}.</span>
-            <span ng-if="!search.query && activeTab === 'stable'">No datasets with changes in the last {{ getTimeWindowLabel() }}.</span>
+            <span ng-if="!search.query && activeTab === 'stable'">No datasets without changes in the last {{ getTimeWindowLabel() }} — every dataset changed.</span>
         </div>
 
         <!-- Data table -->
@@ -126,8 +130,10 @@
                         <th>Dataset Spec</th>
                         <th class="text-right" style="width: 120px;">Current Source</th>
                         <th class="text-right" style="width: 120px;">Current Indexed</th>
-                        <th class="text-right" style="width: 120px;">Source Δ ({{ getTimeWindowLabel() }})</th>
-                        <th class="text-right" style="width: 120px;">Indexed Δ ({{ getTimeWindowLabel() }})</th>
+                        <th class="text-right" style="width: 120px;"
+                            title="Net difference between end-of-day source totals over the window. Adds and removes within the window cancel out.">Source Δ ({{ getTimeWindowLabel() }})</th>
+                        <th class="text-right" style="width: 120px;"
+                            title="Net difference between end-of-day Hub3 index totals over the window. Reconciled against Hub3 nightly at 00:30 UTC.">Indexed Δ ({{ getTimeWindowLabel() }})</th>
                     </tr>
                 </thead>
                 <tbody ng-repeat="ds in getActiveDatasets()">
@@ -175,6 +181,8 @@
             <strong>Note:</strong> Trend data is captured automatically after each processing run (when counts change).
             Daily summaries are aggregated at 00:30 each night.
             Use the "Capture Snapshot" button to manually capture current counts and aggregate today's summary.
+            All Δ values are <em>net</em> changes between end-of-day totals: records added and removed within the
+            same window cancel each other out. "0" means confirmed no net change; "—" means no data for that dataset yet.
         </div>
     </div>
 </div>

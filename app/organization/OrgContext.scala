@@ -142,33 +142,51 @@ class OrgContext @Inject() (
         var aggregated = 0
         val specs = scala.collection.mutable.ListBuffer[String]()
 
+        // Stamp reconciliation snapshots into the day being reconciled, not
+        // "now": the cron reconciles YESTERDAY at 00:30 today, and a "now"
+        // timestamp made indexed deltas lag source/valid by exactly one day.
+        val endOfTarget = org.joda.time.LocalDate.parse(date)
+          .toDateTime(new org.joda.time.LocalTime(23, 59, 59, 999), org.joda.time.DateTimeZone.UTC)
+        val reconciliationTs =
+          if (endOfTarget.isAfterNow) org.joda.time.DateTime.now(org.joda.time.DateTimeZone.UTC)
+          else endOfTarget
+
         datasets.foreach { dsInfo =>
           try {
             val ctx = datasetContext(dsInfo.spec)
             val trendsLog = ctx.trendsLog
             val dailyLog = ctx.trendsDailyLog
 
-            val hub3Count = hub3.counts.getOrElse(dsInfo.spec, 0)
+            // None = spec missing from a possibly-truncated facet: skip
+            // reconciliation rather than record a fake full de-index.
+            val hub3CountOpt = hub3.countFor(dsInfo.spec)
+            if (hub3CountOpt.isEmpty) {
+              logger.warn(s"Hub3 facet has no count for ${dsInfo.spec} and may be truncated — skipping indexed reconciliation")
+            }
 
             val lastSnapshot = TrendTrackingService.getLastSnapshot(trendsLog)
-            lastSnapshot.foreach { last =>
+            for {
+              hub3Count <- hub3CountOpt
+              last <- lastSnapshot
               // Record a "daily" reconciliation snapshot whenever our stored indexed
               // count disagrees with what Hub3 reports. A Hub3 count of 0 is meaningful
               // when reachable=true (dataset fully de-indexed) so it is not guarded away.
-              if (last.indexedRecords != hub3Count) {
-                TrendTrackingService.captureEventSnapshot(
-                  trendsLog, "daily",
-                  sourceRecords = last.sourceRecords,
-                  acquiredRecords = last.acquiredRecords,
-                  deletedRecords = last.deletedRecords,
-                  validRecords = last.validRecords,
-                  invalidRecords = last.invalidRecords,
-                  indexedRecords = hub3Count
-                )
-              }
+              if last.indexedRecords != hub3Count
+            } {
+              TrendTrackingService.captureEventSnapshot(
+                trendsLog, "daily",
+                sourceRecords = last.sourceRecords,
+                acquiredRecords = last.acquiredRecords,
+                deletedRecords = last.deletedRecords,
+                validRecords = last.validRecords,
+                invalidRecords = last.invalidRecords,
+                indexedRecords = hub3Count,
+                timestampOverride = Some(reconciliationTs)
+              )
             }
 
-            TrendTrackingService.aggregateDay(trendsLog, dailyLog, date)
+            // Backfill any dates missed by downtime/skipped crons, then the target.
+            TrendTrackingService.aggregateThrough(trendsLog, dailyLog, date)
             specs += dsInfo.spec
             aggregated += 1
           } catch {

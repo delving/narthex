@@ -1196,7 +1196,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         // indexed column is still carried-forward here; the cron later pulls the
         // real Hub3 count and writes a "daily" reconciliation snapshot.
         val todayUtc = org.joda.time.LocalDate.now(org.joda.time.DateTimeZone.UTC).toString("yyyy-MM-dd")
-        TrendTrackingService.aggregateDay(
+        TrendTrackingService.aggregateThrough(
           datasetContext.trendsLog,
           datasetContext.trendsDailyLog,
           todayUtc
