@@ -334,7 +334,7 @@ class AppController @Inject() (
    * counts per processing run, which net snapshot deltas cannot express.
    */
   def getDatasetTrends(spec: String) = Action { request =>
-    import services.RecordRegistry.{runSummaryWrites, dailyRunDiffWrites}
+    import services.RecordRegistry.{runSummaryWrites, dailyRunDiffWrites, pendingCountsWrites}
 
     val ctx = orgContext.datasetContext(spec)
     val trends = TrendTrackingService.getDatasetTrendsFromDaily(ctx.trendsDailyLog, ctx.trendsLog, spec)
@@ -345,7 +345,8 @@ class AppController @Inject() (
         base ++ Json.obj(
           "registry" -> true,
           "runs" -> orgContext.recordRegistry.listRuns(spec, 30),
-          "dailyDiffs" -> orgContext.recordRegistry.dailyRunDiffs(spec, 30)
+          "dailyDiffs" -> orgContext.recordRegistry.dailyRunDiffs(spec, 30),
+          "pending" -> orgContext.recordRegistry.pendingCounts(spec)
         )
       } catch {
         case e: Exception =>

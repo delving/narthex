@@ -47,9 +47,13 @@ object RecordRegistry {
   /** Completed-run diffs summed per UTC day, for the trends API. */
   case class DailyRunDiff(date: String, added: Int, changed: Int, deleted: Int, runs: Int)
 
+  /** Records not yet confirmed in Hub3 — explains indexed-count lag to the UI. */
+  case class PendingCounts(pendingIndex: Int, pendingDrops: Int)
+
   import play.api.libs.json.{Json, OWrites}
   implicit val runSummaryWrites: OWrites[RunSummary] = Json.writes[RunSummary]
   implicit val dailyRunDiffWrites: OWrites[DailyRunDiff] = Json.writes[DailyRunDiff]
+  implicit val pendingCountsWrites: OWrites[PendingCounts] = Json.writes[PendingCounts]
 
   private val TS_FORMAT =
     DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC)
@@ -93,6 +97,10 @@ class RecordRegistry(datasetsDir: File) {
 
   def dailyRunDiffs(specName: String, sinceDays: Int): Seq[DailyRunDiff] =
     if (dbFileExists(specName)) spec(specName).dailyRunDiffs(sinceDays) else Seq.empty
+
+  def pendingCounts(specName: String): PendingCounts =
+    if (dbFileExists(specName)) spec(specName).pendingCounts()
+    else PendingCounts(0, 0)
 
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
@@ -642,6 +650,26 @@ private[services] class SpecRegistry(val datasetDir: File) {
         ps.executeBatch()
       } finally ps.close()
     }
+  }
+
+  def pendingCounts(): PendingCounts = synchronized {
+    def one(sql: String): Int = {
+      val ps = conn.prepareStatement(sql)
+      try {
+        val rs = ps.executeQuery()
+        try { rs.next(); rs.getInt(1) } finally rs.close()
+      } finally ps.close()
+    }
+    PendingCounts(
+      pendingIndex = one(
+        s"""SELECT COUNT(*) FROM records
+             WHERE status = '$STATUS_SEEN'
+               AND (last_sent_hash IS NULL OR last_sent_hash <> content_hash)"""),
+      pendingDrops = one(
+        s"""SELECT COUNT(*) FROM records
+             WHERE status = '$STATUS_DELETED'
+               AND (last_sent_run_id IS NULL OR last_sent_run_id < last_seen_run_id)""")
+    )
   }
 
   def count(status: String): Int = synchronized {

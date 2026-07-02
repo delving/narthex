@@ -30,6 +30,7 @@ define(["angular", "Chart"], function (angular, Chart) {
         $scope.chartLoading = false;
         $scope.chartData = null;
         var currentChart = null;
+        var runDiffChart = null;
 
         // Cached categorization based on time window
         $scope.categorized = {
@@ -276,9 +277,10 @@ define(["angular", "Chart"], function (angular, Chart) {
                 function (response) {
                     $scope.chartData = response.data;
                     $scope.chartLoading = false;
-                    // Render chart on next digest cycle
+                    // Render charts on next digest cycle
                     $timeout(function () {
                         renderChart(response.data);
+                        renderRunDiffChart(response.data);
                     }, 50);
                 },
                 function (error) {
@@ -289,12 +291,16 @@ define(["angular", "Chart"], function (angular, Chart) {
         }
 
         /**
-         * Destroy current chart instance
+         * Destroy current chart instances
          */
         function destroyChart() {
             if (currentChart) {
                 currentChart.destroy();
                 currentChart = null;
+            }
+            if (runDiffChart) {
+                runDiffChart.destroy();
+                runDiffChart = null;
             }
         }
 
@@ -431,6 +437,94 @@ define(["angular", "Chart"], function (angular, Chart) {
                 }
             });
         }
+
+        /**
+         * Bar chart of true per-day added/changed/removed from the record
+         * registry (only present when the backend reports registry: true).
+         */
+        function renderRunDiffChart(data) {
+            if (!data.registry || !data.dailyDiffs || data.dailyDiffs.length === 0) return;
+
+            var canvas = document.getElementById('run-diff-chart');
+            if (!canvas) return;
+
+            var diffs = data.dailyDiffs;
+            if ($scope.timeWindow === '7d') {
+                diffs = diffs.slice(-7);
+            } else if ($scope.timeWindow === '24h') {
+                diffs = diffs.slice(-3);
+            }
+
+            runDiffChart = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: diffs.map(function (d) { return d.date.substring(5); }),
+                    datasets: [
+                        {
+                            label: 'Added',
+                            data: diffs.map(function (d) { return d.added; }),
+                            backgroundColor: 'rgba(92, 184, 92, 0.7)'
+                        },
+                        {
+                            label: 'Changed',
+                            data: diffs.map(function (d) { return d.changed; }),
+                            backgroundColor: 'rgba(240, 173, 78, 0.7)'
+                        },
+                        {
+                            label: 'Removed',
+                            data: diffs.map(function (d) { return -d.deleted; }),
+                            backgroundColor: 'rgba(217, 83, 79, 0.7)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    legend: { position: 'top', labels: { boxWidth: 12, padding: 15 } },
+                    tooltips: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function (item, chartData) {
+                                var label = chartData.datasets[item.datasetIndex].label || '';
+                                return label + ': ' + Math.abs(item.yLabel).toLocaleString();
+                            }
+                        }
+                    },
+                    scales: {
+                        xAxes: [{ gridLines: { display: false }, ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 15 } }],
+                        yAxes: [{
+                            ticks: { callback: function (value) { return Math.abs(value).toLocaleString(); } },
+                            gridLines: { color: 'rgba(0,0,0,0.05)' }
+                        }]
+                    }
+                }
+            });
+        }
+
+        /**
+         * Registry runs, newest first, for the expanded run table.
+         */
+        $scope.getRunsNewestFirst = function () {
+            if (!$scope.chartData || !$scope.chartData.runs) return [];
+            return $scope.chartData.runs.slice().reverse();
+        };
+
+        $scope.formatRunTime = function (ts) {
+            if (!ts) return '';
+            return formatTimestampFull(ts);
+        };
+
+        $scope.runStatusClass = function (run) {
+            if (run.status === 'failed') return 'label label-danger';
+            if (run.status === 'running') return 'label label-default';
+            return 'label label-success';
+        };
+
+        $scope.hasPendingSync = function () {
+            var p = $scope.chartData && $scope.chartData.pending;
+            return p && (p.pendingIndex > 0 || p.pendingDrops > 0);
+        };
 
         /**
          * Trigger manual snapshot

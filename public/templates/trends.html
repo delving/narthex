@@ -166,8 +166,67 @@
                                 <i class="fa fa-spinner fa-spin fa-2x"></i>
                                 <p style="margin-top: 10px;">Loading chart data...</p>
                             </div>
-                            <div ng-if="!chartLoading" style="position: relative; height: 300px;">
-                                <canvas id="trend-chart"></canvas>
+                            <div ng-if="!chartLoading">
+                                <div ng-if="hasPendingSync()" class="alert alert-warning" style="margin-bottom: 15px;">
+                                    <i class="fa fa-clock-o"></i>
+                                    <strong>{{ formatNumber(chartData.pending.pendingIndex) }}</strong> records pending Hub3 sync<span
+                                    ng-if="chartData.pending.pendingDrops > 0">,
+                                    <strong>{{ formatNumber(chartData.pending.pendingDrops) }}</strong> deletions pending</span> —
+                                    the indexed count catches up after the next save / nightly reconciliation.
+                                </div>
+
+                                <h5 style="margin-top: 0;">Totals over time <small class="text-muted">(end-of-day counts)</small></h5>
+                                <div style="position: relative; height: 300px;">
+                                    <canvas id="trend-chart"></canvas>
+                                </div>
+
+                                <div ng-if="chartData.registry && chartData.dailyDiffs.length > 0">
+                                    <h5>Records added / changed / removed per day <small class="text-muted">(exact, from the record registry)</small></h5>
+                                    <div style="position: relative; height: 200px;">
+                                        <canvas id="run-diff-chart"></canvas>
+                                    </div>
+                                </div>
+
+                                <div ng-if="chartData.registry && getRunsNewestFirst().length > 0">
+                                    <h5>Processing runs <small class="text-muted">(last 30 days)</small></h5>
+                                    <table class="table table-condensed" style="background: #fff; margin-bottom: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 130px;">Started</th>
+                                                <th style="width: 100px;">Type</th>
+                                                <th class="text-right" style="width: 90px;">Added</th>
+                                                <th class="text-right" style="width: 90px;">Changed</th>
+                                                <th class="text-right" style="width: 90px;">Removed</th>
+                                                <th class="text-right" style="width: 100px;">Total seen</th>
+                                                <th style="width: 100px;">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="run in getRunsNewestFirst()">
+                                                <td>{{ formatRunTime(run.startedAt) }}</td>
+                                                <td>
+                                                    {{ run.kind }}
+                                                    <span ng-if="run.baseline" class="label label-info"
+                                                          title="First registry run for this dataset: existing records were imported as a baseline, not newly added.">baseline</span>
+                                                </td>
+                                                <td class="text-right" ng-class="run.baseline ? 'text-muted' : getDeltaClass(run.added)">
+                                                    <span ng-if="run.baseline" title="Baseline import">{{ formatNumber(run.added) }}</span>
+                                                    <span ng-if="!run.baseline">{{ formatDelta(run.added) }}</span>
+                                                </td>
+                                                <td class="text-right" ng-class="run.changed > 0 ? 'text-warning' : 'text-muted'">
+                                                    <span ng-if="run.changed > 0">~</span>{{ formatNumber(run.changed) }}
+                                                </td>
+                                                <td class="text-right" ng-class="getDeltaClass(-run.deleted)">{{ formatDelta(-run.deleted) }}</td>
+                                                <td class="text-right">{{ formatNumber(run.seen) }}</td>
+                                                <td><span ng-class="runStatusClass(run)">{{ run.status }}</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <p ng-if="chartData.registry && getRunsNewestFirst().length === 0" class="text-muted" style="margin-top: 10px;">
+                                    No registry runs recorded yet — exact added/removed counts appear after the next harvest.
+                                </p>
                             </div>
                         </td>
                     </tr>
