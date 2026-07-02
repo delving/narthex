@@ -78,7 +78,7 @@ object PocketParser {
   @throws(classOf[NoSuchAlgorithmException])
   def sha1(input: String): String = {
     val mDigest: MessageDigest = MessageDigest.getInstance("SHA1")
-    val result: Array[Byte] = mDigest.digest(input.getBytes)
+    val result: Array[Byte] = mDigest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8))
     val sb: StringBuffer = new StringBuffer()
     for (i <- result.indices) {
       sb.append(Integer.toString((result(i) & 0xff) + 0x100, 16).substring(1))

@@ -241,10 +241,12 @@ class SourceProcessor(val datasetContext: DatasetContext,
         // Stamp OAI-PMH tombstones (from harvester's deleted.ids) into the
         // registry so the next save phase can diff them. Does not filter
         // pockets — SourceRepo still uses the file for that.
+        // deleted.ids holds raw OAI identifiers; the registry and Hub3 both
+        // key on cleaned ids, so clean here or drops never match.
         val tombstoneIds: Seq[String] =
           if (registryEnabled)
             datasetContext.sourceRepoOpt
-              .map(_.deletedIdSet.toSeq)
+              .map(_.deletedIdSet.toSeq.map(PocketParser.cleanUpId))
               .getOrElse(Seq.empty)
           else Seq.empty
         runIdOpt.foreach { runId =>

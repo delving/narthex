@@ -201,17 +201,6 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             saveTime,
             progressReporter))
 
-        // Full-harvest registry sweep: mark records not seen this run as
-        // deleted so they get drop_records actions later. Incremental saves
-        // skip this — they see only the delta and cannot reason about the
-        // absent set.
-        if (registryEnabled && !isIncremental) {
-          registryRunIdOpt.foreach { runId =>
-            val swept = registry.markMissingForFullRun(spec, runId)
-            if (swept > 0) log.info(s"Registry: marked $swept records missing for full run $runId")
-          }
-        }
-
         val doRevisionSweep = !isIncremental && (!registryEnabled || keepRevisionSweep)
         if (doRevisionSweep) {
           log.info(s"Incrementing dataset revision (keepRevisionSweep=$keepRevisionSweep)")
@@ -295,6 +284,20 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         if (isExplicitFileSave && chunksSaved == 0) {
           failure(new RuntimeException("Explicit processed-file save completed with zero graph chunks"))
         } else {
+          // Full-harvest registry sweep: mark records not seen this run as
+          // deleted so they get drop_records actions below. Deliberately runs
+          // only HERE, after every chunk was acked by Hub3 — a failed or
+          // truncated save must never commit destructive tombstones, or the
+          // next innocuous incremental save would mass-drop live records.
+          // Incremental saves skip the sweep — they see only the delta and
+          // cannot reason about the absent set.
+          if (registryEnabled && !isIncremental) {
+            registryRunIdOpt.foreach { runId =>
+              val swept = registry.markMissingForFullRun(spec, runId)
+              if (swept > 0) log.info(s"Registry: marked $swept records missing for full run $runId")
+            }
+          }
+
           // Registry-driven drops: explicit drop_records for every record
           // the registry knows is deleted (OAI tombstones + full-run sweep
           // misses). Runs for both full and incremental saves.
@@ -318,7 +321,13 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
                   }
               }
               selfRef ! RegistryDropsDone
-            case Failure(ex) => selfRef ! AsyncFailure(ex)
+            case Failure(ex) =>
+              // Non-fatal: all chunks are already in Hub3, and unconfirmed
+              // drops stay pending in the registry and are retried on the
+              // next save. Also keeps saves working while Hub3 predates the
+              // drop_records action.
+              log.warning(s"Registry: drop_records failed, will retry next save: ${ex.getMessage}")
+              selfRef ! RegistryDropsDone
           }
         }
       }

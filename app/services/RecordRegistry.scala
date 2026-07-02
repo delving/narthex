@@ -95,7 +95,9 @@ class RecordRegistry(datasetsDir: File) {
   def dropDatasetDb(specName: String): Unit = {
     val reg = specs.remove(specName)
     if (reg != null) reg.closeAndDelete()
-    else new SpecRegistry(new File(datasetsDir, specName)).closeAndDelete()
+    // Uncached: just remove the files. Constructing a SpecRegistry here would
+    // mkdirs + open a connection, resurrecting the dataset dir mid-delete.
+    else SpecRegistry.deleteDbFiles(new File(datasetsDir, specName))
   }
 
   def close(): Unit = {
@@ -106,6 +108,15 @@ class RecordRegistry(datasetsDir: File) {
     }
     specs.clear()
   }
+}
+
+private[services] object SpecRegistry {
+  import RecordRegistry.DB_FILENAME
+
+  def deleteDbFiles(datasetDir: File): Unit =
+    Seq("", "-wal", "-shm", "-journal")
+      .map(suffix => new File(datasetDir, DB_FILENAME + suffix))
+      .foreach(FileUtils.deleteQuietly(_))
 }
 
 private[services] class SpecRegistry(val datasetDir: File) {
@@ -125,6 +136,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
       s.executeUpdate("PRAGMA journal_mode=WAL")
       s.executeUpdate("PRAGMA synchronous=NORMAL")
       s.executeUpdate("PRAGMA foreign_keys=ON")
+      s.executeUpdate("PRAGMA busy_timeout=5000")
     } finally s.close()
     c.setAutoCommit(false)
     migrate(c)
@@ -166,130 +178,163 @@ private[services] class SpecRegistry(val datasetDir: File) {
         s"INSERT OR IGNORE INTO schema_meta (k, v) VALUES ('schema_version', '$SCHEMA_VERSION')"
       )
       c.commit()
+      // Fail loud on version drift instead of running new queries on an old
+      // schema; a future v2 adds its migration steps above before this check.
+      val rs = s.executeQuery("SELECT v FROM schema_meta WHERE k = 'schema_version'")
+      try {
+        if (rs.next()) {
+          val found = rs.getString(1)
+          if (found != SCHEMA_VERSION)
+            sys.error(s"records.db schema_version $found, expected $SCHEMA_VERSION: ${datasetDir.getAbsolutePath}")
+        }
+      } finally rs.close()
     } finally s.close()
   }
 
-  def beginRun(kind: String): Long = synchronized {
-    val sql = "INSERT INTO harvest_runs (kind, started_at, status) VALUES (?, ?, ?)"
-    val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
+  // All writes share one autocommit-off connection; without rollback a
+  // failed batch would silently ride along with the next successful commit.
+  private def commitTx[A](body: => A): A =
     try {
-      ps.setString(1, kind)
-      ps.setString(2, nowIso())
-      ps.setString(3, RUN_RUNNING)
-      ps.executeUpdate()
-      val rs = ps.getGeneratedKeys
+      val result = body
+      conn.commit()
+      result
+    } catch {
+      case e: Throwable =>
+        try conn.rollback()
+        catch { case re: Exception => logger.warn(s"rollback failed for $dbFile: ${re.getMessage}") }
+        throw e
+    }
+
+  def beginRun(kind: String): Long = synchronized {
+    commitTx {
+      val sql = "INSERT INTO harvest_runs (kind, started_at, status) VALUES (?, ?, ?)"
+      val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
       try {
-        if (!rs.next()) sys.error("beginRun: no generated run_id")
-        val id = rs.getLong(1)
-        conn.commit()
-        id
-      } finally rs.close()
-    } finally ps.close()
+        ps.setString(1, kind)
+        ps.setString(2, nowIso())
+        ps.setString(3, RUN_RUNNING)
+        ps.executeUpdate()
+        val rs = ps.getGeneratedKeys
+        try {
+          if (!rs.next()) sys.error("beginRun: no generated run_id")
+          rs.getLong(1)
+        } finally rs.close()
+      } finally ps.close()
+    }
   }
 
   def completeRun(runId: Long, counts: RunCounts): Unit = synchronized {
-    val sql = """UPDATE harvest_runs
-                    SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?
-                  WHERE run_id = ?"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      ps.setString(1, nowIso())
-      ps.setString(2, RUN_COMPLETED)
-      ps.setInt(3, counts.seen)
-      ps.setInt(4, counts.changed)
-      ps.setInt(5, counts.deleted)
-      ps.setLong(6, runId)
-      ps.executeUpdate()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      val sql = """UPDATE harvest_runs
+                      SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?
+                    WHERE run_id = ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        ps.setString(1, nowIso())
+        ps.setString(2, RUN_COMPLETED)
+        ps.setInt(3, counts.seen)
+        ps.setInt(4, counts.changed)
+        ps.setInt(5, counts.deleted)
+        ps.setLong(6, runId)
+        ps.executeUpdate()
+      } finally ps.close()
+    }
   }
 
   def failRun(runId: Long, note: String): Unit = synchronized {
-    val sql = """UPDATE harvest_runs
-                    SET completed_at = ?, status = ?, note = ?
-                  WHERE run_id = ?"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      ps.setString(1, nowIso())
-      ps.setString(2, RUN_FAILED)
-      ps.setString(3, note)
-      ps.setLong(4, runId)
-      ps.executeUpdate()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      val sql = """UPDATE harvest_runs
+                      SET completed_at = ?, status = ?, note = ?
+                    WHERE run_id = ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        ps.setString(1, nowIso())
+        ps.setString(2, RUN_FAILED)
+        ps.setString(3, note)
+        ps.setLong(4, runId)
+        ps.executeUpdate()
+      } finally ps.close()
+    }
   }
 
   def upsertSeen(rows: Seq[(String, String)], runId: Long): Unit = synchronized {
-    val sql = """INSERT INTO records
-                   (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(local_id) DO UPDATE SET
-                   content_hash     = excluded.content_hash,
-                   status           = excluded.status,
-                   last_seen_run_id = excluded.last_seen_run_id,
-                   last_seen_ts     = excluded.last_seen_ts,
-                   updated_at       = excluded.updated_at"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      val ts = nowIso()
-      rows.foreach { case (localId, hash) =>
-        ps.setString(1, localId)
-        ps.setString(2, hash)
-        ps.setString(3, STATUS_SEEN)
-        ps.setLong(4, runId)
-        ps.setString(5, ts)
-        ps.setString(6, ts)
-        ps.setString(7, ts)
-        ps.addBatch()
-      }
-      ps.executeBatch()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      val sql = """INSERT INTO records
+                     (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(local_id) DO UPDATE SET
+                     content_hash     = excluded.content_hash,
+                     status           = excluded.status,
+                     last_seen_run_id = excluded.last_seen_run_id,
+                     last_seen_ts     = excluded.last_seen_ts,
+                     updated_at       = excluded.updated_at"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        val ts = nowIso()
+        rows.foreach { case (localId, hash) =>
+          ps.setString(1, localId)
+          ps.setString(2, hash)
+          ps.setString(3, STATUS_SEEN)
+          ps.setLong(4, runId)
+          ps.setString(5, ts)
+          ps.setString(6, ts)
+          ps.setString(7, ts)
+          ps.addBatch()
+        }
+        ps.executeBatch()
+      } finally ps.close()
+    }
   }
 
   def upsertDeleted(localIds: Seq[String], runId: Long): Unit = synchronized {
-    val sql = """INSERT INTO records
-                   (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
-                 VALUES (?, '', ?, ?, ?, ?, ?)
-                 ON CONFLICT(local_id) DO UPDATE SET
-                   status           = excluded.status,
-                   last_seen_run_id = excluded.last_seen_run_id,
-                   last_seen_ts     = excluded.last_seen_ts,
-                   updated_at       = excluded.updated_at"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      val ts = nowIso()
-      localIds.foreach { localId =>
-        ps.setString(1, localId)
-        ps.setString(2, STATUS_DELETED)
-        ps.setLong(3, runId)
-        ps.setString(4, ts)
-        ps.setString(5, ts)
-        ps.setString(6, ts)
-        ps.addBatch()
-      }
-      ps.executeBatch()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      // Re-stamping an already-deleted row is a no-op (the WHERE guard):
+      // deleted.ids is a whole-file snapshot re-read every processing run, so
+      // without the guard the same tombstones would bump last_seen_run_id
+      // every run and be re-emitted as drop_records forever.
+      val sql = """INSERT INTO records
+                     (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
+                   VALUES (?, '', ?, ?, ?, ?, ?)
+                   ON CONFLICT(local_id) DO UPDATE SET
+                     status           = excluded.status,
+                     last_seen_run_id = excluded.last_seen_run_id,
+                     last_seen_ts     = excluded.last_seen_ts,
+                     updated_at       = excluded.updated_at
+                   WHERE records.status <> excluded.status"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        val ts = nowIso()
+        localIds.foreach { localId =>
+          ps.setString(1, localId)
+          ps.setString(2, STATUS_DELETED)
+          ps.setLong(3, runId)
+          ps.setString(4, ts)
+          ps.setString(5, ts)
+          ps.setString(6, ts)
+          ps.addBatch()
+        }
+        ps.executeBatch()
+      } finally ps.close()
+    }
   }
 
   def markMissingForFullRun(runId: Long): Int = synchronized {
-    val sql = """UPDATE records
-                    SET status = ?, last_seen_run_id = ?, last_seen_ts = ?, updated_at = ?
-                  WHERE status = ? AND last_seen_run_id < ?"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      val ts = nowIso()
-      ps.setString(1, STATUS_DELETED)
-      ps.setLong(2, runId)
-      ps.setString(3, ts)
-      ps.setString(4, ts)
-      ps.setString(5, STATUS_SEEN)
-      ps.setLong(6, runId)
-      val rows = ps.executeUpdate()
-      conn.commit()
-      rows
-    } finally ps.close()
+    commitTx {
+      val sql = """UPDATE records
+                      SET status = ?, last_seen_run_id = ?, last_seen_ts = ?, updated_at = ?
+                    WHERE status = ? AND last_seen_run_id < ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        val ts = nowIso()
+        ps.setString(1, STATUS_DELETED)
+        ps.setLong(2, runId)
+        ps.setString(3, ts)
+        ps.setString(4, ts)
+        ps.setString(5, STATUS_SEEN)
+        ps.setLong(6, runId)
+        ps.executeUpdate()
+      } finally ps.close()
+    }
   }
 
   def pendingIndexBatch(limit: Int): Seq[(String, String)] = synchronized {
@@ -329,55 +374,72 @@ private[services] class SpecRegistry(val datasetDir: File) {
   }
 
   def confirmIndexed(rows: Seq[(String, String)], runId: Long): Unit = synchronized {
-    val sql = """UPDATE records
-                    SET last_sent_hash = ?, last_sent_run_id = ?, updated_at = ?
-                  WHERE local_id = ?"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      val ts = nowIso()
-      rows.foreach { case (localId, hash) =>
-        ps.setString(1, hash)
-        ps.setLong(2, runId)
-        ps.setString(3, ts)
-        ps.setString(4, localId)
-        ps.addBatch()
-      }
-      ps.executeBatch()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      val sql = """UPDATE records
+                      SET last_sent_hash = ?, last_sent_run_id = ?, updated_at = ?
+                    WHERE local_id = ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        val ts = nowIso()
+        rows.foreach { case (localId, hash) =>
+          ps.setString(1, hash)
+          ps.setLong(2, runId)
+          ps.setString(3, ts)
+          ps.setString(4, localId)
+          ps.addBatch()
+        }
+        ps.executeBatch()
+      } finally ps.close()
+    }
   }
 
   def confirmIndexedByIds(localIds: Seq[String], runId: Long): Unit = synchronized {
-    // Mark each id as synced at its current content_hash — the caller just
-    // sent that exact version to Hub3, so last_sent_hash := content_hash.
-    val sql = """UPDATE records
-                    SET last_sent_hash = content_hash, last_sent_run_id = ?, updated_at = ?
-                  WHERE local_id = ?"""
-    val ps = conn.prepareStatement(sql)
-    try {
-      val ts = nowIso()
-      localIds.foreach { id =>
-        ps.setLong(1, runId)
-        ps.setString(2, ts)
-        ps.setString(3, id)
-        ps.addBatch()
-      }
-      ps.executeBatch()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      // Mark each id as synced at its current content_hash — the caller just
+      // sent that exact version to Hub3, so last_sent_hash := content_hash.
+      val sql = """UPDATE records
+                      SET last_sent_hash = content_hash, last_sent_run_id = ?, updated_at = ?
+                    WHERE local_id = ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        val ts = nowIso()
+        localIds.foreach { id =>
+          ps.setLong(1, runId)
+          ps.setString(2, ts)
+          ps.setString(3, id)
+          ps.addBatch()
+        }
+        val updated = ps.executeBatch().filter(_ > 0).sum
+        // 0-row updates mean the confirm ids (derived from graph URIs) do not
+        // match the registry keys (pocket ids) — id-space drift, shout early.
+        if (updated < localIds.size)
+          logger.warn(s"confirmIndexedByIds matched $updated of ${localIds.size} ids in $dbFile — id mismatch between graph URIs and registry keys?")
+      } finally ps.close()
+    }
   }
 
   def confirmDropped(localIds: Seq[String]): Unit = synchronized {
-    val sql = "DELETE FROM records WHERE local_id = ?"
-    val ps = conn.prepareStatement(sql)
-    try {
-      localIds.foreach { id =>
-        ps.setString(1, id)
-        ps.addBatch()
-      }
-      ps.executeBatch()
-      conn.commit()
-    } finally ps.close()
+    commitTx {
+      // Keep the tombstone row and mark it sent instead of deleting it:
+      // a deleted row would be re-inserted from the stale deleted.ids file on
+      // the next run and re-dropped forever. The kept row records "absent in
+      // Hub3"; if the record reappears, upsertSeen flips it back and the
+      // status change makes the next upsertDeleted pending again.
+      val sql = """UPDATE records
+                      SET last_sent_run_id = last_seen_run_id, updated_at = ?
+                    WHERE local_id = ? AND status = ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        val ts = nowIso()
+        localIds.foreach { id =>
+          ps.setString(1, ts)
+          ps.setString(2, id)
+          ps.setString(3, STATUS_DELETED)
+          ps.addBatch()
+        }
+        ps.executeBatch()
+      } finally ps.close()
+    }
   }
 
   def count(status: String): Int = synchronized {
@@ -399,11 +461,6 @@ private[services] class SpecRegistry(val datasetDir: File) {
 
   def closeAndDelete(): Unit = {
     close()
-    Seq(
-      dbFile,
-      new File(datasetDir, DB_FILENAME + "-wal"),
-      new File(datasetDir, DB_FILENAME + "-shm"),
-      new File(datasetDir, DB_FILENAME + "-journal")
-    ).foreach(FileUtils.deleteQuietly(_))
+    SpecRegistry.deleteDbFiles(datasetDir)
   }
 }

@@ -16,8 +16,7 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
   private var registry: RecordRegistry = _
 
   override def beforeEach(): Unit = {
-    tempDir = new File(sys.props("java.io.tmpdir"), s"narthex-registry-test-${System.currentTimeMillis()}")
-    tempDir.mkdirs()
+    tempDir = java.nio.file.Files.createTempDirectory("narthex-registry-test-").toFile
     registry = new RecordRegistry(tempDir)
   }
 
@@ -70,14 +69,39 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.pendingDropBatch(spec, 100) shouldBe Seq("a")
   }
 
-  it should "delete the registry row once a drop is confirmed" in {
+  it should "keep the tombstone row but clear pendingDrop once a drop is confirmed" in {
     val run = registry.beginRun(spec, KIND_INCREMENT)
     registry.upsertDeleted(spec, "a", run)
     registry.pendingDropBatch(spec, 100) shouldBe Seq("a")
     registry.confirmDropped(spec, Seq("a"))
     registry.pendingDropBatch(spec, 100) shouldBe empty
-    registry.count(spec, STATUS_DELETED) shouldBe 0
+    registry.count(spec, STATUS_DELETED) shouldBe 1
     registry.count(spec, STATUS_SEEN) shouldBe 0
+  }
+
+  it should "not re-emit a drop when a stale tombstone is re-stamped" in {
+    val run1 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertDeleted(spec, "a", run1)
+    registry.confirmDropped(spec, Seq("a"))
+
+    // deleted.ids is a whole-file snapshot: the same id gets re-stamped on
+    // every subsequent processing run and must stay a no-op
+    val run2 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertDeleted(spec, "a", run2)
+    registry.pendingDropBatch(spec, 100) shouldBe empty
+  }
+
+  it should "re-emit a drop when a reappeared record is deleted again" in {
+    val run1 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertDeleted(spec, "a", run1)
+    registry.confirmDropped(spec, Seq("a"))
+
+    val run2 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h2"), run2)
+
+    val run3 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertDeleted(spec, "a", run3)
+    registry.pendingDropBatch(spec, 100) shouldBe Seq("a")
   }
 
   it should "mark unseen records deleted on a full run sweep" in {

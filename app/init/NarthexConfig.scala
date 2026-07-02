@@ -99,9 +99,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(true)
   logger.info(s"narthex.trends.enabled: $enableTrendTracking")
 
+  // Off by default until the Hub3 drop_records handler is verified deployed
+  // for the org; enable per-org via narthex.registry.enabled=true.
   def registryEnabled: Boolean = configuration
     .getOptional[Boolean]("narthex.registry.enabled")
-    .getOrElse(true)
+    .getOrElse(false)
   logger.info(s"narthex.registry.enabled: $registryEnabled")
 
   def registryKeepRevisionSweep: Boolean = configuration
