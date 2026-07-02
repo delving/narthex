@@ -46,7 +46,7 @@ import record.SourceProcessor._
 import services.ProgressReporter.ProgressState._
 import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
-import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter, TrendTrackingService}
+import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter, RecordRegistry, TrendTrackingService}
 import triplestore.GraphProperties._
 import triplestore.GraphSaver
 import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
@@ -1127,6 +1127,20 @@ class DatasetActor(val datasetContext: DatasetContext,
       } else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+        // No GraphSaver will run, so close the registry run here — otherwise
+        // it would sit 'running' forever in harvest_runs.
+        if (orgContext.narthexConfig.registryEnabled) {
+          registryRunId.foreach { runId =>
+            scala.util.Try {
+              val reg = orgContext.recordRegistry
+              val seen = reg.count(dsInfo.spec, RecordRegistry.STATUS_SEEN)
+              val deleted = reg.count(dsInfo.spec, RecordRegistry.STATUS_DELETED)
+              reg.completeRun(dsInfo.spec, runId, RecordRegistry.RunCounts(seen = seen, changed = seen, deleted = deleted))
+            }.recover { case ex: Throwable =>
+              log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
+            }
+          }
+        }
         // Success emails disabled - only send emails on errors
         active.childOpt.foreach(_ ! PoisonPill)
         // Release semaphore since we're not going through GraphSaver
@@ -1134,6 +1148,19 @@ class DatasetActor(val datasetContext: DatasetContext,
         goto(Idle) using Dormant
       }
   }
+
+  // harvest_runs reliability: any WorkFailure closes whatever registry run is
+  // still open for this dataset, so rows never sit 'running' forever. The FSM
+  // allows one active job per dataset, so no run id needs threading here.
+  private def failOpenRegistryRuns(message: String): Unit =
+    if (orgContext.narthexConfig.registryEnabled) {
+      scala.util.Try {
+        val failed = orgContext.recordRegistry.failOpenRuns(dsInfo.spec, message.take(500))
+        if (failed > 0) log.info(s"Registry: marked $failed open run(s) failed for ${dsInfo.spec}")
+      }.recover { case ex: Throwable =>
+        log.warning(s"Registry: failOpenRuns failed for ${dsInfo.spec}: ${ex.getMessage}")
+      }
+    }
 
   when(Saving) {
 
@@ -1261,6 +1288,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     // Handle another failure while already in retry mode
     case Event(WorkFailure(newMessage, exceptionOpt), InRetry(oldMessage, retryCount)) =>
+      failOpenRegistryRuns(newMessage)
       val maxRetries = orgContext.appConfig.harvestMaxRetries
       log.warning(s"Retry attempt #$retryCount failed (max: $maxRetries): $newMessage")
 
@@ -1473,6 +1501,7 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
       fastSaveAfterProcessing = false
+      failOpenRegistryRuns(message)
 
       // Check if this is a harvest failure (candidate for retry)
       if (isHarvestFailure(active)) {
@@ -1538,6 +1567,7 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(WorkFailure(message, exceptionOpt), _) =>
       log.warning(s"Work failure $message while dormant")
       fastSaveAfterProcessing = false
+      failOpenRegistryRuns(message)
       exceptionOpt match {
         case Some(exception) => log.error(exception, message)
         case None            => log.error(message)

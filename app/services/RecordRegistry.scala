@@ -56,8 +56,11 @@ class RecordRegistry(datasetsDir: File) {
   def completeRun(specName: String, runId: Long, counts: RunCounts): Unit =
     spec(specName).completeRun(runId, counts)
 
-  def failRun(specName: String, runId: Long, note: String): Unit =
-    spec(specName).failRun(runId, note)
+  def failOpenRuns(specName: String, note: String): Int =
+    spec(specName).failOpenRuns(note)
+
+  def runStatus(specName: String, runId: Long): Option[String] =
+    spec(specName).runStatus(runId)
 
   def upsertSeen(specName: String, localId: String, contentHash: String, runId: Long): Unit =
     spec(specName).upsertSeen(Seq(localId -> contentHash), runId)
@@ -207,6 +210,12 @@ private[services] class SpecRegistry(val datasetDir: File) {
 
   def beginRun(kind: String): Long = synchronized {
     commitTx {
+      // Self-heal: a run still 'running' at this point was orphaned by a
+      // crash or an unclosed failure path — only one run per dataset can be
+      // active. Mark it failed so harvest_runs history stays trustworthy.
+      val healed = markOpenRunsFailed("stale: superseded by new run")
+      if (healed > 0) logger.warn(s"beginRun: marked $healed stale running run(s) failed in $dbFile")
+
       val sql = "INSERT INTO harvest_runs (kind, started_at, status) VALUES (?, ?, ?)"
       val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
       try {
@@ -241,20 +250,39 @@ private[services] class SpecRegistry(val datasetDir: File) {
     }
   }
 
-  def failRun(runId: Long, note: String): Unit = synchronized {
+  // Fail every run still 'running' for this dataset. Failure paths (actor
+  // WorkFailure) don't know the run id, and the FSM allows only one active
+  // job per dataset, so "all open runs" is exactly "the run that just died".
+  def failOpenRuns(note: String): Int = synchronized {
     commitTx {
-      val sql = """UPDATE harvest_runs
-                      SET completed_at = ?, status = ?, note = ?
-                    WHERE run_id = ?"""
-      val ps = conn.prepareStatement(sql)
-      try {
-        ps.setString(1, nowIso())
-        ps.setString(2, RUN_FAILED)
-        ps.setString(3, note)
-        ps.setLong(4, runId)
-        ps.executeUpdate()
-      } finally ps.close()
+      markOpenRunsFailed(note)
     }
+  }
+
+  // Caller must hold the lock and be inside commitTx.
+  private def markOpenRunsFailed(note: String): Int = {
+    val sql = """UPDATE harvest_runs
+                    SET completed_at = ?, status = ?, note = ?
+                  WHERE status = ?"""
+    val ps = conn.prepareStatement(sql)
+    try {
+      ps.setString(1, nowIso())
+      ps.setString(2, RUN_FAILED)
+      ps.setString(3, note)
+      ps.setString(4, RUN_RUNNING)
+      ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def runStatus(runId: Long): Option[String] = synchronized {
+    val ps = conn.prepareStatement("SELECT status FROM harvest_runs WHERE run_id = ?")
+    try {
+      ps.setLong(1, runId)
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) Option(rs.getString(1)) else None
+      } finally rs.close()
+    } finally ps.close()
   }
 
   def upsertSeen(rows: Seq[(String, String)], runId: Long): Unit = synchronized {

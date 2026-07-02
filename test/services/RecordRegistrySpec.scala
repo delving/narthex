@@ -192,6 +192,27 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.pendingIndexBatch(spec, 100).toSet shouldBe Set("a" -> "h1b")
   }
 
+  it should "mark open runs failed via failOpenRuns" in {
+    val run = registry.beginRun(spec, KIND_FULL)
+    registry.runStatus(spec, run) shouldBe Some(RUN_RUNNING)
+
+    registry.failOpenRuns(spec, "boom") shouldBe 1
+    registry.runStatus(spec, run) shouldBe Some(RUN_FAILED)
+
+    // completed runs are untouched
+    val run2 = registry.beginRun(spec, KIND_FULL)
+    registry.completeRun(spec, run2, RunCounts(0, 0, 0))
+    registry.failOpenRuns(spec, "boom again") shouldBe 0
+    registry.runStatus(spec, run2) shouldBe Some(RUN_COMPLETED)
+  }
+
+  it should "self-heal stale running runs on beginRun" in {
+    val stale = registry.beginRun(spec, KIND_FULL)   // never closed (crash)
+    val fresh = registry.beginRun(spec, KIND_FULL)
+    registry.runStatus(spec, stale) shouldBe Some(RUN_FAILED)
+    registry.runStatus(spec, fresh) shouldBe Some(RUN_RUNNING)
+  }
+
   it should "respect the limit on pendingIndexBatch" in {
     val run = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, (1 to 50).map(i => s"id$i" -> s"h$i"), run)
