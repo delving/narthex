@@ -187,6 +187,23 @@ class OrgContext @Inject() (
 
             // Backfill any dates missed by downtime/skipped crons, then the target.
             TrendTrackingService.aggregateThrough(trendsLog, dailyLog, date)
+
+            // Registry health check: one greppable line per dataset per night.
+            // seen == hub3 (with nothing pending) means the registry mirror is
+            // accurate; a persistent diff means it is missing or over-dropping
+            // records and the revision sweep is still doing the real work.
+            if (narthexConfig.registryEnabled) {
+              for {
+                hub3Count <- hub3CountOpt
+                seen <- recordRegistry.seenCountIfExists(dsInfo.spec)
+              } {
+                val p = recordRegistry.pendingCounts(dsInfo.spec)
+                val msg = s"Registry health ${dsInfo.spec}: seen=$seen hub3=$hub3Count diff=${seen - hub3Count} pendingIndex=${p.pendingIndex} pendingDrops=${p.pendingDrops}"
+                if (seen != hub3Count && p.pendingIndex == 0 && p.pendingDrops == 0) logger.warn(s"$msg — mismatch with nothing pending")
+                else logger.info(msg)
+              }
+            }
+
             specs += dsInfo.spec
             aggregated += 1
           } catch {

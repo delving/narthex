@@ -102,6 +102,10 @@ class RecordRegistry(datasetsDir: File) {
     if (dbFileExists(specName)) spec(specName).pendingCounts()
     else PendingCounts(0, 0)
 
+  /** Seen-record count, without creating a db for specs that have none. */
+  def seenCountIfExists(specName: String): Option[Int] =
+    if (dbFileExists(specName)) Some(spec(specName).count(STATUS_SEEN)) else None
+
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
 
