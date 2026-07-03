@@ -197,6 +197,8 @@
                                                 <th class="text-right" style="width: 90px;">Added</th>
                                                 <th class="text-right" style="width: 90px;">Changed</th>
                                                 <th class="text-right" style="width: 90px;">Removed</th>
+                                                <th class="text-right" style="width: 100px;"
+                                                    title="Records actually sent to Hub3 by this run's save.">Sent</th>
                                                 <th class="text-right" style="width: 100px;">Total seen</th>
                                                 <th style="width: 100px;">Status</th>
                                             </tr>
@@ -217,6 +219,7 @@
                                                     <span ng-if="run.changed > 0">~</span>{{ formatNumber(run.changed) }}
                                                 </td>
                                                 <td class="text-right" ng-class="getDeltaClass(-run.deleted)">{{ formatDelta(-run.deleted) }}</td>
+                                                <td class="text-right">{{ formatNumber(run.sent) }}</td>
                                                 <td class="text-right">{{ formatNumber(run.seen) }}</td>
                                                 <td><span ng-class="runStatusClass(run)">{{ run.status }}</span></td>
                                             </tr>

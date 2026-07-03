@@ -310,6 +310,26 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     new File(new File(tempDir, "never-seen"), DB_FILENAME).exists() shouldBe false
   }
 
+  it should "record the sent count on completeRun" in {
+    val run = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run)
+    registry.completeRun(spec, run, sentCount = 2)
+    registry.listRuns(spec, 30).last.sent shouldBe 2
+  }
+
+  it should "resolve tombstone ids against the seen-row id space" in {
+    val run = registry.beginRun(spec, KIND_FULL)
+    // Dataset whose pocket ids are the LOCAL part of the OAI id (stripped)
+    registry.upsertSeenBatch(spec, Seq("11135836" -> "h1", "oai-x-42" -> "h2"), run)
+
+    val resolved = registry.resolveTombstoneIds(spec, Seq(
+      "oai:bra.uvt.nl:11135836",   // local part matches a seen row -> stripped
+      "oai:x:42",                  // full cleaned id matches a seen row -> full
+      "oai:bra.uvt.nl:99999999"    // matches nothing -> full cleaned fallback
+    ))
+    resolved shouldBe Seq("11135836", "oai-x-42", "oai-bra.uvt.nl-99999999")
+  }
+
   // === Phase 2: v1 -> v2 migration ===
 
   it should "migrate a v1 records.db in place" in {

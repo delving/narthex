@@ -904,7 +904,12 @@ class DatasetActor(val datasetContext: DatasetContext,
             }
             self ! GenerateSipZip
           case None =>
-            log.info("No incremental file, back to sleep")
+            // Deletes-only delta: the harvest brought no records but may have
+            // brought tombstones. Sync those to the registry + Hub3 directly —
+            // running the full pipeline for a deletion would reprocess and
+            // re-send the whole dataset.
+            log.info("No incremental file, syncing tombstones only")
+            syncTombstonesOnly()
         }
       }
       strategy match {
@@ -1045,7 +1050,18 @@ class DatasetActor(val datasetContext: DatasetContext,
           fastSaveScheduledOpt = None // Clear the flag
           fastProcessOnly = false
           fastSaveAfterProcessing = true
-          self ! StartProcessing(None)
+          // True incremental harvest (modifiedAfter set): pass the delta
+          // through so SourceProcessor parses ONLY the delta file and the
+          // save sends only it — dropping it here silently degraded every
+          // incremental harvest into a full reprocess + full re-send.
+          // FromScratchIncremental (modifiedAfter empty) keeps full
+          // semantics: its processed output must cover the whole source.
+          if (scheduled.modifiedAfter.isDefined) {
+            log.info(s"Incremental delta processing: ${scheduled.file.getName} (${dsInfo.spec})")
+            self ! StartProcessing(Some(scheduled))
+          } else {
+            self ! StartProcessing(None)
+          }
           goto(Idle) using Dormant
         case _ if fastProcessOnly && datasetContext.sipMapperOpt.isDefined =>
           log.info(s"Fast process mode: continuing to processing after SIP generation (no save)")
@@ -1144,6 +1160,37 @@ class DatasetActor(val datasetContext: DatasetContext,
         goto(Idle) using Dormant
       }
   }
+
+  // Deletes-only incremental harvest: stamp the tombstones and emit
+  // drop_records without touching the processing/saving pipeline. Unconfirmed
+  // drops stay pending in the registry and retry on the next save.
+  private def syncTombstonesOnly(): Unit =
+    if (orgContext.narthexConfig.registryEnabled) {
+      scala.util.Try {
+        val registry = orgContext.recordRegistry
+        val spec = dsInfo.spec
+        val rawIds = datasetContext.sourceRepoOpt.map(_.deletedIdSet.toSeq).getOrElse(Seq.empty)
+        if (rawIds.nonEmpty) {
+          val tombstoneIds = registry.resolveTombstoneIds(spec, rawIds)
+          val runId = registry.beginRun(spec, RecordRegistry.KIND_INCREMENT)
+          registry.upsertDeletedBatch(spec, tombstoneIds, runId)
+          val pendingDrops = registry.pendingDropBatch(spec, Int.MaxValue)
+          registry.completeRun(spec, runId)
+          if (pendingDrops.nonEmpty) {
+            log.info(s"Registry: deletes-only harvest, emitting drop_records for ${pendingDrops.size} ids ($spec)")
+            import context.dispatcher
+            dsInfo.dropRecordsByIds(pendingDrops).onComplete {
+              case scala.util.Success(_) =>
+                scala.util.Try(registry.confirmDropped(spec, pendingDrops))
+              case scala.util.Failure(ex) =>
+                log.warning(s"Registry: drop_records failed for deletes-only harvest, will retry next save ($spec): ${ex.getMessage}")
+            }
+          }
+        }
+      }.recover { case ex: Throwable =>
+        log.warning(s"Registry: tombstones-only sync failed for ${dsInfo.spec}: ${ex.getMessage}")
+      }
+    }
 
   // harvest_runs reliability: any WorkFailure closes whatever registry run is
   // still open for this dataset, so rows never sit 'running' forever. The FSM

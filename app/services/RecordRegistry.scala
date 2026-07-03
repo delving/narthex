@@ -12,7 +12,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 
 object RecordRegistry {
-  val SCHEMA_VERSION = "2"
+  val SCHEMA_VERSION = "3"
   val DB_FILENAME = "records.db"
 
   val STATUS_SEEN    = "seen"
@@ -41,6 +41,7 @@ object RecordRegistry {
     changed: Int,
     deleted: Int,
     seen: Int,
+    sent: Int,
     baseline: Boolean
   )
 
@@ -83,8 +84,20 @@ class RecordRegistry(datasetsDir: File) {
   def beginRun(specName: String, kind: String): Long =
     spec(specName).beginRun(kind)
 
-  def completeRun(specName: String, runId: Long): Unit =
-    spec(specName).completeRun(runId)
+  def completeRun(specName: String, runId: Long, sentCount: Int = 0): Unit =
+    spec(specName).completeRun(runId, sentCount)
+
+  /**
+   * Map raw OAI tombstone identifiers onto the id space of the seen rows.
+   * deleted.ids holds raw header ids (oai:x:123); the registry keys on the
+   * dataset's pocket ids, which are sometimes the full cleaned header id and
+   * sometimes just the local part (123). For each raw id, prefer whichever
+   * candidate variant already exists as a registry row; fall back to the full
+   * cleaned id. Without this, drops are emitted with ids Hub3 cannot match.
+   */
+  def resolveTombstoneIds(specName: String, rawIds: Seq[String]): Seq[String] =
+    if (rawIds.isEmpty) Seq.empty
+    else spec(specName).resolveTombstoneIds(rawIds)
 
   // Read paths guard on file existence: spec() would CREATE an empty
   // records.db, so browsing trends must never go through it for datasets
@@ -237,6 +250,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
         changed_count INTEGER,
         deleted_count INTEGER,
         added_count   INTEGER,
+        sent_count    INTEGER,
         note          TEXT
       )""")
 
@@ -245,18 +259,32 @@ private[services] class SpecRegistry(val datasetDir: File) {
         try { if (rs.next()) Option(rs.getString(1)) else None } finally rs.close()
       }
 
+      // Sequential upgrades: each case falls through to the next version's
+      // ALTERs so any historical db lands on the current schema.
+      def upgradeV1toV2(): Unit = {
+        logger.info(s"Migrating $dbFile from schema v1 to v2")
+        s.executeUpdate("ALTER TABLE records ADD COLUMN first_seen_run_id INTEGER")
+        s.executeUpdate("ALTER TABLE records ADD COLUMN last_changed_run_id INTEGER")
+        s.executeUpdate("ALTER TABLE harvest_runs ADD COLUMN added_count INTEGER")
+        // Best-effort backfill: v1 never recorded first-seen, so the oldest
+        // known association is last_seen. Prevents pre-migration records
+        // from ever counting as "added" retroactively.
+        s.executeUpdate("UPDATE records SET first_seen_run_id = last_seen_run_id WHERE first_seen_run_id IS NULL")
+      }
+      def upgradeV2toV3(): Unit = {
+        logger.info(s"Migrating $dbFile from schema v2 to v3")
+        s.executeUpdate("ALTER TABLE harvest_runs ADD COLUMN sent_count INTEGER")
+      }
+
       storedVersion match {
         case None =>
           s.executeUpdate(s"INSERT INTO schema_meta (k, v) VALUES ('schema_version', '$SCHEMA_VERSION')")
         case Some("1") =>
-          logger.info(s"Migrating $dbFile from schema v1 to v$SCHEMA_VERSION")
-          s.executeUpdate("ALTER TABLE records ADD COLUMN first_seen_run_id INTEGER")
-          s.executeUpdate("ALTER TABLE records ADD COLUMN last_changed_run_id INTEGER")
-          s.executeUpdate("ALTER TABLE harvest_runs ADD COLUMN added_count INTEGER")
-          // Best-effort backfill: v1 never recorded first-seen, so the oldest
-          // known association is last_seen. Prevents pre-migration records
-          // from ever counting as "added" retroactively.
-          s.executeUpdate("UPDATE records SET first_seen_run_id = last_seen_run_id WHERE first_seen_run_id IS NULL")
+          upgradeV1toV2()
+          upgradeV2toV3()
+          s.executeUpdate(s"UPDATE schema_meta SET v = '$SCHEMA_VERSION' WHERE k = 'schema_version'")
+        case Some("2") =>
+          upgradeV2toV3()
           s.executeUpdate(s"UPDATE schema_meta SET v = '$SCHEMA_VERSION' WHERE k = 'schema_version'")
         case Some(SCHEMA_VERSION) => // current
         case Some(other) =>
@@ -309,7 +337,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
     }
   }
 
-  def completeRun(runId: Long): Unit = synchronized {
+  def completeRun(runId: Long, sentCount: Int): Unit = synchronized {
     commitTx {
       val diff = computeRunDiff(runId)
       // First completed run that introduced every record it saw = the
@@ -317,7 +345,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
       val isBaseline =
         diff.added > 0 && diff.added == diff.seenTotal && !hasOtherCompletedRun(runId)
       val sql = """UPDATE harvest_runs
-                      SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?, added_count = ?,
+                      SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?, added_count = ?, sent_count = ?,
                           note = COALESCE(?, note)
                     WHERE run_id = ?"""
       val ps = conn.prepareStatement(sql)
@@ -328,10 +356,46 @@ private[services] class SpecRegistry(val datasetDir: File) {
         ps.setInt(4, diff.changed)
         ps.setInt(5, diff.deleted)
         ps.setInt(6, diff.added)
-        if (isBaseline) ps.setString(7, NOTE_BASELINE) else ps.setNull(7, java.sql.Types.VARCHAR)
-        ps.setLong(8, runId)
+        ps.setInt(7, sentCount)
+        if (isBaseline) ps.setString(8, NOTE_BASELINE) else ps.setNull(8, java.sql.Types.VARCHAR)
+        ps.setLong(9, runId)
         ps.executeUpdate()
       } finally ps.close()
+    }
+  }
+
+  /**
+   * Resolve raw OAI tombstone ids against the id space of existing rows.
+   * Candidates per raw id: the full cleaned id and the cleaned last-segment
+   * (after the final ':'). Prefer a candidate that already exists as a row.
+   */
+  def resolveTombstoneIds(rawIds: Seq[String]): Seq[String] = synchronized {
+    import record.PocketParser.cleanUpId
+    val candidates: Seq[(String, String)] = rawIds.map { raw =>
+      val full = cleanUpId(raw)
+      val local = cleanUpId(raw.substring(raw.lastIndexOf(':') + 1))
+      (full, local)
+    }
+    val allCandidates = candidates.flatMap { case (f, l) => Seq(f, l) }.distinct
+    val existing: Set[String] =
+      if (allCandidates.isEmpty) Set.empty
+      else {
+        val placeholders = allCandidates.map(_ => "?").mkString(",")
+        val ps = conn.prepareStatement(s"SELECT local_id FROM records WHERE local_id IN ($placeholders)")
+        try {
+          allCandidates.zipWithIndex.foreach { case (id, i) => ps.setString(i + 1, id) }
+          val rs = ps.executeQuery()
+          try {
+            val buf = scala.collection.mutable.Set.empty[String]
+            while (rs.next()) buf += rs.getString(1)
+            buf.toSet
+          } finally rs.close()
+        } finally ps.close()
+      }
+    candidates.map { case (full, local) =>
+      if (existing.contains(full)) full
+      else if (existing.contains(local)) local
+      else full
     }
   }
 
@@ -376,7 +440,8 @@ private[services] class SpecRegistry(val datasetDir: File) {
     val ps = conn.prepareStatement(
       """SELECT run_id, kind, started_at, completed_at, status,
                 COALESCE(added_count, 0), COALESCE(changed_count, 0),
-                COALESCE(deleted_count, 0), COALESCE(seen_count, 0), note
+                COALESCE(deleted_count, 0), COALESCE(seen_count, 0),
+                COALESCE(sent_count, 0), note
            FROM harvest_runs
           WHERE started_at >= ?
           ORDER BY run_id""")
@@ -396,7 +461,8 @@ private[services] class SpecRegistry(val datasetDir: File) {
             changed = rs.getInt(7),
             deleted = rs.getInt(8),
             seen = rs.getInt(9),
-            baseline = rs.getString(10) == NOTE_BASELINE
+            sent = rs.getInt(10),
+            baseline = rs.getString(11) == NOTE_BASELINE
           )
         }
         buf.toSeq

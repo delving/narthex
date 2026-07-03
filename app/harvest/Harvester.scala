@@ -441,12 +441,21 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                       sourceRepo.acceptFile(tempFileOpt.get, acceptZipReporter)
                   }
 
-                  // Save deleted record IDs file if any deleted records were found
+                  // Save deleted record IDs if any deleted records were found.
+                  // MERGE with the existing file instead of overwriting: the
+                  // file is the cumulative tombstone set used to filter parses
+                  // and stamp the registry — an overwrite silently un-deleted
+                  // every earlier tombstone not repeated in this harvest.
                   if (deletedRecordIds.nonEmpty) {
                     val deletedFile = new File(sourceRepo.sourceDir, "deleted.ids")
-                    val deletedContent = deletedRecordIds.mkString("\n")
-                    FileUtils.writeStringToFile(deletedFile, deletedContent, "UTF-8")
-                    log.info(s"Saved ${deletedRecordIds.size} deleted record IDs to: ${deletedFile.getAbsolutePath}")
+                    val existing: Set[String] =
+                      if (deletedFile.exists())
+                        scala.jdk.CollectionConverters.ListHasAsScala(
+                          FileUtils.readLines(deletedFile, "UTF-8")).asScala.filter(_.nonEmpty).toSet
+                      else Set.empty
+                    val merged = existing ++ deletedRecordIds
+                    FileUtils.writeStringToFile(deletedFile, merged.toSeq.sorted.mkString("\n"), "UTF-8")
+                    log.info(s"Saved ${deletedRecordIds.size} new deleted record IDs (${merged.size} total) to: ${deletedFile.getAbsolutePath}")
                   }
 
                   // Save error files if they exist

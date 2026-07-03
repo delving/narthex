@@ -40,7 +40,7 @@ object GraphSaver {
 
   /** Internal messages for thread-safe Future result handling */
   private case object RevisionReady
-  private case object ChunkSaved
+  private case class ChunkSaved(recordCount: Int)
   private case object RegistryDropsDone
   private case class AsyncFailure(ex: Throwable)
 
@@ -64,6 +64,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   var isIncremental = false
   var isExplicitFileSave = false
   var chunksSaved = 0
+  var recordsSent = 0
   var registryRunIdOpt: Option[Long] = None
 
   var reader: Option[GraphReader] = None
@@ -237,9 +238,10 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         sendGraphChunkOpt()
       }
 
-    case ChunkSaved =>
+    case ChunkSaved(recordCount) =>
       actorWork(context) {
         chunksSaved += 1
+        recordsSent += recordCount
         sendGraphChunkOpt()
       }
 
@@ -269,9 +271,9 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           }
           update.onComplete {
             case Success(_) =>
+              val ids = if (registryEnabled) localIdsInChunk(chunk) else Seq.empty
               if (registryEnabled) {
                 registryRunIdOpt.foreach { runId =>
-                  val ids = localIdsInChunk(chunk)
                   if (ids.nonEmpty) {
                     scala.util.Try(registry.confirmIndexedByIds(spec, ids, runId))
                       .recover { case ex: Throwable =>
@@ -280,7 +282,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
                   }
                 }
               }
-              selfRef ! ChunkSaved
+              selfRef ! ChunkSaved(ids.size)
             case Failure(ex) => selfRef ! AsyncFailure(ex)
           }
         }
@@ -350,10 +352,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         }
 
         // Close the registry run started by SourceProcessor. The registry
-        // computes the real per-run diff (added/changed/deleted) internally.
+        // computes the real per-run diff (added/changed/deleted) internally;
+        // recordsSent answers "how much did this save actually push to Hub3".
         if (registryEnabled) {
           registryRunIdOpt.foreach { runId =>
-            scala.util.Try(registry.completeRun(spec, runId))
+            scala.util.Try(registry.completeRun(spec, runId, recordsSent))
               .recover { case ex: Throwable =>
                 log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
               }
