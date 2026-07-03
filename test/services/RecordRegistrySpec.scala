@@ -288,6 +288,22 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     r3.deleted shouldBe 0
   }
 
+  it should "return the latest completed FULL run for manual-save adoption" in {
+    registry.latestCompletedFullRunId(spec) shouldBe None   // no db yet
+
+    val full1 = registry.beginRun(spec, KIND_FULL)
+    registry.completeRun(spec, full1)
+    val inc = registry.beginRun(spec, KIND_INCREMENT)
+    registry.completeRun(spec, inc)
+    val full2 = registry.beginRun(spec, KIND_FULL)
+    registry.completeRun(spec, full2)
+    val open = registry.beginRun(spec, KIND_FULL)           // still running
+
+    // Latest completed FULL, never the incremental or the open run
+    registry.latestCompletedFullRunId(spec) shouldBe Some(full2)
+    registry.runStatus(spec, open) shouldBe Some(RUN_RUNNING)
+  }
+
   it should "return empty run lists without creating a db for unknown specs" in {
     registry.listRuns("never-seen", 30) shouldBe empty
     registry.dailyRunDiffs("never-seen", 30) shouldBe empty

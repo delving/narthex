@@ -185,7 +185,17 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         isScheduled = !scheduledOpt.isEmpty
         isExplicitFileSave = scheduledOpt.isDefined
         isIncremental = isScheduled && !scheduledOpt.head.modifiedAfter.isEmpty
-        registryRunIdOpt = runIdOpt
+        // Manual saves ("start saving", fast-save from PROCESSED) carry no
+        // run id. Adopt the run that produced the processed output — the
+        // latest completed FULL run — so chunk confirms, the missing-sweep
+        // and completeRun happen exactly as in the harvest-chained flow.
+        registryRunIdOpt = runIdOpt.orElse {
+          if (registryEnabled && !isIncremental) {
+            val adopted = registry.latestCompletedFullRunId(spec)
+            adopted.foreach(id => log.info(s"Registry: manual save adopting run $id ($spec)"))
+            adopted
+          } else None
+        }
 
         val invalidFileOpt = scheduledOpt.map(_.file).filterNot { file =>
           file.getName.endsWith(".xml") || file.getName.endsWith(".xml.zst")

@@ -106,6 +106,15 @@ class RecordRegistry(datasetsDir: File) {
   def seenCountIfExists(specName: String): Option[Int] =
     if (dbFileExists(specName)) Some(spec(specName).count(STATUS_SEEN)) else None
 
+  /**
+   * The run that produced the current processed output. Manual saves carry no
+   * run id of their own and adopt this one so confirms/sweep/completeRun still
+   * happen. Must be a FULL run: sweeping with an incremental run id would mark
+   * everything that run didn't touch as deleted.
+   */
+  def latestCompletedFullRunId(specName: String): Option[Long] =
+    if (dbFileExists(specName)) spec(specName).latestCompletedFullRunId() else None
+
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
 
@@ -444,6 +453,21 @@ private[services] class SpecRegistry(val datasetDir: File) {
       ps.setString(3, note)
       ps.setString(4, RUN_RUNNING)
       ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def latestCompletedFullRunId(): Option[Long] = synchronized {
+    val ps = conn.prepareStatement(
+      """SELECT run_id FROM harvest_runs
+          WHERE status = ? AND kind = ?
+          ORDER BY run_id DESC LIMIT 1""")
+    try {
+      ps.setString(1, RUN_COMPLETED)
+      ps.setString(2, KIND_FULL)
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) Some(rs.getLong(1)) else None
+      } finally rs.close()
     } finally ps.close()
   }
 
