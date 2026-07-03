@@ -294,7 +294,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           if (registryEnabled && !isIncremental) {
             registryRunIdOpt.foreach { runId =>
               val swept = registry.markMissingForFullRun(spec, runId)
-              if (swept > 0) log.info(s"Registry: marked $swept records missing for full run $runId")
+              if (swept > 0) log.info(s"Registry: marked $swept records missing for full run $runId ($spec)")
             }
           }
 
@@ -306,7 +306,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
               val pendingDrops = registry.pendingDropBatch(spec, Int.MaxValue)
               if (pendingDrops.isEmpty) scala.concurrent.Future.successful(Seq.empty)
               else {
-                log.info(s"Registry: emitting drop_records for ${pendingDrops.size} ids")
+                log.info(s"Registry: emitting drop_records for ${pendingDrops.size} ids ($spec)")
                 datasetContext.dsInfo.dropRecordsByIds(pendingDrops).map(_ => pendingDrops)
               }
             } else scala.concurrent.Future.successful(Seq.empty)

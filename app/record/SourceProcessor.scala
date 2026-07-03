@@ -252,7 +252,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         runIdOpt.foreach { runId =>
           if (tombstoneIds.nonEmpty) {
             registry.upsertDeletedBatch(spec, tombstoneIds, runId)
-            log.info(s"Registry: stamped ${tombstoneIds.size} tombstoned records")
+            log.info(s"Registry: stamped ${tombstoneIds.size} tombstoned records ($spec)")
           }
         }
 
