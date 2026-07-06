@@ -109,9 +109,10 @@ class OrgActor (
   // Track which datasets are currently active (not in Idle state)
   var activeDatasets = Set.empty[String]
 
-  // Queue for pending operations when concurrency limit reached
-  // Priority queue: manual operations come before periodic/recovery
-  var operationQueue: Vector[QueuedOperation] = Vector.empty
+  // Pending operations live in the persistent job queue (queue.db, Phase
+  // A3b-1): queued work survives restarts. Semantics unchanged — semaphores
+  // still guard execution; this is only the waiting line.
+  private def jobQueue = orgContext.jobQueue
 
   // Track completed operations for observability stats
   var completedOperations: Vector[CompletedOperation] = Vector.empty
@@ -226,68 +227,49 @@ class OrgActor (
     } else {
       // Couldn't acquire semaphore - check why
       val isAlreadyActive = orgContext.semaphore.isActive(spec)
-      val alreadyQueued = operationQueue.exists(_.spec == spec)
 
       if (isAlreadyActive) {
         // Dataset is already processing - don't queue another operation
         log.warning(s"$spec is already active (processing/saving), ignoring $trigger request")
-      } else if (alreadyQueued) {
-        log.info(s"$spec already queued, ignoring duplicate request")
       } else {
-        // Not active and not queued - queue it (all workers busy)
-        val newOp = QueuedOperation(spec, message, trigger)
-        operationQueue = insertWithPriority(operationQueue, newOp)
-        val position = operationQueue.indexWhere(_.spec == spec) + 1
-        log.info(s"Queued $spec ($trigger) at position $position of ${operationQueue.length}")
+        services.JobPayload.encode(message) match {
+          case Some(payload) =>
+            if (jobQueue.enqueue(spec, payload, trigger))
+              log.info(s"Queued $spec ($trigger); queue size ${jobQueue.size()}")
+            else
+              log.info(s"$spec already queued, ignoring duplicate request")
+          case None =>
+            // Every operation message has a codec; reaching this is a bug.
+            log.error(s"Cannot queue unserializable message for $spec: $message — dropping")
+        }
       }
-    }
-  }
-
-  // Insert with priority: manual operations come before periodic/recovery
-  private def insertWithPriority(queue: Vector[QueuedOperation], op: QueuedOperation): Vector[QueuedOperation] = {
-    if (op.trigger == "manual") {
-      // Find the last manual operation position, insert after it
-      val lastManualIdx = queue.lastIndexWhere(_.trigger == "manual")
-      if (lastManualIdx >= 0) {
-        val (before, after) = queue.splitAt(lastManualIdx + 1)
-        (before :+ op) ++ after
-      } else {
-        // No manual ops, insert at front
-        op +: queue
-      }
-    } else {
-      // Non-manual operations go to the end
-      queue :+ op
     }
   }
 
   private def processQueue(): Unit = {
-    // Try to dequeue and execute pending operations
-    // Skip items whose spec is already active and try the next one
-    var remainingQueue = operationQueue
-    var newQueue = Vector.empty[QueuedOperation]
+    // Try to dispatch queued operations in priority order; skip specs that
+    // are already active and leave them queued for a later pass.
     var processed = 0
-
-    while (remainingQueue.nonEmpty && orgContext.semaphore.availablePermits() > 0) {
-      val op = remainingQueue.head
-      remainingQueue = remainingQueue.tail
-
-      if (orgContext.semaphore.tryAcquire(op.spec)) {
-        // Got semaphore, execute this operation
-        processed += 1
-        log.info(s"Dequeued ${op.spec} (${op.trigger}), starting execution")
-        routeToDatasetActor(op.spec, op.message, op.trigger)
-      } else {
-        // Couldn't acquire (spec already active), keep in queue for later
-        newQueue = newQueue :+ op
+    jobQueue.queued().foreach { job =>
+      if (orgContext.semaphore.availablePermits() > 0 && orgContext.semaphore.tryAcquire(job.spec)) {
+        services.JobPayload.decode(job.payload, orgContext) match {
+          case Some(message) =>
+            processed += 1
+            jobQueue.remove(job.jobId)
+            log.info(s"Dequeued ${job.spec} (${job.trigger}), starting execution")
+            routeToDatasetActor(job.spec, message, job.trigger)
+          case None =>
+            // Undecodable row (e.g. from a future/older version): drop it
+            // loudly rather than wedging the queue.
+            jobQueue.remove(job.jobId)
+            orgContext.semaphore.release(job.spec)
+            log.error(s"Dropped undecodable queued job for ${job.spec}: ${job.payload}")
+        }
       }
     }
 
-    // Combine: items we couldn't process + items we didn't reach
-    operationQueue = newQueue ++ remainingQueue
-
     if (processed > 0) {
-      log.info(s"Processed $processed items from queue, ${operationQueue.length} remaining")
+      log.info(s"Processed $processed items from queue, ${jobQueue.size()} remaining")
     }
   }
 
@@ -345,11 +327,7 @@ class OrgActor (
   }
 
   private def removeFromQueue(spec: String): Unit = {
-    val wasQueued = operationQueue.exists(_.spec == spec)
-    if (wasQueued) {
-      operationQueue = operationQueue.filterNot(_.spec == spec)
-      log.info(s"Removed $spec from queue")
-    }
+    if (jobQueue.removeSpec(spec)) log.info(s"Removed $spec from queue")
   }
 
   private def calculateCompletionStats(): CompletionStats = {
@@ -452,8 +430,8 @@ class OrgActor (
       import scala.jdk.CollectionConverters._
       val processing = orgContext.semaphore.activeSpecs().asScala.toList
       val saving = orgContext.saveSemaphore.activeSpecs().asScala.toList
-      val queued = operationQueue.zipWithIndex.map { case (op, idx) =>
-        (op.spec, op.trigger, idx + 1)
+      val queued = jobQueue.queued().zipWithIndex.map { case (job, idx) =>
+        (job.spec, job.trigger, idx + 1)
       }.toList
       val stats = calculateCompletionStats()
       // Convert CompletedOperation to CompletionDetail for frontend
@@ -463,9 +441,7 @@ class OrgActor (
       sender() ! QueueStatus(processing, saving, queued, stats, details)
 
     case CancelQueuedOperation(spec) =>
-      val wasQueued = operationQueue.exists(_.spec == spec)
-      if (wasQueued) {
-        removeFromQueue(spec)
+      if (jobQueue.removeSpec(spec)) {
         sender() ! CancelResult(true, s"Removed $spec from queue")
       } else {
         sender() ! CancelResult(false, s"$spec was not in queue")
@@ -476,13 +452,14 @@ class OrgActor (
       log.info(s"Children: ${context.children}")
 
     case ProcessQueueOnStartup =>
-      log.info(s"Processing queue on startup: ${operationQueue.length} items queued, ${orgContext.semaphore.availablePermits()} permits available")
+      // Rows queued before a restart are still here — drain them.
+      log.info(s"Processing queue on startup: ${jobQueue.size()} items queued, ${orgContext.semaphore.availablePermits()} permits available")
       processQueue()
 
     case PeriodicQueueCheck =>
       // Safety net: periodically try to process queue in case semaphore releases were missed
-      if (operationQueue.nonEmpty && orgContext.semaphore.availablePermits() > 0) {
-        log.info(s"Periodic queue check: ${operationQueue.length} queued, ${orgContext.semaphore.availablePermits()} permits available - processing")
+      if (jobQueue.size() > 0 && orgContext.semaphore.availablePermits() > 0) {
+        log.info(s"Periodic queue check: ${jobQueue.size()} queued, ${orgContext.semaphore.availablePermits()} permits available - processing")
         processQueue()
       }
 

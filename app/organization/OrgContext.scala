@@ -66,6 +66,8 @@ class OrgContext @Inject() (
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
   val trendsSummaryFile = new File(orgRoot, "trends_summary.json")
+  // Persistent job queue (queue.db): queued operations survive restarts
+  lazy val jobQueue = new services.JobQueue(new File(orgRoot, "queue.db"))
   val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
   val semaphore = new Semaphore(narthexConfig.concurrencyLimit)
   val saveSemaphore = new Semaphore(narthexConfig.concurrencyLimit)

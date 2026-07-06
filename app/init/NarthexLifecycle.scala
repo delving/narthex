@@ -55,6 +55,7 @@ class NarthexLifecycle @Inject() (
     harvestTicker.cancel()
     GlobalWorkflowDatabase.close()
     orgContext.recordRegistry.close()
+    orgContext.jobQueue.close()
 
     Future.successful(())
   }
