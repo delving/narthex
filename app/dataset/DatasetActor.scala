@@ -146,7 +146,7 @@ object DatasetActor {
 
   case object FromScratchIncremental extends HarvestStrategy
 
-  case class StartHarvest(strategy: HarvestStrategy)
+  case class StartHarvest(strategy: HarvestStrategy, trigger: String = "manual")
 
   case class Command(name: String)
 
@@ -318,10 +318,21 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   /** Prepare source repo, build kickoff message, create harvester actor and send kickoff.
     * Returns Some(harvesterRef) on success, None if harvest type is unknown. */
-  private def prepareAndStartHarvest(strategy: HarvestStrategy): Option[ActorRef] = {
+  private def prepareAndStartHarvest(strategy: HarvestStrategy, trigger: String = "manual"): Option[ActorRef] = {
     def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
     harvestTypeFromString(prop(harvestType)).map { ht =>
       datasetContext.dropTree()
+
+      // The harvest joins the run (Phase A3a): the run starts with only the
+      // harvest stage — the continuation depends on the outcome and is
+      // replanned at HarvestComplete (or the run is discarded for a no-op
+      // noRecordsMatch tick). Sample harvests stay outside the run model.
+      if (strategy != Sample) {
+        val incremental = strategy match { case _: ModifiedAfter => true; case _ => false }
+        val runId = beginPlannedRun(PipelinePlan.forHarvest(incremental), trigger)
+        orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_HARVEST,
+          Some(play.api.libs.json.Json.stringify(play.api.libs.json.Json.obj("strategy" -> strategy.toString))))
+      }
 
       // Prepare source repo based on strategy
       strategy match {
@@ -736,12 +747,12 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       stay()
 
-    case Event(StartHarvest(strategy), Dormant) =>
+    case Event(StartHarvest(strategy, trigger), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
-      prepareAndStartHarvest(strategy) match {
+      prepareAndStartHarvest(strategy, trigger) match {
         case Some(harvester) =>
-          ensureWorkflowTracking("manual")
+          ensureWorkflowTracking(trigger)
           workflowStartTime = Some(new DateTime())
           goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
         case None =>
@@ -750,11 +761,11 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     // Handle StartHarvest when not in Dormant state (e.g., after previous harvest completed and dataset is in PROCESSED state)
     // This is the fix for stuck actors holding semaphores when scheduled harvests can't start
-    case Event(StartHarvest(strategy), data) =>
+    case Event(StartHarvest(strategy, trigger), data) =>
       log.warning(s"Received StartHarvest($strategy) while in non-Dormant state: $data")
       log.info(s"Resetting to Dormant and reprocessing StartHarvest for dataset ${dsInfo.spec}")
       // First transition to Dormant state, then resend the StartHarvest message
-      self ! StartHarvest(strategy)
+      self ! StartHarvest(strategy, trigger)
       stay() using Dormant
 
     case Event(AdoptSource(file, orgContext), Dormant) =>
@@ -880,6 +891,20 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch),
                active: Active) =>
+      // The run opened at harvest start; Sample harvests have none.
+      val harvestRunIdOpt: Option[Long] =
+        if (strategy == Sample) None
+        else orgContext.recordRegistry.openRun(dsInfo.spec).map(_._1)
+      harvestRunIdOpt.foreach { runId =>
+        orgContext.recordRegistry.stageCompleted(dsInfo.spec, runId, PipelinePlan.STAGE_HARVEST,
+          Some(play.api.libs.json.Json.stringify(play.api.libs.json.Json.obj(
+            "noRecordsMatch" -> noRecordsMatch, "file" -> fileOpt.map(_.getName)))))
+      }
+      def discardHarvestRun(): Unit =
+        harvestRunIdOpt.foreach(id => orgContext.recordRegistry.discardRun(dsInfo.spec, id))
+      def completeHarvestRun(): Unit =
+        harvestRunIdOpt.foreach(id => scala.util.Try(orgContext.recordRegistry.completeRun(dsInfo.spec, id)))
+
       def processIncremental(fileOpt: Option[File],
                              noRecordsMatch: Boolean,
                              mod: Option[DateTime]) = {
@@ -896,6 +921,9 @@ class DatasetActor(val datasetContext: DatasetContext,
           case true =>
             logger.debug(
               "NoRecordsMatch, so setting state to Incremental Saved")
+            // Quiet tick: nothing fetched, nothing to audit — a completed
+            // all-zero run every 5 minutes would be noise, not history.
+            discardHarvestRun()
             dsInfo.setState(INCREMENTAL_SAVED)
             if (dsInfo
                   .getLiteralProp(harvestIncrementalMode)
@@ -912,8 +940,13 @@ class DatasetActor(val datasetContext: DatasetContext,
           case Some(file) =>
             // Always regenerate SIP after incremental harvest to keep pockets.xml current
             log.info(s"Incremental harvest complete, regenerating SIP from all source files")
-            val plan = PipelinePlan.afterHarvest(datasetContext.sipMapperOpt.isDefined, mod, file)
-            val runId = beginPlannedRun(plan, trigger = "harvest")
+            val continuation = PipelinePlan.afterHarvest(datasetContext.sipMapperOpt.isDefined, mod, file)
+            val runId = harvestRunIdOpt.getOrElse(beginPlannedRun(continuation, trigger = "harvest"))
+            harvestRunIdOpt.foreach { id =>
+              val replanned = PipelinePlan.harvestThen(continuation)
+              orgContext.recordRegistry.updateRunPlan(dsInfo.spec, id, replanned.toJson)
+              log.info(s"Replanned run $id (${dsInfo.spec}): ${replanned.stages.mkString(" -> ")}")
+            }
             orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
             self ! GenerateSipZip
           case None =>
@@ -922,7 +955,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             // running the full pipeline for a deletion would reprocess and
             // re-send the whole dataset.
             log.info("No incremental file, syncing tombstones only")
-            syncTombstonesOnly()
+            syncTombstonesOnly(harvestRunIdOpt)
         }
       }
       strategy match {
@@ -939,6 +972,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
             dsInfo.setRecordCount(0)
             dsInfo.setProcessedRecordCounts(0, 0)
+            completeHarvestRun()   // rare and significant — keep the audit row
             orgContext.semaphore.release(dsInfo.spec)
           } else {
             dsInfo.resetToSourced()
@@ -948,12 +982,16 @@ class DatasetActor(val datasetContext: DatasetContext,
             // intent rode the strategy; the chain is a planned run.
             if (autoProcess) {
               log.info(s"Auto-continuing to Make SIP → Process for ${dsInfo.spec}")
-              val plan = PipelinePlan.afterFirstHarvestAutoProcess(datasetContext.sipMapperOpt.isDefined)
-              val runId = beginPlannedRun(plan, trigger = "discovery")
+              val continuation = PipelinePlan.afterFirstHarvestAutoProcess(datasetContext.sipMapperOpt.isDefined)
+              val runId = harvestRunIdOpt.getOrElse(beginPlannedRun(continuation, trigger = "discovery"))
+              harvestRunIdOpt.foreach { id =>
+                orgContext.recordRegistry.updateRunPlan(dsInfo.spec, id, PipelinePlan.harvestThen(continuation).toJson)
+              }
               orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
               self ! GenerateSipZip
               // Don't release semaphore - will be released after processing completes
             } else {
+              completeHarvestRun()
               // Release semaphore since FromScratch harvest is complete
               orgContext.semaphore.release(dsInfo.spec)
             }
@@ -971,6 +1009,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.setRecordCount(0)
             dsInfo.setProcessedRecordCounts(0, 0)
             dsInfo.disableInNaveIndex()
+            completeHarvestRun()
             orgContext.semaphore.release(dsInfo.spec)
           } else {
             processIncremental(fileOpt, noRecordsMatch, None)
@@ -1181,17 +1220,27 @@ class DatasetActor(val datasetContext: DatasetContext,
   // Deletes-only incremental harvest: stamp the tombstones and emit
   // drop_records without touching the processing/saving pipeline. Unconfirmed
   // drops stay pending in the registry and retry on the next save.
-  private def syncTombstonesOnly(): Unit =
-    if (orgContext.narthexConfig.registryEnabled) {
+  // The harvest's own run is replanned to [harvest, reconcile] and reused;
+  // a sync that turns out to be a no-op discards it (quiet-tick noise guard).
+  private def syncTombstonesOnly(harvestRunIdOpt: Option[Long]): Unit =
+    if (!orgContext.narthexConfig.registryEnabled) {
+      // Registry semantics off: nothing to sync, don't leave the run open.
+      harvestRunIdOpt.foreach(id => scala.util.Try(orgContext.recordRegistry.discardRun(dsInfo.spec, id)))
+    } else {
       scala.util.Try {
         val registry = orgContext.recordRegistry
         val spec = dsInfo.spec
         val rawIds = datasetContext.sourceRepoOpt.map(_.deletedIdSet.toSeq).getOrElse(Seq.empty)
         val tombstoneIds = if (rawIds.nonEmpty) registry.resolveTombstoneIds(spec, rawIds) else Seq.empty
         // deleted.ids is cumulative and re-read on every quiet tick; don't
-        // open a no-op run when everything in it is already dropped-and-sent.
-        if (tombstoneIds.nonEmpty && !registry.allTombstonesSynced(spec, tombstoneIds)) {
-          val runId = registry.beginRun(spec, RecordRegistry.KIND_INCREMENT)
+        // keep a no-op run when everything in it is already dropped-and-sent.
+        if (tombstoneIds.isEmpty || registry.allTombstonesSynced(spec, tombstoneIds)) {
+          harvestRunIdOpt.foreach(id => registry.discardRun(spec, id))
+        } else {
+          val runId = harvestRunIdOpt.getOrElse(registry.beginRun(spec, RecordRegistry.KIND_INCREMENT))
+          harvestRunIdOpt.foreach { id =>
+            registry.updateRunPlan(spec, id, PipelinePlan.harvestDeletesOnly.toJson)
+          }
           registry.stageStarted(spec, runId, "reconcile", Some(play.api.libs.json.Json.stringify(
             play.api.libs.json.Json.obj("deletesOnly" -> true, "tombstones" -> tombstoneIds.size))))
           registry.stampTombstones(spec, rawIds, runId)
@@ -1345,13 +1394,13 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
 
     // Handle StartHarvest while in retry mode (triggered by PeriodicHarvest or manual retry)
-    case Event(StartHarvest(strategy), InRetry(message, retryCount)) =>
+    case Event(StartHarvest(strategy, _), InRetry(message, retryCount)) =>
       log.info(s"Starting retry harvest attempt #${retryCount + 1} for ${dsInfo.spec}")
 
       // Increment retry count
       val newCount = dsInfo.incrementRetryCount()
 
-      prepareAndStartHarvest(strategy) match {
+      prepareAndStartHarvest(strategy, trigger = "retry") match {
         case Some(harvester) =>
           ensureWorkflowTracking("retry")
           workflowStartTime = Some(new DateTime())

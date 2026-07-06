@@ -387,6 +387,29 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.runStatus(spec, fresh) shouldBe Some(RUN_RUNNING)
   }
 
+  it should "replan and discard runs (harvest joins the run)" in {
+    val runId = registry.beginRun(spec, KIND_INCREMENT, trigger = Some("periodic"), plan = Some("""{"stages":["harvest"]}"""))
+    registry.runPlan(spec, runId) shouldBe Some("""{"stages":["harvest"]}""")
+
+    registry.updateRunPlan(spec, runId, """{"stages":["harvest","reconcile"]}""")
+    registry.runPlan(spec, runId) shouldBe Some("""{"stages":["harvest","reconcile"]}""")
+
+    // discard: a no-op quiet tick leaves no trace
+    registry.stageStarted(spec, runId, "harvest")
+    registry.discardRun(spec, runId)
+    registry.runStatus(spec, runId) shouldBe None
+    registry.runStages(spec, runId) shouldBe empty
+
+    // discard never touches completed runs — row NOR stages
+    val done = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, done, "process")
+    registry.stageCompleted(spec, done, "process")
+    registry.completeRun(spec, done)
+    registry.discardRun(spec, done)
+    registry.runStatus(spec, done) shouldBe Some(RUN_COMPLETED)
+    registry.runStages(spec, done) shouldBe Seq("process" -> "completed")
+  }
+
   it should "record tombstones with raw ids via stampTombstones" in {
     val run1 = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("11135836" -> "h1"), run1)

@@ -92,6 +92,19 @@ class RecordRegistry(datasetsDir: File) {
   def runPlan(specName: String, runId: Long): Option[String] =
     if (dbFileExists(specName)) spec(specName).runPlan(runId) else None
 
+  /** Replan a running run (harvest outcome decides the continuation). */
+  def updateRunPlan(specName: String, runId: Long, planJson: String): Unit =
+    spec(specName).updateRunPlan(runId, planJson)
+
+  /**
+   * Discard a still-running run that turned out to be a no-op (e.g. a
+   * noRecordsMatch harvest tick) — deleting beats completing here because
+   * quiet 5-minute ticks would otherwise pile up hundreds of empty rows a
+   * day. Only removes runs still in 'running' state.
+   */
+  def discardRun(specName: String, runId: Long): Unit =
+    if (dbFileExists(specName)) spec(specName).discardRun(runId)
+
   def completeRun(specName: String, runId: Long, sentCount: Int = 0): Unit =
     spec(specName).completeRun(runId, sentCount)
 
@@ -434,6 +447,28 @@ private[services] class SpecRegistry(val datasetDir: File) {
         if (rs.next()) Option(rs.getString(1)) else None
       } finally rs.close()
     } finally ps.close()
+  }
+
+  def updateRunPlan(runId: Long, planJson: String): Unit = synchronized {
+    commitTx {
+      val ps = conn.prepareStatement("UPDATE runs SET plan = ? WHERE run_id = ?")
+      try {
+        ps.setString(1, planJson)
+        ps.setLong(2, runId)
+        ps.executeUpdate()
+      } finally ps.close()
+    }
+  }
+
+  def discardRun(runId: Long): Unit = synchronized {
+    commitTx {
+      val ps = conn.prepareStatement(s"DELETE FROM runs WHERE run_id = ? AND status = '$RUN_RUNNING'")
+      val removed = try { ps.setLong(1, runId); ps.executeUpdate() } finally ps.close()
+      if (removed > 0) {
+        val psStages = conn.prepareStatement("DELETE FROM run_stages WHERE run_id = ?")
+        try { psStages.setLong(1, runId); psStages.executeUpdate() } finally psStages.close()
+      }
+    }
   }
 
   // === run_stages: per-stage audit trail (Phase A1 write-through) ===

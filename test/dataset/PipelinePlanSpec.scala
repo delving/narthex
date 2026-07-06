@@ -69,6 +69,29 @@ class PipelinePlanSpec extends AnyFlatSpec with Matchers {
     plan.nextAfter("unknown") shouldBe None
   }
 
+  // === harvest-initiated runs: plan-then-replan (Phase A3a) ===
+
+  "forHarvest" should "start with only the harvest stage" in {
+    forHarvest(incremental = true).stages shouldBe List(STAGE_HARVEST)
+    forHarvest(incremental = true).kind shouldBe RecordRegistry.KIND_INCREMENT
+    forHarvest(incremental = false).kind shouldBe RecordRegistry.KIND_FULL
+  }
+
+  "harvestThen" should "prefix the decided continuation with the harvest stage" in {
+    val replanned = harvestThen(afterHarvest(hasMapper = true, Some(mod), delta))
+    replanned.stages shouldBe List(STAGE_HARVEST, STAGE_GENERATE_SIP, STAGE_PROCESS, STAGE_SAVE, STAGE_RECONCILE)
+    replanned.incremental shouldBe true
+    replanned.scheduledForProcessing.map(_.file.getAbsolutePath) shouldBe Some(delta.getAbsolutePath)
+    // nextAfter still walks correctly with the prefix
+    replanned.nextAfter(STAGE_GENERATE_SIP) shouldBe Some(STAGE_PROCESS)
+  }
+
+  "harvestDeletesOnly" should "plan tombstone sync without the pipeline" in {
+    harvestDeletesOnly.stages shouldBe List(STAGE_HARVEST, STAGE_RECONCILE)
+    harvestDeletesOnly.includes(STAGE_PROCESS) shouldBe false
+    harvestDeletesOnly.includes(STAGE_SAVE) shouldBe false
+  }
+
   // === persistence round-trip: the plan must survive the run row ===
 
   "Plan JSON" should "round-trip including the delta context" in {

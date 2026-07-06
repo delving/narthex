@@ -211,7 +211,7 @@ class OrgActor (
 
     // Sample harvests bypass the queue entirely (for testing purposes)
     val isSampleHarvest = message match {
-      case StartHarvest(Sample) => true
+      case StartHarvest(Sample, _) => true
       case Command(cmd) if cmd == "start sample harvest" => true
       case _ => false
     }

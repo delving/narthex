@@ -41,6 +41,7 @@ import services.RecordRegistry
  */
 object PipelinePlan {
 
+  val STAGE_HARVEST      = "harvest"
   val STAGE_GENERATE_SIP = "generate_sip"
   val STAGE_PROCESS      = "process"
   val STAGE_SAVE         = "save"
@@ -175,4 +176,31 @@ object PipelinePlan {
   /** Source adoption (upload): regenerate the SIP, then stop. */
   def afterAdoption: Plan =
     fullChain(List(STAGE_GENERATE_SIP))
+
+  /**
+   * A harvest-initiated run starts with only [harvest] — the continuation
+   * depends on the harvest outcome and is REPLANNED at HarvestComplete
+   * (harvest-prefixed continuation, deletes-only reconcile, or discarded
+   * entirely for a no-op noRecordsMatch tick).
+   */
+  def forHarvest(incremental: Boolean): Plan = Plan(
+    stages = List(STAGE_HARVEST),
+    kind = if (incremental) RecordRegistry.KIND_INCREMENT else RecordRegistry.KIND_FULL,
+    incremental = incremental,
+    deltaFilePath = None,
+    modifiedAfterIso = None
+  )
+
+  /** Replan: prefix the decided continuation with the completed harvest stage. */
+  def harvestThen(continuation: Plan): Plan =
+    continuation.copy(stages = STAGE_HARVEST :: continuation.stages)
+
+  /** Replan for a deletes-only delta: tombstone sync without the pipeline. */
+  def harvestDeletesOnly: Plan = Plan(
+    stages = List(STAGE_HARVEST, STAGE_RECONCILE),
+    kind = RecordRegistry.KIND_INCREMENT,
+    incremental = true,
+    deltaFilePath = None,
+    modifiedAfterIso = None
+  )
 }
