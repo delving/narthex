@@ -310,6 +310,18 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     new File(new File(tempDir, "never-seen"), DB_FILENAME).exists() shouldBe false
   }
 
+  it should "report tombstones synced only when deleted and sent" in {
+    registry.allTombstonesSynced(spec, Seq.empty) shouldBe true
+    registry.allTombstonesSynced(spec, Seq("a")) shouldBe false   // no db/rows yet
+
+    val run = registry.beginRun(spec, KIND_INCREMENT)
+    registry.upsertDeleted(spec, "a", run)
+    registry.allTombstonesSynced(spec, Seq("a")) shouldBe false   // pending drop
+    registry.confirmDropped(spec, Seq("a"))
+    registry.allTombstonesSynced(spec, Seq("a")) shouldBe true    // dropped + sent
+    registry.allTombstonesSynced(spec, Seq("a", "b")) shouldBe false  // b unknown
+  }
+
   it should "record the sent count on completeRun" in {
     val run = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run)

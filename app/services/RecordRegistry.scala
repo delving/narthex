@@ -120,6 +120,15 @@ class RecordRegistry(datasetsDir: File) {
     if (dbFileExists(specName)) Some(spec(specName).count(STATUS_SEEN)) else None
 
   /**
+   * True when every id is already a deleted row that has been sent to Hub3.
+   * Lets the deletes-only harvest path skip opening a no-op run for the
+   * cumulative deleted.ids re-read on every quiet tick.
+   */
+  def allTombstonesSynced(specName: String, localIds: Seq[String]): Boolean =
+    localIds.isEmpty ||
+      (dbFileExists(specName) && spec(specName).allTombstonesSynced(localIds))
+
+  /**
    * The run that produced the current processed output. Manual saves carry no
    * run id of their own and adopt this one so confirms/sweep/completeRun still
    * happen. Must be a FULL run: sweeping with an incremental run id would mark
@@ -744,6 +753,22 @@ private[services] class SpecRegistry(val datasetDir: File) {
         ps.executeBatch()
       } finally ps.close()
     }
+  }
+
+  def allTombstonesSynced(localIds: Seq[String]): Boolean = synchronized {
+    if (localIds.isEmpty) return true
+    val placeholders = localIds.map(_ => "?").mkString(",")
+    val ps = conn.prepareStatement(
+      s"""SELECT COUNT(*) FROM records
+           WHERE local_id IN ($placeholders)
+             AND status = '$STATUS_DELETED'
+             AND last_sent_run_id IS NOT NULL
+             AND last_sent_run_id >= last_seen_run_id""")
+    try {
+      localIds.zipWithIndex.foreach { case (id, i) => ps.setString(i + 1, id) }
+      val rs = ps.executeQuery()
+      try { rs.next(); rs.getInt(1) == localIds.size } finally rs.close()
+    } finally ps.close()
   }
 
   def pendingCounts(): PendingCounts = synchronized {

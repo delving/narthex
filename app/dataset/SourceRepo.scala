@@ -468,8 +468,9 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
     val cachedPockets = new File(home, "pockets.xml.gz")
+    val zipFiles = listZipFiles
 
-    if (cachedPockets.exists()) {
+    if (cachedPockets.exists() && zipFiles.size <= 1) {
       // Fast path: stream cached pockets directly (harvest case)
       logger.info(s"Using cached pockets from ${cachedPockets.getName} (${cachedPockets.length()} bytes)")
       val gzIn = new GZIPInputStream(new BufferedInputStream(new FileInputStream(cachedPockets), 65536))
@@ -487,6 +488,9 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       recordCount
     } else {
       // Slow path: parse from source ZIPs (file upload case)
+      if (cachedPockets.exists()) {
+        logger.info(s"Ignoring cached pockets from ${cachedPockets.getName}: ${zipFiles.size} source files retained")
+      }
       logger.info("No cached pockets found, parsing from source files")
       var recordCount = 0
       val bufferedOut = new BufferedOutputStream(sourceOutputStream, 65536)  // 64KB buffer for faster I/O

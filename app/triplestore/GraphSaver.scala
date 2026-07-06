@@ -66,6 +66,8 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   var chunksSaved = 0
   var recordsSent = 0
   var registryRunIdOpt: Option[Long] = None
+  var expectedIndexIds = Set.empty[String]
+  var registryIndexFiltering = false
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
@@ -74,6 +76,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   private val registryEnabled = orgContext.narthexConfig.registryEnabled
   private val keepRevisionSweep = orgContext.narthexConfig.registryKeepRevisionSweep
   private val spec = datasetContext.dsInfo.spec
+  private val dropBatchSize = 10000
 
   private def localIdsInChunk(chunk: GraphChunk): Seq[String] = {
     val dsInfo = chunk.dsInfo
@@ -86,6 +89,29 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           .toOption
           .map(_._2)
       }
+  }
+
+  private def processedInvalidCount: Int =
+    datasetContext.dsInfo
+      .getLiteralProp(triplestore.GraphProperties.processedInvalid)
+      .flatMap(value => scala.util.Try(value.toInt).toOption)
+      .getOrElse(0)
+
+  private def emitPendingDrops(): scala.concurrent.Future[Unit] = {
+    def loop(): scala.concurrent.Future[Unit] = {
+      val pendingDrops = registry.pendingDropBatch(spec, dropBatchSize)
+      if (pendingDrops.isEmpty) scala.concurrent.Future.successful(())
+      else {
+        log.info(s"Registry: emitting drop_records for ${pendingDrops.size} ids ($spec)")
+        datasetContext.dsInfo.dropRecordsByIds(pendingDrops).map { _ =>
+          registry.confirmDropped(spec, pendingDrops)
+          ()
+        }.flatMap(_ => loop())
+      }
+    }
+
+    if (registryEnabled) loop()
+    else scala.concurrent.Future.successful(())
   }
   
   override def postStop(): Unit = {
@@ -206,11 +232,28 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             s"SaveGraphs received non-processed file ${file.getName}; expected .xml or .xml.zst")
         }
 
+        expectedIndexIds =
+          if (registryEnabled) registry.pendingIndexBatch(spec, Int.MaxValue).map(_._1).toSet
+          else Set.empty[String]
+        val includeLocalIdsOpt =
+          if (registryEnabled && (registryRunIdOpt.isDefined || expectedIndexIds.nonEmpty)) Some(expectedIndexIds)
+          else None
+        registryIndexFiltering = includeLocalIdsOpt.isDefined
+        if (registryEnabled) {
+          includeLocalIdsOpt match {
+            case Some(_) =>
+              log.info(s"Registry: ${expectedIndexIds.size} pending index record(s) will be sent for $spec")
+            case None =>
+              log.warning(s"Registry: no run/pending rows for $spec; falling back to full processed-file send")
+          }
+        }
+
         reader = Some(
           datasetContext.processedRepo.createGraphReaderXML(
             scheduledOpt.map(_.file),
             saveTime,
-            progressReporter))
+            progressReporter,
+            includeLocalIdsOpt))
 
         val doRevisionSweep = !isIncremental && (!registryEnabled || keepRevisionSweep)
         if (doRevisionSweep) {
@@ -293,8 +336,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         reader.foreach(_.close())
         reader = None
 
-        if (isExplicitFileSave && chunksSaved == 0) {
+        if (isExplicitFileSave && chunksSaved == 0 && (!registryEnabled || (registryIndexFiltering && expectedIndexIds.nonEmpty))) {
           failure(new RuntimeException("Explicit processed-file save completed with zero graph chunks"))
+        } else if (registryIndexFiltering && recordsSent < expectedIndexIds.size) {
+          failure(new RuntimeException(
+            s"Registry save for $spec found only $recordsSent of ${expectedIndexIds.size} pending index records in processed output"))
         } else {
           // Full-harvest registry sweep: mark records not seen this run as
           // deleted so they get drop_records actions below. Deliberately runs
@@ -303,35 +349,21 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           // next innocuous incremental save would mass-drop live records.
           // Incremental saves skip the sweep — they see only the delta and
           // cannot reason about the absent set.
-          if (registryEnabled && !isIncremental) {
+          if (registryEnabled && !isIncremental && processedInvalidCount == 0) {
             registryRunIdOpt.foreach { runId =>
               val swept = registry.markMissingForFullRun(spec, runId)
               if (swept > 0) log.info(s"Registry: marked $swept records missing for full run $runId ($spec)")
             }
+          } else if (registryEnabled && !isIncremental) {
+            log.warning(s"Registry: skipping missing-record sweep for $spec because processedInvalid=$processedInvalidCount")
           }
 
           // Registry-driven drops: explicit drop_records for every record
           // the registry knows is deleted (OAI tombstones + full-run sweep
           // misses). Runs for both full and incremental saves.
-          val dropsFuture: scala.concurrent.Future[Seq[String]] =
-            if (registryEnabled) {
-              val pendingDrops = registry.pendingDropBatch(spec, Int.MaxValue)
-              if (pendingDrops.isEmpty) scala.concurrent.Future.successful(Seq.empty)
-              else {
-                log.info(s"Registry: emitting drop_records for ${pendingDrops.size} ids ($spec)")
-                datasetContext.dsInfo.dropRecordsByIds(pendingDrops).map(_ => pendingDrops)
-              }
-            } else scala.concurrent.Future.successful(Seq.empty)
-
           val selfRef = self
-          dropsFuture.onComplete {
-            case Success(droppedIds) =>
-              if (registryEnabled && droppedIds.nonEmpty) {
-                scala.util.Try(registry.confirmDropped(spec, droppedIds))
-                  .recover { case ex: Throwable =>
-                    log.warning(s"Registry: confirmDropped failed: ${ex.getMessage}")
-                  }
-              }
+          emitPendingDrops().onComplete {
+            case Success(_) =>
               selfRef ! RegistryDropsDone
             case Failure(ex) =>
               // Non-fatal: all chunks are already in Hub3, and unconfirmed

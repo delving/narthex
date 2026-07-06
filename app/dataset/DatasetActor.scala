@@ -1170,22 +1170,28 @@ class DatasetActor(val datasetContext: DatasetContext,
         val registry = orgContext.recordRegistry
         val spec = dsInfo.spec
         val rawIds = datasetContext.sourceRepoOpt.map(_.deletedIdSet.toSeq).getOrElse(Seq.empty)
-        if (rawIds.nonEmpty) {
-          val tombstoneIds = registry.resolveTombstoneIds(spec, rawIds)
+        val tombstoneIds = if (rawIds.nonEmpty) registry.resolveTombstoneIds(spec, rawIds) else Seq.empty
+        // deleted.ids is cumulative and re-read on every quiet tick; don't
+        // open a no-op run when everything in it is already dropped-and-sent.
+        if (tombstoneIds.nonEmpty && !registry.allTombstonesSynced(spec, tombstoneIds)) {
           val runId = registry.beginRun(spec, RecordRegistry.KIND_INCREMENT)
           registry.upsertDeletedBatch(spec, tombstoneIds, runId)
-          val pendingDrops = registry.pendingDropBatch(spec, Int.MaxValue)
           registry.completeRun(spec, runId)
-          if (pendingDrops.nonEmpty) {
-            log.info(s"Registry: deletes-only harvest, emitting drop_records for ${pendingDrops.size} ids ($spec)")
-            import context.dispatcher
-            dsInfo.dropRecordsByIds(pendingDrops).onComplete {
-              case scala.util.Success(_) =>
-                scala.util.Try(registry.confirmDropped(spec, pendingDrops))
-              case scala.util.Failure(ex) =>
-                log.warning(s"Registry: drop_records failed for deletes-only harvest, will retry next save ($spec): ${ex.getMessage}")
+          import context.dispatcher
+          def emitDropBatch(): Unit = {
+            val pendingDrops = registry.pendingDropBatch(spec, 10000)
+            if (pendingDrops.nonEmpty) {
+              log.info(s"Registry: deletes-only harvest, emitting drop_records for ${pendingDrops.size} ids ($spec)")
+              dsInfo.dropRecordsByIds(pendingDrops).onComplete {
+                case scala.util.Success(_) =>
+                  scala.util.Try(registry.confirmDropped(spec, pendingDrops))
+                  emitDropBatch()
+                case scala.util.Failure(ex) =>
+                  log.warning(s"Registry: drop_records failed for deletes-only harvest, will retry next save ($spec): ${ex.getMessage}")
+              }
             }
           }
+          emitDropBatch()
         }
       }.recover { case ex: Throwable =>
         log.warning(s"Registry: tombstones-only sync failed for ${dsInfo.spec}: ${ex.getMessage}")

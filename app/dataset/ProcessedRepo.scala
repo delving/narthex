@@ -302,7 +302,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     }
   }
 
-  def createGraphReaderXML(fileOpt: Option[File], timeStamp: DateTime, progressReporter: ProgressReporter) = new GraphReader {
+  def createGraphReaderXML(fileOpt: Option[File],
+                           timeStamp: DateTime,
+                           progressReporter: ProgressReporter,
+                           includeLocalIdsOpt: Option[Set[String]] = None) = new GraphReader {
     val LineId = "<!--<([^>]+)__([^>]+)>-->".r
     // Use actualXmlFile to support both .xml.zst (ZSTD) and .xml (legacy) formats
     var files: Seq[File] = fileOpt.map(file => Seq(file)).getOrElse(listOutputs.map(_.actualXmlFile))
@@ -352,18 +355,29 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
           Option(reader.readLine()).map {
             case LineId(graphName, currentHash) =>
               //logger.info(s"$graphCount => $graphName")
-              val m = dataset.getNamedModel(graphName)
-              try {
-                m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+              val includeGraph = includeLocalIdsOpt match {
+                case Some(includeLocalIds) =>
+                  scala.util.Try(dsInfo.extractSpecIdFromGraphName(graphName))
+                    .toOption
+                    .exists { case (_, localId) => includeLocalIds.contains(localId) }
+                case None => true
               }
-              catch {
-                case e: Throwable =>
-                  val recordContext = s"Graph: $graphName, Hash: $currentHash"
-                  val errorLineInfo = formatRDFError(e, recordText.toString())
+              if (includeGraph) {
+                val m = dataset.getNamedModel(graphName)
+                try {
+                  m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+                }
+                catch {
+                  case e: Throwable =>
+                    val recordContext = s"Graph: $graphName, Hash: $currentHash"
+                    val errorLineInfo = formatRDFError(e, recordText.toString())
 
-                  logger.error(s"RDF parsing error for $recordContext: ${e.getMessage}")
-                  logger.error(s"XML context around error:\n$errorLineInfo")
-                  throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}\nContext:\n$errorLineInfo", e)
+                    logger.error(s"RDF parsing error for $recordContext: ${e.getMessage}")
+                    logger.error(s"XML context around error:\n$errorLineInfo")
+                    throw new RuntimeException(s"RDF parsing error for $recordContext: ${e.getMessage}\nContext:\n$errorLineInfo", e)
+                }
+                graphCount += 1
+                bytesProcessed += recordText.length
               }
               //val StringHandling.SubjectOfGraph(subject) = graphName
               //val subjectResource = m.getResource(subject)
@@ -382,8 +396,6 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               //m.add(foafAbout, m.getProperty(hubId.uri), m.getResource(hubId))
               //m.add(foafAbout, m.getProperty(localId.uri), m.createLiteral(recordId))
               //m.add(foafAbout, m.getProperty(saveTime.uri), m.createLiteral(timeString))
-              graphCount += 1
-              bytesProcessed += recordText.length
               recordText.clear()
               if (graphCount >= chunkSize || bytesProcessed >= chunkMaxBytes) {
                 chunkComplete = true
