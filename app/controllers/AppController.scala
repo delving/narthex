@@ -143,7 +143,7 @@ class AppController @Inject() (
           Json.obj("spec" -> spec, "trigger" -> trigger, "position" -> pos)
         },
         "queueLength" -> status.queued.length,
-        "availableSlots" -> orgContext.semaphore.availablePermits(),
+        "availableSlots" -> (orgContext.narthexConfig.concurrencyLimit - orgContext.jobQueue.leasedCount()),
         "completionStats" -> Json.obj(
           "manual1h" -> status.stats.manual1h,
           "automatic1h" -> status.stats.automatic1h,

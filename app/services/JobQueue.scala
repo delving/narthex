@@ -26,16 +26,20 @@ import play.api.Logger
 import play.api.libs.json.{JsObject, Json}
 
 /**
- * Org-level persistent job queue (Phase A3b-1 of the pipeline redesign).
+ * Org-level persistent job queue + execution lease (Phases A3b-1/2).
  *
- * Replaces OrgActor's in-memory Vector[QueuedOperation]: queued work now
- * survives restarts, and the queue is a table anyone (including a future Go
- * orchestrator) can read. Semantics are unchanged in this phase — the
- * semaphores still guard execution; this is only the waiting line.
+ * Replaces OrgActor's in-memory Vector[QueuedOperation] AND both
+ * Semaphores: queued work survives restarts, and "at most one running job
+ * per dataset, at most concurrencyLimit overall" is enforced by the store
+ * (partial unique index on leased specs) instead of ~25 hand-placed
+ * release calls. The table is readable by a future Go orchestrator.
+ *
+ * Lease lifecycle: taken at dispatch (tryLease/leaseQueued), freed by
+ * OrgActor on DatasetBecameIdle / actor termination, reclaimed by the
+ * periodic check when stale with no active work, cleared at startup.
  *
  * Priority: manual jobs (priority 0) before periodic/retry/recovery
- * (priority 1), insertion order within a class — identical to the old
- * insertWithPriority.
+ * (priority 1), insertion order within a class.
  */
 object JobQueue {
   case class QueuedJob(jobId: Long, spec: String, payload: String, trigger: String)
@@ -68,9 +72,16 @@ class JobQueue(dbFile: File) {
         job_trigger TEXT NOT NULL,
         priority    INTEGER NOT NULL,
         status      TEXT NOT NULL DEFAULT 'queued',
-        enqueued_at TEXT NOT NULL
+        enqueued_at TEXT NOT NULL,
+        leased_at   TEXT
       )""")
+      try s.executeUpdate("ALTER TABLE jobs ADD COLUMN leased_at TEXT")
+      catch { case _: Exception => /* column exists (pre-lease dev db) */ }
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_jobs_spec ON jobs(spec)")
+      // THE concurrency invariant: at most one running job per dataset,
+      // enforced by the store instead of hand-placed semaphore calls.
+      s.executeUpdate(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_leased_spec ON jobs(spec) WHERE status = 'leased'")
     } finally s.close()
     c
   }
@@ -96,7 +107,7 @@ class JobQueue(dbFile: File) {
   }
 
   def isQueued(spec: String): Boolean = synchronized {
-    val ps = conn.prepareStatement("SELECT 1 FROM jobs WHERE spec = ? LIMIT 1")
+    val ps = conn.prepareStatement("SELECT 1 FROM jobs WHERE spec = ? AND status = 'queued' LIMIT 1")
     try {
       ps.setString(1, spec)
       val rs = ps.executeQuery()
@@ -104,10 +115,119 @@ class JobQueue(dbFile: File) {
     } finally ps.close()
   }
 
+  // === Lease semantics (Phase A3b-2): replaces the two Semaphores ===
+
+  /**
+   * Try to lease execution for a spec directly (dispatch-now path).
+   * Fails when the spec already holds a lease or capacity is exhausted.
+   */
+  def tryLease(spec: String, payload: String, trigger: String, limit: Int): Boolean = synchronized {
+    if (isLeased(spec) || leasedCount() >= limit) false
+    else {
+      val ps = conn.prepareStatement(
+        "INSERT INTO jobs (spec, payload, job_trigger, priority, status, enqueued_at, leased_at) VALUES (?, ?, ?, ?, 'leased', ?, ?)")
+      try {
+        val now = nowIso()
+        ps.setString(1, spec)
+        ps.setString(2, payload)
+        ps.setString(3, trigger)
+        ps.setInt(4, priorityFor(trigger))
+        ps.setString(5, now)
+        ps.setString(6, now)
+        ps.executeUpdate()
+        true
+      } finally ps.close()
+    }
+  }
+
+  /** Promote a queued job to leased (queue-drain path). */
+  def leaseQueued(jobId: Long, spec: String, limit: Int): Boolean = synchronized {
+    if (isLeased(spec) || leasedCount() >= limit) false
+    else {
+      val ps = conn.prepareStatement(
+        "UPDATE jobs SET status = 'leased', leased_at = ? WHERE job_id = ? AND status = 'queued'")
+      try {
+        ps.setString(1, nowIso())
+        ps.setLong(2, jobId)
+        ps.executeUpdate() > 0
+      } finally ps.close()
+    }
+  }
+
+  /** Release the spec's lease (job finished, however it finished). */
+  def releaseLease(spec: String): Boolean = synchronized {
+    val ps = conn.prepareStatement("DELETE FROM jobs WHERE spec = ? AND status = 'leased'")
+    try {
+      ps.setString(1, spec)
+      ps.executeUpdate() > 0
+    } finally ps.close()
+  }
+
+  def isLeased(spec: String): Boolean = synchronized {
+    val ps = conn.prepareStatement("SELECT 1 FROM jobs WHERE spec = ? AND status = 'leased' LIMIT 1")
+    try {
+      ps.setString(1, spec)
+      val rs = ps.executeQuery()
+      try rs.next() finally rs.close()
+    } finally ps.close()
+  }
+
+  def leasedCount(): Int = synchronized {
+    val s = conn.createStatement()
+    try {
+      val rs = s.executeQuery("SELECT COUNT(*) FROM jobs WHERE status = 'leased'")
+      try { rs.next(); rs.getInt(1) } finally rs.close()
+    } finally s.close()
+  }
+
+  def leasedSpecs(): Seq[String] = synchronized {
+    val s = conn.createStatement()
+    try {
+      val rs = s.executeQuery("SELECT spec FROM jobs WHERE status = 'leased' ORDER BY leased_at")
+      try {
+        val buf = scala.collection.mutable.ArrayBuffer.empty[String]
+        while (rs.next()) buf += rs.getString(1)
+        buf.toSeq
+      } finally rs.close()
+    } finally s.close()
+  }
+
+  /**
+   * Reclaim leases older than the timeout whose dataset is NOT actually
+   * active — the safety net for lost completion signals (replaces the
+   * stuck-state force-release). Returns the reclaimed specs.
+   */
+  def reclaimStaleLeases(olderThanMinutes: Int, activeSpecs: Set[String]): Seq[String] = synchronized {
+    val cutoff = TS_FORMAT.format(Instant.now().minus(java.time.Duration.ofMinutes(olderThanMinutes.toLong)))
+    val stale = {
+      val ps = conn.prepareStatement(
+        "SELECT spec FROM jobs WHERE status = 'leased' AND leased_at < ?")
+      try {
+        ps.setString(1, cutoff)
+        val rs = ps.executeQuery()
+        try {
+          val buf = scala.collection.mutable.ArrayBuffer.empty[String]
+          while (rs.next()) buf += rs.getString(1)
+          buf.toSeq
+        } finally rs.close()
+      } finally ps.close()
+    }
+    val reclaimable = stale.filterNot(activeSpecs.contains)
+    reclaimable.foreach(releaseLease)
+    reclaimable
+  }
+
+  /** Startup: leases from a previous JVM are meaningless — drop them. */
+  def clearLeases(): Int = synchronized {
+    val s = conn.createStatement()
+    try s.executeUpdate("DELETE FROM jobs WHERE status = 'leased'")
+    finally s.close()
+  }
+
   /** All queued jobs in dispatch order (manual first, then insertion order). */
   def queued(): Seq[QueuedJob] = synchronized {
     val ps = conn.prepareStatement(
-      "SELECT job_id, spec, payload, job_trigger FROM jobs ORDER BY priority, job_id")
+      "SELECT job_id, spec, payload, job_trigger FROM jobs WHERE status = 'queued' ORDER BY priority, job_id")
     try {
       val rs = ps.executeQuery()
       try {
@@ -123,9 +243,9 @@ class JobQueue(dbFile: File) {
     try { ps.setLong(1, jobId); ps.executeUpdate() } finally ps.close()
   }
 
-  /** Remove any queued job for the spec. Returns true if one was removed. */
+  /** Remove any QUEUED job for the spec (never touches a live lease). */
   def removeSpec(spec: String): Boolean = synchronized {
-    val ps = conn.prepareStatement("DELETE FROM jobs WHERE spec = ?")
+    val ps = conn.prepareStatement("DELETE FROM jobs WHERE spec = ? AND status = 'queued'")
     try {
       ps.setString(1, spec)
       ps.executeUpdate() > 0
@@ -135,7 +255,7 @@ class JobQueue(dbFile: File) {
   def size(): Int = synchronized {
     val s = conn.createStatement()
     try {
-      val rs = s.executeQuery("SELECT COUNT(*) FROM jobs")
+      val rs = s.executeQuery("SELECT COUNT(*) FROM jobs WHERE status = 'queued'")
       try { rs.next(); rs.getInt(1) } finally rs.close()
     } finally s.close()
   }

@@ -285,10 +285,7 @@ class DatasetActor(val datasetContext: DatasetContext,
   override def postStop(): Unit = {
     log.info(s"Stopping DatasetActor for dataset: ${dsInfo.spec}")
     
-    // CRITICAL: Always release BOTH semaphores when actor stops (safe to call even if not held)
-    log.warning(s"DatasetActor stopped, ensuring both semaphores are released for: ${dsInfo.spec}")
-    orgContext.semaphore.release(dsInfo.spec)
-    orgContext.saveSemaphore.release(dsInfo.spec)
+    // Lease cleanup happens in OrgActor (Terminated handler + stale reclaim)
     
     // Stop all child actors to prevent resource leaks
     childActors.foreach { child =>
@@ -683,10 +680,8 @@ class DatasetActor(val datasetContext: DatasetContext,
             "refreshed"
 
           case "resetToDormant" =>
-            // Force release semaphores in case they're stuck from a previous crash
-            log.info(s"resetToDormant: Force releasing semaphores for ${dsInfo.spec}")
-            orgContext.semaphore.release(dsInfo.spec)
-            orgContext.saveSemaphore.release(dsInfo.spec)
+            // Signal idle so OrgActor releases any lease held for this spec
+            context.parent ! DatasetBecameIdle(dsInfo.spec, None)
             broadcastIdleState()
             "reset to dormant"
 
@@ -729,9 +724,9 @@ class DatasetActor(val datasetContext: DatasetContext,
       val replyString: String = replyTry.getOrElse(s"unrecovered exception")
       log.info(s"Command $commandName: $replyString")
 
-      // The OrgActor acquires a semaphore for "heavy" commands before routing here.
+      // The OrgActor takes a lease for "heavy" commands before routing here.
       // If the handler didn't start any work (e.g. "Dataset not ready", exception),
-      // we must release the semaphore to prevent leaks.
+      // we must free the lease to prevent leaks.
       // The workStarted flag is set explicitly in each branch that sends a work message.
       val heavyCommands = Set("start sample harvest", "start first harvest",
                               "start first harvest with auto-process",
@@ -740,9 +735,10 @@ class DatasetActor(val datasetContext: DatasetContext,
                            commandName.startsWith("start fast save") ||
                            commandName.startsWith("start fast process")
       if (isHeavyCommand && !workStarted) {
-        log.warning(s"Heavy command '$commandName' did not start work (reply: $replyString), releasing semaphore")
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
+        log.warning(s"Heavy command '$commandName' did not start work (reply: $replyString), releasing lease")
+        // No state transition happened, so no DatasetBecameIdle will fire —
+        // signal it explicitly so OrgActor frees the lease taken at dispatch.
+        context.parent ! DatasetBecameIdle(dsInfo.spec, None)
       }
 
       stay()
@@ -760,7 +756,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
 
     // Handle StartHarvest when not in Dormant state (e.g., after previous harvest completed and dataset is in PROCESSED state)
-    // This is the fix for stuck actors holding semaphores when scheduled harvests can't start
+    // This is the fix for stuck actors holding their lease when scheduled harvests can't start
     case Event(StartHarvest(strategy, trigger), data) =>
       log.warning(s"Received StartHarvest($strategy) while in non-Dormant state: $data")
       log.info(s"Resetting to Dormant and reprocessing StartHarvest for dataset ${dsInfo.spec}")
@@ -846,9 +842,6 @@ class DatasetActor(val datasetContext: DatasetContext,
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
       // OrgActor already manages concurrency via queue - just track save for status reporting
-      if (!orgContext.saveSemaphore.tryAcquire(dsInfo.spec)) {
-        log.warning(s"saveSemaphore already held for ${dsInfo.spec} - continuing anyway (queue should prevent this)")
-      }
       log.info(s"Starting save for ${dsInfo.spec}")
       val graphSaver = createChildActor(
         GraphSaver.props(datasetContext, orgContext),
@@ -911,11 +904,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         // Determine if there will be more work (processing/saving)
         val hasMoreWork = !noRecordsMatch && fileOpt.isDefined
 
-        // Only release semaphore if no more work to do
-        // If there's more work, semaphore will be released by GraphSaver
-        if (!hasMoreWork) {
-          orgContext.semaphore.release(dsInfo.spec)
-        }
+        // hasMoreWork tracked for readability; the lease is released by
+        // OrgActor when this actor transitions to Idle either way.
+        val _ = hasMoreWork
 
         noRecordsMatch match {
           case true =>
@@ -960,7 +951,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
       strategy match {
         case Sample =>
-          // Sample harvests bypass semaphore, no release needed
+          // Sample harvests bypass the lease, nothing to free
           // Note: We always set RAW state even with noRecordsMatch so frontend can detect the harvest completed
           // The frontend will show a modal when stateRaw is set but acquiredRecordCount is 0
           dsInfo.setState(RAW)
@@ -973,7 +964,6 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.setRecordCount(0)
             dsInfo.setProcessedRecordCounts(0, 0)
             completeHarvestRun()   // rare and significant — keep the audit row
-            orgContext.semaphore.release(dsInfo.spec)
           } else {
             dsInfo.resetToSourced()
             dsInfo.setLastHarvestTime(incremental = false)
@@ -989,11 +979,9 @@ class DatasetActor(val datasetContext: DatasetContext,
               }
               orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
               self ! GenerateSipZip
-              // Don't release semaphore - will be released after processing completes
+              // Lease stays held - freed when the chain reaches Idle
             } else {
               completeHarvestRun()
-              // Release semaphore since FromScratch harvest is complete
-              orgContext.semaphore.release(dsInfo.spec)
             }
           }
 
@@ -1010,7 +998,6 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.setProcessedRecordCounts(0, 0)
             dsInfo.disableInNaveIndex()
             completeHarvestRun()
-            orgContext.semaphore.release(dsInfo.spec)
           } else {
             processIncremental(fileOpt, noRecordsMatch, None)
             dsInfo.updatedSpecCountFromFile(dsInfo.spec,
@@ -1117,11 +1104,9 @@ class DatasetActor(val datasetContext: DatasetContext,
           // Plan ends here (no mapper, or generate_sip was the last stage)
           orgContext.recordRegistry.stageCompleted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
           orgContext.recordRegistry.completeRun(dsInfo.spec, runId)
-          orgContext.semaphore.release(dsInfo.spec)
           goto(Idle) using Dormant
         case None =>
           // Standalone "start generating sip" — no chain
-          orgContext.semaphore.release(dsInfo.spec)
           goto(Idle) using Dormant
       }
 
@@ -1211,8 +1196,6 @@ class DatasetActor(val datasetContext: DatasetContext,
         }
         // Success emails disabled - only send emails on errors
         active.childOpt.foreach(_ ! PoisonPill)
-        // Release semaphore since we're not going through GraphSaver
-        orgContext.semaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
       }
   }
@@ -1290,7 +1273,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(GraphSaveComplete, active: Active) =>
       log.info(s"GraphSaveComplete received for $dsInfo.spec")
-      // Note: GraphSaver already released semaphores, so don't double-release
+      // Lease freed by the Idle transition that follows
       dsInfo.setState(SAVED)
       dsInfo.setRecordsSync(false)
 
@@ -1428,13 +1411,14 @@ class DatasetActor(val datasetContext: DatasetContext,
         dsInfo.setError(s"Harvest failed after $retryCount retry attempts: $newMessage")
         mailService.sendProcessingErrorMessage(dsInfo.spec,
           s"Harvest failed after $retryCount retry attempts: $newMessage", exceptionOpt)
-        orgContext.semaphore.release(dsInfo.spec)
+        context.parent ! DatasetBecameIdle(dsInfo.spec, None)
         goto(Idle) using InError(newMessage)
       } else {
         // Update retry state with new message but keep count
         dsInfo.setInRetry(newMessage, retryCount)
-        // Stay in retry mode, PeriodicHarvest will trigger next attempt
-        orgContext.semaphore.release(dsInfo.spec)
+        // Stay in retry mode, PeriodicHarvest will trigger next attempt.
+        // No state transition fires here — signal idle for the lease.
+        context.parent ! DatasetBecameIdle(dsInfo.spec, None)
         stay() using InRetry(newMessage, retryCount)
       }
   }
@@ -1444,7 +1428,6 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch), InRetry(message, retryCount)) =>
       log.info(s"Harvest succeeded after $retryCount retry attempts for ${dsInfo.spec}")
       dsInfo.clearRetryState()
-      orgContext.semaphore.release(dsInfo.spec)
 
       // Continue with normal harvest completion flow
       if (noRecordsMatch) {
@@ -1488,24 +1471,20 @@ class DatasetActor(val datasetContext: DatasetContext,
       stay()
 
     case Event(ForceReleaseAndReset, active: Active) =>
-      log.warning(s"Force releasing semaphores and resetting dataset ${dsInfo.spec}")
+      log.warning(s"Force resetting stuck dataset ${dsInfo.spec}")
       // Kill any child actors
       active.childOpt.foreach { child =>
         log.warning(s"Killing stuck child actor: $child")
         child ! PoisonPill
       }
-      // Release semaphores
-      orgContext.semaphore.release(dsInfo.spec)
-      orgContext.saveSemaphore.release(dsInfo.spec)
       // Set error state
       dsInfo.setError(s"Actor stuck in state $stateName for more than ${maxStateTime.toMinutes} minutes - forced reset")
       // Return to idle
       goto(Idle) using InError(s"Stuck in $stateName - forced reset")
 
     case Event(ForceReleaseAndReset, _) =>
-      log.warning(s"Force release requested but not in active state - releasing semaphores anyway")
-      orgContext.semaphore.release(dsInfo.spec)
-      orgContext.saveSemaphore.release(dsInfo.spec)
+      log.warning(s"Force release requested but not in active state - signalling idle for the lease")
+      context.parent ! DatasetBecameIdle(dsInfo.spec, None)
       stay()
 
     case Event(Terminated(actor), _) =>
@@ -1574,29 +1553,23 @@ class DatasetActor(val datasetContext: DatasetContext,
       if (commandName == "clear error") {
         log.info(s"Clearing error for ${dsInfo.spec}: $message")
         dsInfo.clearError()
-        log.info(s"clear error so releasing semaphore if set")
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
+        // State is already Idle (InError is FSM data) — no transition will
+        // fire, so signal idle explicitly to free any lease.
+        context.parent ! DatasetBecameIdle(dsInfo.spec, None)
         goto(Idle) using Dormant
       } else if (commandName.startsWith("start")) {
         log.info(s"Clearing error for ${dsInfo.spec} and forwarding command: $commandName")
         dsInfo.clearError()
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
+        context.parent ! DatasetBecameIdle(dsInfo.spec, None)
         self ! Command(commandName)
         goto(Idle) using Dormant
       } else {
-        log.info(s"in error so releasing semaphore if set")
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
+        context.parent ! DatasetBecameIdle(dsInfo.spec, None)
         stay()
       }
 
     case Event(whatever, InError(_)) =>
       log.info(s"Not interested in: $whatever")
-        log.info(s"in error so releasing semaphore if set")
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
       stay()
 
     case Event(Command(commandName), active: Active) =>
@@ -1610,11 +1583,8 @@ class DatasetActor(val datasetContext: DatasetContext,
         stay() using active.copy(interrupt = true)
       } else {
         log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
-        // kill active actors
+        // kill active actors; the Idle transition frees the lease
         active.childOpt.foreach(_ ! PoisonPill)
-        // Release semaphores since we're aborting the operation
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
         goto(Idle) using Dormant
       }
 
@@ -1643,8 +1613,6 @@ class DatasetActor(val datasetContext: DatasetContext,
           dsInfo.setError(s"Harvest failed after $currentRetryCount retry attempts: $message")
           mailService.sendProcessingErrorMessage(dsInfo.spec, s"Harvest failed after $currentRetryCount retry attempts: $message", exceptionOpt)
           active.childOpt.foreach(_ ! PoisonPill)
-          orgContext.semaphore.release(dsInfo.spec)
-          orgContext.saveSemaphore.release(dsInfo.spec)
           goto(Idle) using InError(message)
         } else {
           // Set retry state in dataset properties (preserve current count)
@@ -1656,10 +1624,9 @@ class DatasetActor(val datasetContext: DatasetContext,
             case None            => log.error(message)
           }
 
-          // Release semaphore so PeriodicHarvest can re-acquire for retry
+          // The Idle transition frees the lease so PeriodicHarvest can
+          // lease again for the retry.
           active.childOpt.foreach(_ ! PoisonPill)
-          orgContext.semaphore.release(dsInfo.spec)
-          orgContext.saveSemaphore.release(dsInfo.spec)
 
           // Transition to retry state (not error state)
           goto(Idle) using InRetry(message, currentRetryCount)
@@ -1679,9 +1646,6 @@ class DatasetActor(val datasetContext: DatasetContext,
         }
         mailService.sendProcessingErrorMessage(dsInfo.spec, enrichedMessage, exceptionOpt)
         active.childOpt.foreach(_ ! PoisonPill)
-        // Release semaphores since operation failed
-        orgContext.semaphore.release(dsInfo.spec)
-        orgContext.saveSemaphore.release(dsInfo.spec)
         goto(Idle) using InError(enrichedMessage)
       }
 
@@ -1692,9 +1656,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         case Some(exception) => log.error(exception, message)
         case None            => log.error(message)
       }
-      // Release semaphores in case they were acquired before this failure
-      orgContext.semaphore.release(dsInfo.spec)
-      orgContext.saveSemaphore.release(dsInfo.spec)
+      // May be failing from Idle (no transition will fire) — signal idle
+      // explicitly so any lease taken at dispatch is freed.
+      context.parent ! DatasetBecameIdle(dsInfo.spec, None)
       dsInfo.setError(s"While not active, failure: $message")
       goto(Idle) using InError(message)
 

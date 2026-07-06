@@ -128,6 +128,11 @@ class OrgActor (
   override def preStart(): Unit = {
     super.preStart()
 
+    // Leases from a previous JVM are meaningless (that work died with it);
+    // startup recovery below re-enqueues what should resume.
+    val cleared = orgContext.jobQueue.clearLeases()
+    if (cleared > 0) log.warning(s"Cleared $cleared stale lease(s) from previous run")
+
     // Schedule periodic queue health check every 30 seconds
     // This ensures queued items get processed even if semaphore release messages are lost
     implicit val ec: ExecutionContext = context.dispatcher
@@ -220,49 +225,43 @@ class OrgActor (
     if (!needsSemaphore || isSampleHarvest) {
       // Non-processing commands and sample harvests execute immediately
       routeToDatasetActor(spec, message, trigger)
-    } else if (orgContext.semaphore.tryAcquire(spec)) {
-      // Got semaphore, execute immediately
-      log.info(s"Acquired semaphore for $spec ($trigger), executing immediately. Available: ${orgContext.semaphore.availablePermits()}")
-      routeToDatasetActor(spec, message, trigger)
     } else {
-      // Couldn't acquire semaphore - check why
-      val isAlreadyActive = orgContext.semaphore.isActive(spec)
-
-      if (isAlreadyActive) {
-        // Dataset is already processing - don't queue another operation
-        log.warning(s"$spec is already active (processing/saving), ignoring $trigger request")
-      } else {
-        services.JobPayload.encode(message) match {
-          case Some(payload) =>
-            if (jobQueue.enqueue(spec, payload, trigger))
-              log.info(s"Queued $spec ($trigger); queue size ${jobQueue.size()}")
-            else
-              log.info(s"$spec already queued, ignoring duplicate request")
-          case None =>
-            // Every operation message has a codec; reaching this is a bug.
-            log.error(s"Cannot queue unserializable message for $spec: $message — dropping")
-        }
+      val payloadOpt = services.JobPayload.encode(message)
+      payloadOpt match {
+        case None =>
+          // Every operation message has a codec; reaching this is a bug.
+          log.error(s"Cannot lease/queue unserializable message for $spec: $message — dropping")
+        case Some(payload) =>
+          if (jobQueue.tryLease(spec, payload, trigger, concurrencyLimit)) {
+            log.info(s"Leased $spec ($trigger), executing immediately. Leased: ${jobQueue.leasedCount()}/$concurrencyLimit")
+            routeToDatasetActor(spec, message, trigger)
+          } else if (jobQueue.isLeased(spec)) {
+            // Dataset is already processing - don't queue another operation
+            log.warning(s"$spec is already active (leased), ignoring $trigger request")
+          } else if (jobQueue.enqueue(spec, payload, trigger)) {
+            log.info(s"Queued $spec ($trigger); queue size ${jobQueue.size()}")
+          } else {
+            log.info(s"$spec already queued, ignoring duplicate request")
+          }
       }
     }
   }
 
   private def processQueue(): Unit = {
-    // Try to dispatch queued operations in priority order; skip specs that
-    // are already active and leave them queued for a later pass.
+    // Promote queued jobs to leased in priority order; specs already leased
+    // stay queued for a later pass.
     var processed = 0
     jobQueue.queued().foreach { job =>
-      if (orgContext.semaphore.availablePermits() > 0 && orgContext.semaphore.tryAcquire(job.spec)) {
+      if (jobQueue.leaseQueued(job.jobId, job.spec, concurrencyLimit)) {
         services.JobPayload.decode(job.payload, orgContext) match {
           case Some(message) =>
             processed += 1
-            jobQueue.remove(job.jobId)
             log.info(s"Dequeued ${job.spec} (${job.trigger}), starting execution")
             routeToDatasetActor(job.spec, message, job.trigger)
           case None =>
             // Undecodable row (e.g. from a future/older version): drop it
             // loudly rather than wedging the queue.
-            jobQueue.remove(job.jobId)
-            orgContext.semaphore.release(job.spec)
+            jobQueue.releaseLease(job.spec)
             log.error(s"Dropped undecodable queued job for ${job.spec}: ${job.payload}")
         }
       }
@@ -272,6 +271,8 @@ class OrgActor (
       log.info(s"Processed $processed items from queue, ${jobQueue.size()} remaining")
     }
   }
+
+  private def concurrencyLimit: Int = orgContext.narthexConfig.concurrencyLimit
 
   private def routeToDatasetActor(spec: String, message: AnyRef, trigger: String = "manual"): Unit = {
     val actor: ActorRef = context.child(spec).getOrElse {
@@ -419,6 +420,7 @@ class OrgActor (
           // Not a save operation, nothing to track
       }
 
+      if (jobQueue.releaseLease(spec)) log.info(s"Released lease for $spec")
       removeFromQueue(spec)  // Remove if still in queue (e.g., cancelled)
       processQueue()         // Try to start next queued operation
 
@@ -427,9 +429,8 @@ class OrgActor (
       sender() ! ActiveDatasets(activeDatasets.toList.sorted)
 
     case GetQueueStatus =>
-      import scala.jdk.CollectionConverters._
-      val processing = orgContext.semaphore.activeSpecs().asScala.toList
-      val saving = orgContext.saveSemaphore.activeSpecs().asScala.toList
+      val processing = jobQueue.leasedSpecs().toList
+      val saving = List.empty[String]   // merged into the single lease
       val queued = jobQueue.queued().zipWithIndex.map { case (job, idx) =>
         (job.spec, job.trigger, idx + 1)
       }.toList
@@ -447,19 +448,27 @@ class OrgActor (
         sender() ! CancelResult(false, s"$spec was not in queue")
       }
 
-    case Terminated(name) =>
-      log.info(s"Demised $name")
-      log.info(s"Children: ${context.children}")
+    case Terminated(ref) =>
+      log.info(s"Demised $ref")
+      val spec = ref.path.name
+      if (jobQueue.releaseLease(spec)) {
+        log.warning(s"Released lease for terminated dataset actor $spec")
+        processQueue()
+      }
 
     case ProcessQueueOnStartup =>
       // Rows queued before a restart are still here — drain them.
-      log.info(s"Processing queue on startup: ${jobQueue.size()} items queued, ${orgContext.semaphore.availablePermits()} permits available")
+      log.info(s"Processing queue on startup: ${jobQueue.size()} items queued, ${jobQueue.leasedCount()}/$concurrencyLimit leased")
       processQueue()
 
     case PeriodicQueueCheck =>
-      // Safety net: periodically try to process queue in case semaphore releases were missed
-      if (jobQueue.size() > 0 && orgContext.semaphore.availablePermits() > 0) {
-        log.info(s"Periodic queue check: ${jobQueue.size()} queued, ${orgContext.semaphore.availablePermits()} permits available - processing")
+      // Safety net: reclaim leases whose completion signal was lost (the
+      // dataset is no longer active but the lease is old), then drain.
+      val reclaimed = jobQueue.reclaimStaleLeases(
+        orgContext.narthexConfig.leaseTimeoutMinutes, activeDatasets)
+      reclaimed.foreach(spec => log.warning(s"Reclaimed stale lease for $spec (no active work)"))
+      if (jobQueue.size() > 0 && jobQueue.leasedCount() < concurrencyLimit) {
+        log.info(s"Periodic queue check: ${jobQueue.size()} queued, ${jobQueue.leasedCount()}/$concurrencyLimit leased - processing")
         processQueue()
       }
 

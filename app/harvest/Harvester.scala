@@ -176,8 +176,6 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     cancelStallTimer()
     cleanup()
 
-    // Also ensure semaphores are released when Harvester stops
-    // (Though this should be handled by parent DatasetActor, being extra safe)
     log.debug(s"Harvester postStop for dataset: ${datasetContext.dsInfo.spec}")
 
     super.postStop()

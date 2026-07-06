@@ -61,6 +61,57 @@ class JobQueueSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
     queue.queued().map(_.spec) shouldBe Seq("ds-b", "ds-a")   // manual first
   }
 
+  "lease" should "enforce one lease per spec and the concurrency limit" in {
+    queue.tryLease("ds-a", "{}", "manual", limit = 2) shouldBe true
+    queue.tryLease("ds-a", "{}", "manual", limit = 2) shouldBe false   // spec already leased
+    queue.tryLease("ds-b", "{}", "periodic", limit = 2) shouldBe true
+    queue.tryLease("ds-c", "{}", "manual", limit = 2) shouldBe false   // capacity exhausted
+    queue.leasedCount() shouldBe 2
+    queue.leasedSpecs().toSet shouldBe Set("ds-a", "ds-b")
+
+    queue.releaseLease("ds-a") shouldBe true
+    queue.releaseLease("ds-a") shouldBe false
+    queue.tryLease("ds-c", "{}", "manual", limit = 2) shouldBe true
+  }
+
+  it should "promote queued jobs within capacity" in {
+    queue.enqueue("ds-a", "{}", "manual")
+    queue.enqueue("ds-b", "{}", "manual")
+    val jobs = queue.queued()
+    queue.leaseQueued(jobs(0).jobId, jobs(0).spec, limit = 1) shouldBe true
+    queue.leaseQueued(jobs(1).jobId, jobs(1).spec, limit = 1) shouldBe false  // capacity
+    queue.size() shouldBe 1              // ds-b still waiting
+    queue.isLeased("ds-a") shouldBe true
+
+    queue.releaseLease("ds-a")
+    queue.leaseQueued(jobs(1).jobId, jobs(1).spec, limit = 1) shouldBe true
+  }
+
+  it should "reclaim stale leases only for inactive specs" in {
+    queue.tryLease("ds-a", "{}", "manual", limit = 3)
+    queue.tryLease("ds-b", "{}", "manual", limit = 3)
+    // nothing is stale yet
+    queue.reclaimStaleLeases(1, activeSpecs = Set.empty) shouldBe empty
+    // everything older than 0 minutes is stale; ds-b is actively working
+    queue.reclaimStaleLeases(0, activeSpecs = Set("ds-b")) shouldBe Seq("ds-a")
+    queue.isLeased("ds-a") shouldBe false
+    queue.isLeased("ds-b") shouldBe true
+  }
+
+  it should "clear all leases on startup but keep queued jobs" in {
+    queue.tryLease("ds-a", "{}", "manual", limit = 3)
+    queue.enqueue("ds-b", "{}", "manual")
+    queue.clearLeases() shouldBe 1
+    queue.isLeased("ds-a") shouldBe false
+    queue.size() shouldBe 1
+  }
+
+  it should "never remove a live lease via removeSpec" in {
+    queue.tryLease("ds-a", "{}", "manual", limit = 3)
+    queue.removeSpec("ds-a") shouldBe false
+    queue.isLeased("ds-a") shouldBe true
+  }
+
   "JobPayload" should "round-trip every queueable message type" in {
     val messages: Seq[AnyRef] = Seq(
       Command("start fast save"),

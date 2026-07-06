@@ -69,8 +69,6 @@ class OrgContext @Inject() (
   // Persistent job queue (queue.db): queued operations survive restarts
   lazy val jobQueue = new services.JobQueue(new File(orgRoot, "queue.db"))
   val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
-  val semaphore = new Semaphore(narthexConfig.concurrencyLimit)
-  val saveSemaphore = new Semaphore(narthexConfig.concurrencyLimit)
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, narthexConfig.orgId)
   lazy val sipFactory = new SipFactory(factoryDir, orgRoot, narthexConfig.rdfBaseUrl, wsApi, narthexConfig.orgId)

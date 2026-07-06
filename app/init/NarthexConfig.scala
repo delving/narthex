@@ -128,6 +128,12 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     configuration.getOptional[Int]("concurrencyLimit").getOrElse(3)
   logger.info(s"concurrencyLimit: $concurrencyLimit")
 
+  // A lease older than this whose dataset shows no active work is reclaimed
+  // (safety net for lost completion signals). Long harvests hold their lease
+  // legitimately — the active-work check protects them, this is the backstop.
+  def leaseTimeoutMinutes: Int =
+    configuration.getOptional[Int]("narthex.leaseTimeoutMinutes").getOrElse(120)
+
   def sessionTimeoutInSeconds: Int = configuration
     .getOptional[Int]("sessionTimeoutInSeconds")
     .getOrElse(60 * 60 * 4)
