@@ -138,7 +138,11 @@ object DatasetActor {
 
   case object Sample extends HarvestStrategy
 
-  case object FromScratch extends HarvestStrategy
+  // autoProcess: discovery imports chain Make SIP → Process after the first
+  // harvest. The intent rides the strategy through the Harvester and back in
+  // HarvestComplete — it used to live in a mutable actor flag that a restart
+  // (or any interleaved command) silently lost.
+  case class FromScratch(autoProcess: Boolean = false) extends HarvestStrategy
 
   case object FromScratchIncremental extends HarvestStrategy
 
@@ -213,18 +217,21 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   import context.dispatcher
 
-  // Track if we're in fast save mode (to continue processing after SIP generation)
-  private var fastSaveScheduledOpt: Option[Scheduled] = None
+  // Multi-stage chains are planned up front and persisted on the run row
+  // (PipelinePlan, Phase A2) — the four mutable chaining flags that used to
+  // live here were the root cause of the dead-incremental-path bug class.
 
-  // Track if we're in fast process mode (process only, no save)
-  private var fastProcessOnly: Boolean = false
+  private def beginPlannedRun(plan: PipelinePlan.Plan, trigger: String): Long = {
+    val runId = orgContext.recordRegistry.beginRun(
+      dsInfo.spec, plan.kind, trigger = Some(trigger), plan = Some(plan.toJson))
+    log.info(s"Planned run $runId for ${dsInfo.spec} ($trigger): ${plan.stages.mkString(" -> ")}")
+    runId
+  }
 
-  // Track manual fast-save chaining after full processing. Scheduled is reserved
-  // for real incremental harvests, where a single source/processed file is valid.
-  private var fastSaveAfterProcessing: Boolean = false
-
-  // Track if we should auto-continue to processing after first harvest (discovery imports)
-  private var autoProcessAfterFirstHarvest: Boolean = false
+  private def openPlan(): Option[(Long, PipelinePlan.Plan)] =
+    orgContext.recordRegistry.openRun(dsInfo.spec).flatMap { case (runId, planJson) =>
+      planJson.flatMap(PipelinePlan.Plan.fromJson).map(runId -> _)
+    }
 
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1.minute) {
     case _: OutOfMemoryError =>
@@ -318,7 +325,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       // Prepare source repo based on strategy
       strategy match {
-        case FromScratch =>
+        case _: FromScratch =>
           log.info("FromScratch: clearing all data")
           datasetContext.sourceRepoOpt match {
             case Some(sourceRepo) => sourceRepo.clearData()
@@ -527,12 +534,11 @@ class DatasetActor(val datasetContext: DatasetContext,
             startHarvest(Sample)
 
           case "start first harvest" =>
-            startHarvest(FromScratch)
+            startHarvest(FromScratch())
 
           case "start first harvest with auto-process" =>
             // Used by discovery import to auto-continue to Make SIP → Process after harvest
-            autoProcessAfterFirstHarvest = true
-            startHarvest(FromScratch)
+            startHarvest(FromScratch(autoProcess = true))
 
           case "start generating sip" =>
             workStarted = true
@@ -541,7 +547,6 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           case "start processing" =>
             workStarted = true
-            fastSaveAfterProcessing = false
             self ! StartProcessing(None)
             "processing started"
 
@@ -603,7 +608,7 @@ class DatasetActor(val datasetContext: DatasetContext,
               case PROCESSABLE if latestSourceFileOpt.isDefined =>
                 log.info(s"Fast save from PROCESSABLE: Process -> Save (${dsInfo.spec})")
                 workStarted = true
-                fastSaveAfterProcessing = true
+                beginPlannedRun(PipelinePlan.fastSaveFromProcessable, trigger = "manual")
                 self ! StartProcessing(None)
                 "Fast save: Process -> Save"
 
@@ -614,9 +619,9 @@ class DatasetActor(val datasetContext: DatasetContext,
                 latestSourceFileOpt match {
                   case Some(file) =>
                     log.info(s"Fast save from SOURCED: Make SIP -> Process -> Save (${dsInfo.spec})")
-                    // Set flag to continue processing after SIP generation
                     workStarted = true
-                    fastSaveScheduledOpt = Some(Scheduled(None, file))
+                    val runId = beginPlannedRun(PipelinePlan.fastSaveFromSourced, trigger = "manual")
+                    orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
                     self ! GenerateSipZip
                     "Fast save: Make SIP -> Process -> Save"
                   case None =>
@@ -630,7 +635,6 @@ class DatasetActor(val datasetContext: DatasetContext,
           case "start fast process" =>
             // Workflow: Make SIP → Process (stops at PROCESSED, does NOT save)
             // Used by discovery import to prepare datasets for review
-            fastSaveAfterProcessing = false
             val currentState = dsInfo.getState()
 
             currentState match {
@@ -642,9 +646,9 @@ class DatasetActor(val datasetContext: DatasetContext,
 
               case SOURCED =>
                 log.info(s"Fast process from SOURCED: Make SIP → Process (${dsInfo.spec})")
-                // Set flag to continue to processing (but not save) after SIP generation
                 workStarted = true
-                fastProcessOnly = true
+                val runId = beginPlannedRun(PipelinePlan.fastProcess, trigger = "manual")
+                orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
                 self ! GenerateSipZip
                 "Fast process: Make SIP → Process"
 
@@ -838,7 +842,10 @@ class DatasetActor(val datasetContext: DatasetContext,
       val graphSaver = createChildActor(
         GraphSaver.props(datasetContext, orgContext),
         "graph-saver")
-      graphSaver ! SaveGraphs(scheduledOpt)
+      graphSaver ! SaveGraphs(scheduledOpt, None, Some(PipelinePlan.saveModeFor(
+        scheduledOpt.exists(_.modifiedAfter.isDefined),
+        orgContext.narthexConfig.registryEnabled,
+        orgContext.narthexConfig.registryKeepRevisionSweep)))
       goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
@@ -905,10 +912,9 @@ class DatasetActor(val datasetContext: DatasetContext,
           case Some(file) =>
             // Always regenerate SIP after incremental harvest to keep pockets.xml current
             log.info(s"Incremental harvest complete, regenerating SIP from all source files")
-            if (datasetContext.sipMapperOpt.isDefined) {
-              // Set flag to continue to processing after SIP generation
-              fastSaveScheduledOpt = Some(Scheduled(mod, file))
-            }
+            val plan = PipelinePlan.afterHarvest(datasetContext.sipMapperOpt.isDefined, mod, file)
+            val runId = beginPlannedRun(plan, trigger = "harvest")
+            orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
             self ! GenerateSipZip
           case None =>
             // Deletes-only delta: the harvest brought no records but may have
@@ -925,7 +931,7 @@ class DatasetActor(val datasetContext: DatasetContext,
           // Note: We always set RAW state even with noRecordsMatch so frontend can detect the harvest completed
           // The frontend will show a modal when stateRaw is set but acquiredRecordCount is 0
           dsInfo.setState(RAW)
-        case FromScratch =>
+        case FromScratch(autoProcess) =>
           if (noRecordsMatch) {
             // Full harvest returned no records - all records depublished
             // Keep SAVED state so dataset stays in harvest cycle for auto-recovery
@@ -938,11 +944,13 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.resetToSourced()
             dsInfo.setLastHarvestTime(incremental = false)
 
-            // Auto-continue to Make SIP → Process if flag is set (discovery imports)
-            if (autoProcessAfterFirstHarvest) {
-              autoProcessAfterFirstHarvest = false  // Reset flag
+            // Auto-continue to Make SIP → Process (discovery imports): the
+            // intent rode the strategy; the chain is a planned run.
+            if (autoProcess) {
               log.info(s"Auto-continuing to Make SIP → Process for ${dsInfo.spec}")
-              fastProcessOnly = true  // Use existing flag to stop at PROCESSED (no save)
+              val plan = PipelinePlan.afterFirstHarvestAutoProcess(datasetContext.sipMapperOpt.isDefined)
+              val runId = beginPlannedRun(plan, trigger = "discovery")
+              orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
               self ! GenerateSipZip
               // Don't release semaphore - will be released after processing completes
             } else {
@@ -989,6 +997,8 @@ class DatasetActor(val datasetContext: DatasetContext,
         dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.foreach(_ ! PoisonPill)
+      val adoptRunId = beginPlannedRun(PipelinePlan.afterAdoption, trigger = "upload")
+      orgContext.recordRegistry.stageStarted(dsInfo.spec, adoptRunId, PipelinePlan.STAGE_GENERATE_SIP)
       self ! GenerateSipZip
       goto(Idle) using Dormant
 
@@ -1050,37 +1060,28 @@ class DatasetActor(val datasetContext: DatasetContext,
       //        db.setStatus(RAW_POCKETS)
       active.childOpt.foreach(_ ! PoisonPill)
 
-      // Check if we're in fast save mode and should continue to processing
-      fastSaveScheduledOpt match {
-        case Some(scheduled) if datasetContext.sipMapperOpt.isDefined =>
-          log.info(s"Fast save mode: continuing to processing after SIP generation")
-          fastSaveScheduledOpt = None // Clear the flag
-          fastProcessOnly = false
-          fastSaveAfterProcessing = true
-          // True incremental harvest (modifiedAfter set): pass the delta
-          // through so SourceProcessor parses ONLY the delta file and the
-          // save sends only it — dropping it here silently degraded every
-          // incremental harvest into a full reprocess + full re-send.
-          // FromScratchIncremental (modifiedAfter empty) keeps full
-          // semantics: its processed output must cover the whole source.
-          if (scheduled.modifiedAfter.isDefined) {
-            log.info(s"Incremental delta processing: ${scheduled.file.getName} (${dsInfo.spec})")
-            self ! StartProcessing(Some(scheduled))
-          } else {
-            self ! StartProcessing(None)
-          }
+      // The persisted plan decides what happens next — not actor flags.
+      // A plan that continues to processing carries the delta context: for a
+      // true incremental harvest, SourceProcessor parses ONLY the delta file
+      // and the save sends only it (dropping this context here is exactly
+      // the bug that silently degraded every incremental into a full
+      // reprocess + re-send).
+      openPlan() match {
+        case Some((runId, plan)) if plan.nextAfter(PipelinePlan.STAGE_GENERATE_SIP).contains(PipelinePlan.STAGE_PROCESS)
+            && datasetContext.sipMapperOpt.isDefined =>
+          orgContext.recordRegistry.stageCompleted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
+          val scheduledOpt = plan.scheduledForProcessing
+          scheduledOpt.foreach(s => log.info(s"Incremental delta processing: ${s.file.getName} (${dsInfo.spec})"))
+          self ! StartProcessing(scheduledOpt)
           goto(Idle) using Dormant
-        case _ if fastProcessOnly && datasetContext.sipMapperOpt.isDefined =>
-          log.info(s"Fast process mode: continuing to processing after SIP generation (no save)")
-          fastProcessOnly = false
-          fastSaveScheduledOpt = None
-          self ! StartProcessing(None)  // None = no auto-save after processing
+        case Some((runId, plan)) =>
+          // Plan ends here (no mapper, or generate_sip was the last stage)
+          orgContext.recordRegistry.stageCompleted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
+          orgContext.recordRegistry.completeRun(dsInfo.spec, runId)
+          orgContext.semaphore.release(dsInfo.spec)
           goto(Idle) using Dormant
-        case _ =>
-          fastSaveScheduledOpt = None // Clear the flag if set
-          fastProcessOnly = false
-          // Release semaphore since we're not continuing to processing
-          // The semaphore was held by processIncremental or Adopting handler
+        case None =>
+          // Standalone "start generating sip" — no chain
           orgContext.semaphore.release(dsInfo.spec)
           goto(Idle) using Dormant
       }
@@ -1114,9 +1115,13 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt, registryRunId),
                active: Active) =>
       dsInfo.setState(PROCESSED)
-      if (scheduledOpt.isDefined || fastSaveAfterProcessing) {
+      val planIncludesSave = registryRunId.exists { runId =>
+        orgContext.recordRegistry.runPlan(dsInfo.spec, runId)
+          .flatMap(PipelinePlan.Plan.fromJson)
+          .exists(_.includes(PipelinePlan.STAGE_SAVE))
+      }
+      if (scheduledOpt.isDefined || planIncludesSave) {
         val saveScheduledOpt = scheduledOpt
-        fastSaveAfterProcessing = false
 
         if (saveScheduledOpt.isDefined) {
           dsInfo.setIncrementalProcessedRecordCounts(validRecords, invalidRecords)
@@ -1147,22 +1152,23 @@ class DatasetActor(val datasetContext: DatasetContext,
         val graphSaver = createChildActor(
           GraphSaver.props(datasetContext, orgContext),
           "graph-saver")
-        graphSaver ! SaveGraphs(saveScheduledOpt, registryRunId)
+        graphSaver ! SaveGraphs(saveScheduledOpt, registryRunId, Some(PipelinePlan.saveModeFor(
+          saveScheduledOpt.exists(_.modifiedAfter.isDefined),
+          orgContext.narthexConfig.registryEnabled,
+          orgContext.narthexConfig.registryKeepRevisionSweep)))
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       } else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         dsInfo.setIncrementalProcessedRecordCounts(0, 0)
-        // No GraphSaver will run, so close the registry run here — otherwise
-        // it would sit 'running' forever in harvest_runs.
-        if (orgContext.narthexConfig.registryEnabled) {
-          registryRunId.foreach { runId =>
-            scala.util.Try(orgContext.recordRegistry.completeRun(dsInfo.spec, runId))
-              .recover { case ex: Throwable =>
-                log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
-              }
-          }
+        // No GraphSaver will run, so close the run here — otherwise it
+        // would sit 'running' forever.
+        registryRunId.foreach { runId =>
+          scala.util.Try(orgContext.recordRegistry.completeRun(dsInfo.spec, runId))
+            .recover { case ex: Throwable =>
+              log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
+            }
         }
         // Success emails disabled - only send emails on errors
         active.childOpt.foreach(_ ! PoisonPill)
@@ -1221,15 +1227,15 @@ class DatasetActor(val datasetContext: DatasetContext,
   // harvest_runs reliability: any WorkFailure closes whatever registry run is
   // still open for this dataset, so rows never sit 'running' forever. The FSM
   // allows one active job per dataset, so no run id needs threading here.
-  private def failOpenRegistryRuns(message: String): Unit =
-    if (orgContext.narthexConfig.registryEnabled) {
-      scala.util.Try {
-        val failed = orgContext.recordRegistry.failOpenRuns(dsInfo.spec, message.take(500))
-        if (failed > 0) log.info(s"Registry: marked $failed open run(s) failed for ${dsInfo.spec}")
-      }.recover { case ex: Throwable =>
-        log.warning(s"Registry: failOpenRuns failed for ${dsInfo.spec}: ${ex.getMessage}")
-      }
+  private def failOpenRegistryRuns(message: String): Unit = {
+    scala.util.Try {
+      val failed = orgContext.recordRegistry.failOpenRuns(dsInfo.spec, message.take(500))
+      if (failed > 0) log.info(s"Registry: marked $failed open run(s) failed for ${dsInfo.spec}")
+    }.recover { case ex: Throwable =>
+      log.warning(s"Registry: failOpenRuns failed for ${dsInfo.spec}: ${ex.getMessage}")
     }
+    ()
+  }
 
   when(Saving) {
 
@@ -1323,7 +1329,7 @@ class DatasetActor(val datasetContext: DatasetContext,
           log.info(s"User triggered immediate retry (attempt #${retryCount + 1})")
           dsInfo.incrementRetryCount()
           // Route through OrgActor for proper queue management
-          val strategy = FromScratch
+          val strategy = FromScratch()
           orgContext.orgActor ! EnqueueOperation(dsInfo.spec, StartHarvest(strategy), "manual")
           stay()
 
@@ -1518,7 +1524,6 @@ class DatasetActor(val datasetContext: DatasetContext,
       log.info(s"In error. Command name: $commandName")
       if (commandName == "clear error") {
         log.info(s"Clearing error for ${dsInfo.spec}: $message")
-        fastSaveAfterProcessing = false
         dsInfo.clearError()
         log.info(s"clear error so releasing semaphore if set")
         orgContext.semaphore.release(dsInfo.spec)
@@ -1556,7 +1561,6 @@ class DatasetActor(val datasetContext: DatasetContext,
         stay() using active.copy(interrupt = true)
       } else {
         log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
-        fastSaveAfterProcessing = false
         // kill active actors
         active.childOpt.foreach(_ ! PoisonPill)
         // Release semaphores since we're aborting the operation
@@ -1569,7 +1573,6 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(WorkFailure(message, exceptionOpt), active: Active) =>
       log.warning(s"Work failure [$message] while in [$active]")
-      fastSaveAfterProcessing = false
       failOpenRegistryRuns(message)
 
       // Check if this is a harvest failure (candidate for retry)
@@ -1635,7 +1638,6 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(WorkFailure(message, exceptionOpt), _) =>
       log.warning(s"Work failure $message while dormant")
-      fastSaveAfterProcessing = false
       failOpenRegistryRuns(message)
       exceptionOpt match {
         case Some(exception) => log.error(exception, message)

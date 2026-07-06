@@ -81,8 +81,16 @@ class RecordRegistry(datasetsDir: File) {
   private def spec(name: String): SpecRegistry =
     specs.computeIfAbsent(name, s => new SpecRegistry(new File(datasetsDir, s)))
 
-  def beginRun(specName: String, kind: String, trigger: Option[String] = None): Long =
-    spec(specName).beginRun(kind, trigger)
+  def beginRun(specName: String, kind: String, trigger: Option[String] = None, plan: Option[String] = None): Long =
+    spec(specName).beginRun(kind, trigger, plan)
+
+  /** The currently running run, if any: (run_id, plan JSON). */
+  def openRun(specName: String): Option[(Long, Option[String])] =
+    if (dbFileExists(specName)) spec(specName).openRun() else None
+
+  /** The persisted plan of a specific run. */
+  def runPlan(specName: String, runId: Long): Option[String] =
+    if (dbFileExists(specName)) spec(specName).runPlan(runId) else None
 
   def completeRun(specName: String, runId: Long, sentCount: Int = 0): Unit =
     spec(specName).completeRun(runId, sentCount)
@@ -380,7 +388,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
         throw e
     }
 
-  def beginRun(kind: String, trigger: Option[String] = None): Long = synchronized {
+  def beginRun(kind: String, trigger: Option[String] = None, plan: Option[String] = None): Long = synchronized {
     commitTx {
       // Self-heal: a run still 'running' at this point was orphaned by a
       // crash or an unclosed failure path — only one run per dataset can be
@@ -388,13 +396,14 @@ private[services] class SpecRegistry(val datasetDir: File) {
       val healed = markOpenRunsFailed("stale: superseded by new run")
       if (healed > 0) logger.warn(s"beginRun: marked $healed stale running run(s) failed in $dbFile")
 
-      val sql = "INSERT INTO runs (kind, run_trigger, started_at, status) VALUES (?, ?, ?, ?)"
+      val sql = "INSERT INTO runs (kind, run_trigger, plan, started_at, status) VALUES (?, ?, ?, ?, ?)"
       val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
       try {
         ps.setString(1, kind)
         if (trigger.isDefined) ps.setString(2, trigger.get) else ps.setNull(2, java.sql.Types.VARCHAR)
-        ps.setString(3, nowIso())
-        ps.setString(4, RUN_RUNNING)
+        if (plan.isDefined) ps.setString(3, plan.get) else ps.setNull(3, java.sql.Types.VARCHAR)
+        ps.setString(4, nowIso())
+        ps.setString(5, RUN_RUNNING)
         ps.executeUpdate()
         val rs = ps.getGeneratedKeys
         try {
@@ -403,6 +412,28 @@ private[services] class SpecRegistry(val datasetDir: File) {
         } finally rs.close()
       } finally ps.close()
     }
+  }
+
+  def openRun(): Option[(Long, Option[String])] = synchronized {
+    val ps = conn.prepareStatement(
+      s"SELECT run_id, plan FROM runs WHERE status = '$RUN_RUNNING' ORDER BY run_id DESC LIMIT 1")
+    try {
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) Some((rs.getLong(1), Option(rs.getString(2)))) else None
+      } finally rs.close()
+    } finally ps.close()
+  }
+
+  def runPlan(runId: Long): Option[String] = synchronized {
+    val ps = conn.prepareStatement("SELECT plan FROM runs WHERE run_id = ?")
+    try {
+      ps.setLong(1, runId)
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) Option(rs.getString(1)) else None
+      } finally rs.close()
+    } finally ps.close()
   }
 
   // === run_stages: per-stage audit trail (Phase A1 write-through) ===

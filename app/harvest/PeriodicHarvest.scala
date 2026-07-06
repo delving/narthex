@@ -125,7 +125,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
           logger.info(s"PeriodicHarvest: Time for retry harvest of ${info.spec} (attempt #${info.getRetryCount + 1})")
 
           // Queue the retry harvest - OrgActor handles concurrency limit
-          val strategy = FromScratch
+          val strategy = FromScratch()
           logger.info(s"PeriodicHarvest: Queueing retry for ${info.spec}")
           orgContext.orgActor ! EnqueueOperation(info.spec, StartHarvest(strategy), "periodic")
         }

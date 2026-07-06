@@ -228,20 +228,21 @@ class SourceProcessor(val datasetContext: DatasetContext,
         val registryKind =
           if (isIncrementalHarvest) RecordRegistry.KIND_INCREMENT
           else RecordRegistry.KIND_FULL
-        val runIdOpt: Option[Long] =
-          if (registryEnabled) {
-            val id = registry.beginRun(spec, registryKind)
-            log.info(s"Registry run $id opened for $spec (kind=$registryKind)")
-            registry.stageStarted(spec, id, "process", Some(play.api.libs.json.Json.stringify(
-              play.api.libs.json.Json.obj(
-                "kind" -> registryKind,
-                "file" -> scheduledOpt.map(_.file.getName)
-              ))))
-            Some(id)
-          } else {
-            log.info(s"Registry disabled by config — skipping beginRun for $spec")
-            None
-          }
+        // Join the chain's planned run if one is open; otherwise this is a
+        // standalone processing command — open a run for it. Run bookkeeping
+        // is unconditional pipeline infrastructure; registryEnabled gates
+        // only the Hub3-state stamping below.
+        val runIdOpt: Option[Long] = {
+          val existing = registry.openRun(spec).map(_._1)
+          val id = existing.getOrElse(registry.beginRun(spec, registryKind))
+          log.info(s"Registry run $id ${if (existing.isDefined) "continued" else "opened"} for $spec (kind=$registryKind)")
+          registry.stageStarted(spec, id, "process", Some(play.api.libs.json.Json.stringify(
+            play.api.libs.json.Json.obj(
+              "kind" -> registryKind,
+              "file" -> scheduledOpt.map(_.file.getName)
+            ))))
+          Some(id)
+        }
 
         // Stamp OAI-PMH tombstones (from harvester's deleted.ids) into the
         // registry (records + tombstones table) so the next save phase can
@@ -249,7 +250,7 @@ class SourceProcessor(val datasetContext: DatasetContext,
         // file for that. deleted.ids holds raw OAI header identifiers; the
         // registry keys on pocket ids — stampTombstones resolves the variant
         // matching existing rows, or drops would never match in Hub3 either.
-        runIdOpt.foreach { runId =>
+        if (registryEnabled) runIdOpt.foreach { runId =>
           val rawIds = datasetContext.sourceRepoOpt.map(_.deletedIdSet.toSeq).getOrElse(Seq.empty)
           if (rawIds.nonEmpty) {
             val stamped = registry.stampTombstones(spec, rawIds, runId)
@@ -362,8 +363,12 @@ class SourceProcessor(val datasetContext: DatasetContext,
 
             batch.clear()
             if (seenBuf.nonEmpty) {
-              runIdOpt.foreach { runId =>
-                registry.upsertSeenBatch(spec, seenBuf.toSeq, runId)
+              // Hub3-state semantics stay behind the kill switch even though
+              // run bookkeeping is now unconditional.
+              if (registryEnabled) {
+                runIdOpt.foreach { runId =>
+                  registry.upsertSeenBatch(spec, seenBuf.toSeq, runId)
+                }
               }
               seenBuf.clear()
             }

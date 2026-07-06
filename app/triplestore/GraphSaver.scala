@@ -36,7 +36,9 @@ object GraphSaver {
 
   case object GraphSaveComplete
 
-  case class SaveGraphs(scheduledOpt: Option[Scheduled], registryRunId: Option[Long] = None)
+  case class SaveGraphs(scheduledOpt: Option[Scheduled],
+                        registryRunId: Option[Long] = None,
+                        saveMode: Option[dataset.PipelinePlan.SaveMode] = None)
 
   /** Internal messages for thread-safe Future result handling */
   private case object RevisionReady
@@ -206,7 +208,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
 
   override def receive = {
 
-    case SaveGraphs(scheduledOpt, runIdOpt) =>
+    case SaveGraphs(scheduledOpt, runIdOpt, saveModeOpt) =>
       actorWork(context) {
         log.info("Save graphs")
         val progressReporter = ProgressReporter(SAVING, context.parent)
@@ -234,15 +236,16 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             s"SaveGraphs received non-processed file ${file.getName}; expected .xml or .xml.zst")
         }
 
-        // MUTUALLY EXCLUSIVE with delta filtering: the revision sweep
-        // (increment_revision + clear_orphans) deletes everything in Hub3
-        // not re-indexed at the new revision. Filtering a full send while
-        // sweeping would mass-delete every unchanged record — and the
-        // registry would still record them as sent (permanent silent
-        // divergence). Sweep on => full send; filtering only when the
-        // registry is the sole orphan authority (keepRevisionSweep=false)
-        // or on incremental saves (which never sweep).
-        willRevisionSweep = !isIncremental && (!registryEnabled || keepRevisionSweep)
+        // The save mode is decided ONCE — by the planner for chained saves,
+        // by the same pure function here for legacy callers — and makes the
+        // sweep and delta filtering mutually exclusive by construction: the
+        // revision sweep (increment_revision + clear_orphans) deletes
+        // everything in Hub3 not re-indexed at the new revision, so
+        // filtering a swept save would mass-delete every unchanged record
+        // while the registry still records them as sent.
+        val saveMode = saveModeOpt.getOrElse(
+          dataset.PipelinePlan.saveModeFor(isIncremental, registryEnabled, keepRevisionSweep))
+        willRevisionSweep = saveMode == dataset.PipelinePlan.FullSendWithSweep
 
         expectedIndexIds =
           if (registryEnabled && !willRevisionSweep) registry.pendingIndexBatch(spec, Int.MaxValue).map(_._1).toSet
@@ -265,8 +268,8 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         registryRunIdOpt.foreach { runId =>
           registry.stageStarted(spec, runId, "save", Some(play.api.libs.json.Json.stringify(
             play.api.libs.json.Json.obj(
+              "saveMode" -> saveMode.name,
               "incremental" -> isIncremental,
-              "revisionSweep" -> willRevisionSweep,
               "deltaFiltering" -> registryIndexFiltering,
               "pending" -> expectedIndexIds.size,
               "file" -> scheduledOpt.map(_.file.getName)
@@ -427,18 +430,18 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           log.info(s"Revision sweep: clear_orphans emitted (keepRevisionSweep=$keepRevisionSweep)")
         }
 
-        // Close the registry run started by SourceProcessor. The registry
-        // computes the real per-run diff (added/changed/deleted) internally;
-        // recordsSent answers "how much did this save actually push to Hub3".
-        if (registryEnabled) {
-          registryRunIdOpt.foreach { runId =>
-            registry.stageCompleted(spec, runId, "reconcile", Some(play.api.libs.json.Json.stringify(
-              play.api.libs.json.Json.obj("revisionSweep" -> willRevisionSweep))))
-            scala.util.Try(registry.completeRun(spec, runId, recordsSent))
-              .recover { case ex: Throwable =>
-                log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
-              }
-          }
+        // Close the run. The registry computes the real per-run diff
+        // (added/changed/deleted) internally; recordsSent answers "how much
+        // did this save actually push to Hub3". Run bookkeeping is pipeline
+        // infrastructure and runs regardless of registryEnabled (which gates
+        // only the Hub3-state semantics: stamping, confirms, drops, filter).
+        registryRunIdOpt.foreach { runId =>
+          registry.stageCompleted(spec, runId, "reconcile", Some(play.api.libs.json.Json.stringify(
+            play.api.libs.json.Json.obj("revisionSweep" -> willRevisionSweep))))
+          scala.util.Try(registry.completeRun(spec, runId, recordsSent))
+            .recover { case ex: Throwable =>
+              log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
+            }
         }
 
         // Release BOTH semaphores on successful completion to be safe
