@@ -216,7 +216,42 @@ descriptive-metadata store (only its pipeline-driver role is removed).
 - SourceRepo.scala: deleted.ids 306–321, pockets cache 480–545
 - DsInfo.scala: getState max-timestamp mechanism to retire (1046–1145)
 
-## 7. Full invariant inventory (from the as-is audit)
+## 7. Appendix — feat/postgresql-migration salvage
+
+Reviewed 2026-07-06 (tip badcc809, diverged 1a3d43df, +8,359/−1,007 over 57
+files). Decision: **do not merge or rebase — archive and mine.** Rationale:
+it replaces Fuseki with an org-level PostgreSQL (competing with the
+per-dataset-SQLite + Fuseki-as-projection direction), predates the
+RecordRegistry and all incremental/trends fixes (~3,900 lines it never saw;
+auto-merge is semantically broken — unmapped props read as absent),
+verification (its Task 8) was never finished, and it carries seam defects:
+broken migration bootstrapping bypass, no PG provisioning for new datasets
+(FK violation on first write, unguarded), stale-snapshot kill-switch gap,
+12 state timestamps squeezed into one column, and a PeriodicHarvest rewrite
+that silently dropped the ModifiedAfter strategy.
+
+Salvage into Phase A as fresh commits (~3–5 days total):
+
+| Item (branch source) | Use | Phase |
+|---|---|---|
+| `PropertySnapshot.scala` NXProp↔column mapping | the projector's pre-debugged prop inventory (descriptive vs config vs derived) | A4 |
+| V1 `dataset_state`/V11 columns + V2 `workflows`/`workflow_steps` DDL | column checklists for `runs`/`run_stages` schema | A1 |
+| `GlobalFusekiWrites` kill-switch pattern | rewritten as "only the projector writes state props" guard | A4 |
+| DsInfoService state-transition test scenarios (~1,900 spec lines) | planner test cases (drop the embedded-PG infra) | A2 |
+| `displayLabel`/`nextCheckpoint` status-bar API (e203ea48, 684b75f5) | re-implement fresh against current UI | A3/A4 |
+| `FusekiMigration` backfill (idempotent upsert + per-dataset report) | archived template if descriptive metadata leaves Fuseki | post-B3 |
+
+Dropped: PG repository layer + Flyway/Hikari deps, embedded-PG test infra,
+V7 audit triggers, V3 trend tables (target the pre-overhaul trends), the
+workflow-to-PG move (superseded by runs in records.db).
+
+Secondary value: independent validation — a second attempt at the same root
+problem got stuck on exactly the consistency seams (dual-write, bootstrap,
+state squeeze) that the runs+projector design avoids by construction.
+
+Branch tagged `archive/postgresql-migration` and removed.
+
+## 8. Full invariant inventory (from the as-is audit)
 
 Fifteen implicit invariants currently enforced by convention; the design
 maps each to its structural home. Abbreviated:
