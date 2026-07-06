@@ -94,7 +94,33 @@ replan to `[reconcile]`. All conditional logic lives in two pure functions
 + isolated stages. Bug-061's class (payload matched then dropped) becomes
 unrepresentable: the delta file is a persisted stage input.
 
-### 2.3 SaveMode — sweep XOR filtering as a type
+### 2.3 Manual mode — short runs chained by lineage, not an open run
+
+Manual operation (user clicks each step; SIP-Creator uploads) is NOT a
+long-lived run. Three rules:
+
+1. **Each manual action is its own short run** — "start processing" =
+   `[generate_sip, process]`, "start saving" = `[save, reconcile]`,
+   fast-save = the full chain from one click. An open run awaiting human
+   input would fight the run lifecycle (self-heal, interrupted-on-restart,
+   one-job-per-dataset lease).
+2. **Continuity is recorded lineage.** The planner resolves "which run's
+   output does this act on" once, at plan time, and persists it as
+   `source_run_id` in the stage's `input` JSON — replacing the implicit
+   `latestCompletedFullRunId` adoption heuristic. The engine can validate
+   the link before running (e.g. refuse a save whose processed/ is newer
+   than the referenced run).
+3. **SIP-Creator processed upload is a run** (`kind=external_process`,
+   plan `[ingest_processed]`): the stage registers the uploaded output and
+   stamps the registry (hash → upsertSeen), so later saves have a real run
+   to reference. This retires the `processedExternally` marker and its
+   timestamp-race workaround entirely.
+
+Schema impact: none beyond enum values (`trigger='manual'`; kinds
+`process_only`, `save_only`, `external_process`) and the lineage
+convention in `run_stages.input`.
+
+### 2.4 SaveMode — sweep XOR filtering as a type
 
 ```
 SaveMode = FullSendWithSweep | DeltaSendRegistryOwned | IncrementalFileSend
@@ -105,7 +131,7 @@ pattern-matched by Save and Reconcile. Filtering-while-sweeping (the
 mass-deletion bug) is unrepresentable, and every save's mode is auditable
 after the fact.
 
-### 2.4 Where state lives
+### 2.5 Where state lives
 
 - **Per-dataset SQLite** (`records.db` → conceptually `dataset.db`): truth
   for records, runs, run_stages, tombstones. Single writer per dataset, WAL.
@@ -120,7 +146,7 @@ after the fact.
   `getState()`-by-max-timestamp and the externallyProcessed re-stamp hack
   are deleted.
 
-### 2.5 Invariants enforced structurally
+### 2.6 Invariants enforced structurally
 
 - **RecordId newtype**: only constructor applies normalization; harvester
   normalizes tombstones off the wire into the `tombstones` table (raw_id
