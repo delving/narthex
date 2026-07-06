@@ -176,10 +176,14 @@ every schema/file a language-neutral contract.
 
 ### Phase B — per-stage Go extraction
 
-- **B1 Harvester (~2–4 wk).** Zero JVM deps, IO-bound, flakiest component;
-  ships as a `narthex-harvester` binary exec'd as the Harvest stage,
-  results in the shared SQLite. Lowest-stakes validation of the interop
-  contract.
+- **B1 Harvester (~1–3 wk, revised).** A full Go harvesting stack already
+  exists (Delving/Hub3 ecosystem) — B1 is *integration*, not a rewrite:
+  wrap the existing Go harvester as the Harvest stage implementation
+  (stage input in → accepted zip + tombstone rows + run_stages rows out,
+  written to the shared SQLite). Still the lowest-stakes validation of the
+  interop contract. The Go rewrite overall therefore focuses on the parts
+  Narthex uniquely owns: user actions/commands, automation (planner +
+  engine + queue), and tracking (runs/registry/status).
 - **B2 Save + Reconcile (~3–4 wk).** Hub3 is Go — same team both ends;
   inputs are JSON-lines + registry; highest-invariant-density code moves
   early, validated by re-running the Scala test scenarios against
