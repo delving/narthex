@@ -1186,7 +1186,10 @@ class DatasetActor(val datasetContext: DatasetContext,
         // open a no-op run when everything in it is already dropped-and-sent.
         if (tombstoneIds.nonEmpty && !registry.allTombstonesSynced(spec, tombstoneIds)) {
           val runId = registry.beginRun(spec, RecordRegistry.KIND_INCREMENT)
-          registry.upsertDeletedBatch(spec, tombstoneIds, runId)
+          registry.stageStarted(spec, runId, "reconcile", Some(play.api.libs.json.Json.stringify(
+            play.api.libs.json.Json.obj("deletesOnly" -> true, "tombstones" -> tombstoneIds.size))))
+          registry.stampTombstones(spec, rawIds, runId)
+          registry.stageCompleted(spec, runId, "reconcile")
           registry.completeRun(spec, runId)
           import context.dispatcher
           def emitDropBatch(): Unit = {

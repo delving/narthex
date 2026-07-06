@@ -358,6 +358,93 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     resolved shouldBe Seq("11135836", "oai-x-42", "oai-bra.uvt.nl-99999999")
   }
 
+  // === Phase A1: runs / run_stages / tombstones ===
+
+  it should "track the per-stage audit trail" in {
+    val run = registry.beginRun(spec, KIND_FULL, trigger = Some("manual"))
+    registry.stageStarted(spec, run, "process", Some("""{"kind":"full"}"""))
+    registry.runStages(spec, run) shouldBe Seq("process" -> "running")
+
+    registry.stageCompleted(spec, run, "process", Some("""{"valid":10}"""))
+    registry.stageStarted(spec, run, "save")
+    registry.stageCompleted(spec, run, "save")
+    registry.completeRun(spec, run)
+
+    registry.runStages(spec, run).toMap shouldBe Map("process" -> "completed", "save" -> "completed")
+  }
+
+  it should "fail open stages when a run is failed" in {
+    val run = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, run, "process")
+    registry.failOpenRuns(spec, "boom") shouldBe 1
+    registry.runStages(spec, run) shouldBe Seq("process" -> "failed")
+
+    // beginRun self-heal also fails the stale run's open stages
+    val stale = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, stale, "save")
+    val fresh = registry.beginRun(spec, KIND_FULL)
+    registry.runStages(spec, stale) shouldBe Seq("save" -> "failed")
+    registry.runStatus(spec, fresh) shouldBe Some(RUN_RUNNING)
+  }
+
+  it should "record tombstones with raw ids via stampTombstones" in {
+    val run1 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("11135836" -> "h1"), run1)
+
+    val resolved = registry.stampTombstones(spec, Seq("oai:bra.uvt.nl:11135836", "oai:x:99"), run1)
+    resolved shouldBe Seq("11135836", "oai-x-99")
+
+    registry.listTombstones(spec) shouldBe Seq(
+      "11135836" -> Some("oai:bra.uvt.nl:11135836"),
+      "oai-x-99" -> Some("oai:x:99")
+    )
+    // records stamped too: the seen row flipped to deleted
+    registry.count(spec, STATUS_DELETED) shouldBe 2
+
+    // re-stamp on a later run updates last_run_id, adds no duplicates
+    val run2 = registry.beginRun(spec, KIND_INCREMENT)
+    registry.stampTombstones(spec, Seq("oai:x:99"), run2)
+    registry.listTombstones(spec).size shouldBe 2
+  }
+
+  it should "migrate a v3 records.db in place (harvest_runs renamed to runs)" in {
+    val v3Dir = new File(tempDir, "v3spec")
+    v3Dir.mkdirs()
+    val v3Db = new File(v3Dir, DB_FILENAME)
+    val conn = java.sql.DriverManager.getConnection(s"jdbc:sqlite:${v3Db.getAbsolutePath}")
+    try {
+      val s = conn.createStatement()
+      s.executeUpdate("CREATE TABLE schema_meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)")
+      s.executeUpdate("""CREATE TABLE records (
+        local_id TEXT PRIMARY KEY, content_hash TEXT NOT NULL, status TEXT NOT NULL,
+        first_seen_run_id INTEGER, last_changed_run_id INTEGER,
+        last_seen_run_id INTEGER NOT NULL, last_seen_ts TEXT NOT NULL,
+        last_sent_hash TEXT, last_sent_run_id INTEGER,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+      s.executeUpdate("""CREATE TABLE harvest_runs (
+        run_id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL,
+        started_at TEXT NOT NULL, completed_at TEXT, status TEXT NOT NULL,
+        seen_count INTEGER, changed_count INTEGER, deleted_count INTEGER,
+        added_count INTEGER, sent_count INTEGER, note TEXT)""")
+      s.executeUpdate("INSERT INTO schema_meta (k, v) VALUES ('schema_version', '3')")
+      s.executeUpdate("""INSERT INTO harvest_runs (kind, started_at, status, seen_count, sent_count)
+        VALUES ('full', '2026-07-01T00:00:00Z', 'completed', 5, 5)""")
+      s.close()
+    } finally conn.close()
+
+    // Opening through the registry migrates in place: table renamed, new
+    // columns/tables added, old run rows still visible
+    val runs = registry.listRuns("v3spec", 30)
+    runs.size shouldBe 1
+    runs.head.kind shouldBe "full"
+    runs.head.sent shouldBe 5
+
+    val run2 = registry.beginRun("v3spec", KIND_INCREMENT)
+    registry.stageStarted("v3spec", run2, "process")
+    registry.runStages("v3spec", run2) shouldBe Seq("process" -> "running")
+    registry.listTombstones("v3spec") shouldBe empty
+  }
+
   // === Phase 2: v1 -> v2 migration ===
 
   it should "migrate a v1 records.db in place" in {

@@ -232,6 +232,11 @@ class SourceProcessor(val datasetContext: DatasetContext,
           if (registryEnabled) {
             val id = registry.beginRun(spec, registryKind)
             log.info(s"Registry run $id opened for $spec (kind=$registryKind)")
+            registry.stageStarted(spec, id, "process", Some(play.api.libs.json.Json.stringify(
+              play.api.libs.json.Json.obj(
+                "kind" -> registryKind,
+                "file" -> scheduledOpt.map(_.file.getName)
+              ))))
             Some(id)
           } else {
             log.info(s"Registry disabled by config — skipping beginRun for $spec")
@@ -239,22 +244,16 @@ class SourceProcessor(val datasetContext: DatasetContext,
           }
 
         // Stamp OAI-PMH tombstones (from harvester's deleted.ids) into the
-        // registry so the next save phase can diff them. Does not filter
-        // pockets — SourceRepo still uses the file for that.
-        // deleted.ids holds raw OAI header identifiers; the registry keys on
-        // pocket ids (sometimes the full cleaned header, sometimes just the
-        // local part) — resolveTombstoneIds picks whichever variant matches
-        // the existing rows, or drops would never match in Hub3 either.
-        val tombstoneIds: Seq[String] =
-          if (registryEnabled)
-            datasetContext.sourceRepoOpt
-              .map(repo => registry.resolveTombstoneIds(spec, repo.deletedIdSet.toSeq))
-              .getOrElse(Seq.empty)
-          else Seq.empty
+        // registry (records + tombstones table) so the next save phase can
+        // diff them. Does not filter pockets — SourceRepo still uses the
+        // file for that. deleted.ids holds raw OAI header identifiers; the
+        // registry keys on pocket ids — stampTombstones resolves the variant
+        // matching existing rows, or drops would never match in Hub3 either.
         runIdOpt.foreach { runId =>
-          if (tombstoneIds.nonEmpty) {
-            registry.upsertDeletedBatch(spec, tombstoneIds, runId)
-            log.info(s"Registry: stamped ${tombstoneIds.size} tombstoned records ($spec)")
+          val rawIds = datasetContext.sourceRepoOpt.map(_.deletedIdSet.toSeq).getOrElse(Seq.empty)
+          if (rawIds.nonEmpty) {
+            val stamped = registry.stampTombstones(spec, rawIds, runId)
+            log.info(s"Registry: stamped ${stamped.size} tombstoned records ($spec)")
           }
         }
 
@@ -438,6 +437,10 @@ class SourceProcessor(val datasetContext: DatasetContext,
 
         // Leave the registry run open so GraphSaver can stamp
         // last_sent_run_id on confirmed records and close it on save success.
+        runIdOpt.foreach { runId =>
+          registry.stageCompleted(spec, runId, "process", Some(play.api.libs.json.Json.stringify(
+            play.api.libs.json.Json.obj("valid" -> validRecords, "invalid" -> invalidRecords))))
+        }
         context.parent ! ProcessingComplete(validRecords,
                                             invalidRecords,
                                             scheduledOptOutput,

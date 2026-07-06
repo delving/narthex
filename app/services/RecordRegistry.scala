@@ -12,7 +12,7 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 
 object RecordRegistry {
-  val SCHEMA_VERSION = "3"
+  val SCHEMA_VERSION = "4"
   val DB_FILENAME = "records.db"
 
   val STATUS_SEEN    = "seen"
@@ -30,7 +30,7 @@ object RecordRegistry {
   /** Per-run diff: what this run actually did, derived from the records table. */
   case class RunDiff(added: Int, changed: Int, deleted: Int, seenTotal: Int)
 
-  /** One row of harvest_runs, for the trends API. */
+  /** One row of runs, for the trends API. */
   case class RunSummary(
     runId: Long,
     kind: String,
@@ -81,11 +81,28 @@ class RecordRegistry(datasetsDir: File) {
   private def spec(name: String): SpecRegistry =
     specs.computeIfAbsent(name, s => new SpecRegistry(new File(datasetsDir, s)))
 
-  def beginRun(specName: String, kind: String): Long =
-    spec(specName).beginRun(kind)
+  def beginRun(specName: String, kind: String, trigger: Option[String] = None): Long =
+    spec(specName).beginRun(kind, trigger)
 
   def completeRun(specName: String, runId: Long, sentCount: Int = 0): Unit =
     spec(specName).completeRun(runId, sentCount)
+
+  // Per-stage audit trail (Phase A1 write-through; observability only)
+  def stageStarted(specName: String, runId: Long, stage: String, input: Option[String] = None): Unit =
+    spec(specName).stageStarted(runId, stage, input)
+
+  def stageCompleted(specName: String, runId: Long, stage: String, output: Option[String] = None): Unit =
+    spec(specName).stageCompleted(runId, stage, output)
+
+  def runStages(specName: String, runId: Long): Seq[(String, String)] =
+    if (dbFileExists(specName)) spec(specName).runStages(runId) else Seq.empty
+
+  /** Resolve + stamp records + record in the tombstones table; returns resolved ids. */
+  def stampTombstones(specName: String, rawIds: Seq[String], runId: Long): Seq[String] =
+    if (rawIds.isEmpty) Seq.empty else spec(specName).stampTombstones(rawIds, runId)
+
+  def listTombstones(specName: String): Seq[(String, Option[String])] =
+    if (dbFileExists(specName)) spec(specName).listTombstones() else Seq.empty
 
   /**
    * Map raw OAI tombstone identifiers onto the id space of the seen rows.
@@ -243,42 +260,13 @@ private[services] class SpecRegistry(val datasetDir: File) {
         k TEXT PRIMARY KEY,
         v TEXT NOT NULL
       )""")
-      // Fresh dbs get the v2 shape directly; existing tables are untouched
-      // here and upgraded by the version branch below.
-      s.executeUpdate("""CREATE TABLE IF NOT EXISTS records (
-        local_id            TEXT PRIMARY KEY,
-        content_hash        TEXT NOT NULL,
-        status              TEXT NOT NULL,
-        first_seen_run_id   INTEGER,
-        last_changed_run_id INTEGER,
-        last_seen_run_id    INTEGER NOT NULL,
-        last_seen_ts        TEXT NOT NULL,
-        last_sent_hash      TEXT,
-        last_sent_run_id    INTEGER,
-        created_at          TEXT NOT NULL,
-        updated_at          TEXT NOT NULL
-      )""")
-      s.executeUpdate("""CREATE TABLE IF NOT EXISTS harvest_runs (
-        run_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        kind          TEXT NOT NULL,
-        started_at    TEXT NOT NULL,
-        completed_at  TEXT,
-        status        TEXT NOT NULL,
-        seen_count    INTEGER,
-        changed_count INTEGER,
-        deleted_count INTEGER,
-        added_count   INTEGER,
-        sent_count    INTEGER,
-        note          TEXT
-      )""")
-
       val storedVersion: Option[String] = {
         val rs = s.executeQuery("SELECT v FROM schema_meta WHERE k = 'schema_version'")
         try { if (rs.next()) Option(rs.getString(1)) else None } finally rs.close()
       }
 
       // Sequential upgrades: each case falls through to the next version's
-      // ALTERs so any historical db lands on the current schema.
+      // steps so any historical db lands on the current schema.
       def upgradeV1toV2(): Unit = {
         logger.info(s"Migrating $dbFile from schema v1 to v2")
         s.executeUpdate("ALTER TABLE records ADD COLUMN first_seen_run_id INTEGER")
@@ -293,21 +281,82 @@ private[services] class SpecRegistry(val datasetDir: File) {
         logger.info(s"Migrating $dbFile from schema v2 to v3")
         s.executeUpdate("ALTER TABLE harvest_runs ADD COLUMN sent_count INTEGER")
       }
+      def upgradeV3toV4(): Unit = {
+        logger.info(s"Migrating $dbFile from schema v3 to v4")
+        // harvest_runs generalizes to runs: every unit of pipeline work is a
+        // run; stage progress lives in run_stages. run_id sequence unchanged
+        // (records.first_seen_run_id etc. keep referencing it).
+        s.executeUpdate("ALTER TABLE harvest_runs RENAME TO runs")
+        s.executeUpdate("ALTER TABLE runs ADD COLUMN run_trigger TEXT")   // 'trigger' is an SQL keyword
+        s.executeUpdate("ALTER TABLE runs ADD COLUMN plan TEXT")          // JSON stage list; populated from Phase A2 (planner)
+        s.executeUpdate("ALTER TABLE runs ADD COLUMN current_stage TEXT")
+      }
 
       storedVersion match {
         case None =>
+          s.executeUpdate("""CREATE TABLE records (
+            local_id            TEXT PRIMARY KEY,
+            content_hash        TEXT NOT NULL,
+            status              TEXT NOT NULL,
+            first_seen_run_id   INTEGER,
+            last_changed_run_id INTEGER,
+            last_seen_run_id    INTEGER NOT NULL,
+            last_seen_ts        TEXT NOT NULL,
+            last_sent_hash      TEXT,
+            last_sent_run_id    INTEGER,
+            created_at          TEXT NOT NULL,
+            updated_at          TEXT NOT NULL
+          )""")
+          s.executeUpdate("""CREATE TABLE runs (
+            run_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind          TEXT NOT NULL,
+            started_at    TEXT NOT NULL,
+            completed_at  TEXT,
+            status        TEXT NOT NULL,
+            seen_count    INTEGER,
+            changed_count INTEGER,
+            deleted_count INTEGER,
+            added_count   INTEGER,
+            sent_count    INTEGER,
+            note          TEXT,
+            run_trigger   TEXT,
+            plan          TEXT,
+            current_stage TEXT
+          )""")
           s.executeUpdate(s"INSERT INTO schema_meta (k, v) VALUES ('schema_version', '$SCHEMA_VERSION')")
         case Some("1") =>
-          upgradeV1toV2()
-          upgradeV2toV3()
+          upgradeV1toV2(); upgradeV2toV3(); upgradeV3toV4()
           s.executeUpdate(s"UPDATE schema_meta SET v = '$SCHEMA_VERSION' WHERE k = 'schema_version'")
         case Some("2") =>
-          upgradeV2toV3()
+          upgradeV2toV3(); upgradeV3toV4()
+          s.executeUpdate(s"UPDATE schema_meta SET v = '$SCHEMA_VERSION' WHERE k = 'schema_version'")
+        case Some("3") =>
+          upgradeV3toV4()
           s.executeUpdate(s"UPDATE schema_meta SET v = '$SCHEMA_VERSION' WHERE k = 'schema_version'")
         case Some(SCHEMA_VERSION) => // current
         case Some(other) =>
           sys.error(s"records.db schema_version $other, expected $SCHEMA_VERSION: ${datasetDir.getAbsolutePath}")
       }
+
+      // Idempotent for both fresh and upgraded dbs
+      s.executeUpdate("""CREATE TABLE IF NOT EXISTS run_stages (
+        run_id       INTEGER NOT NULL,
+        stage        TEXT NOT NULL,
+        status       TEXT NOT NULL,
+        started_at   TEXT,
+        completed_at TEXT,
+        input        TEXT,
+        output       TEXT,
+        error        TEXT,
+        PRIMARY KEY (run_id, stage)
+      )""")
+      s.executeUpdate("""CREATE TABLE IF NOT EXISTS tombstones (
+        local_id     TEXT PRIMARY KEY,
+        raw_id       TEXT,
+        first_run_id INTEGER,
+        last_run_id  INTEGER,
+        created_at   TEXT NOT NULL
+      )""")
 
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_status ON records(status)")
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_last_seen_run_id ON records(last_seen_run_id)")
@@ -331,20 +380,21 @@ private[services] class SpecRegistry(val datasetDir: File) {
         throw e
     }
 
-  def beginRun(kind: String): Long = synchronized {
+  def beginRun(kind: String, trigger: Option[String] = None): Long = synchronized {
     commitTx {
       // Self-heal: a run still 'running' at this point was orphaned by a
       // crash or an unclosed failure path — only one run per dataset can be
-      // active. Mark it failed so harvest_runs history stays trustworthy.
+      // active. Mark it failed so run history stays trustworthy.
       val healed = markOpenRunsFailed("stale: superseded by new run")
       if (healed > 0) logger.warn(s"beginRun: marked $healed stale running run(s) failed in $dbFile")
 
-      val sql = "INSERT INTO harvest_runs (kind, started_at, status) VALUES (?, ?, ?)"
+      val sql = "INSERT INTO runs (kind, run_trigger, started_at, status) VALUES (?, ?, ?, ?)"
       val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
       try {
         ps.setString(1, kind)
-        ps.setString(2, nowIso())
-        ps.setString(3, RUN_RUNNING)
+        if (trigger.isDefined) ps.setString(2, trigger.get) else ps.setNull(2, java.sql.Types.VARCHAR)
+        ps.setString(3, nowIso())
+        ps.setString(4, RUN_RUNNING)
         ps.executeUpdate()
         val rs = ps.getGeneratedKeys
         try {
@@ -355,6 +405,67 @@ private[services] class SpecRegistry(val datasetDir: File) {
     }
   }
 
+  // === run_stages: per-stage audit trail (Phase A1 write-through) ===
+  // Observability only for now — a stage-row failure must never break the
+  // pipeline, so these swallow exceptions with a warning.
+
+  def stageStarted(runId: Long, stage: String, input: Option[String]): Unit = synchronized {
+    try commitTx {
+      val ps = conn.prepareStatement(
+        """INSERT INTO run_stages (run_id, stage, status, started_at, input)
+           VALUES (?, ?, 'running', ?, ?)
+           ON CONFLICT(run_id, stage) DO UPDATE SET
+             status = 'running', started_at = excluded.started_at, input = excluded.input,
+             completed_at = NULL, error = NULL""")
+      try {
+        ps.setLong(1, runId)
+        ps.setString(2, stage)
+        ps.setString(3, nowIso())
+        if (input.isDefined) ps.setString(4, input.get) else ps.setNull(4, java.sql.Types.VARCHAR)
+        ps.executeUpdate()
+      } finally ps.close()
+      setCurrentStage(runId, Some(stage))
+    } catch { case e: Exception => logger.warn(s"stageStarted($runId,$stage) failed for $dbFile: ${e.getMessage}") }
+  }
+
+  def stageCompleted(runId: Long, stage: String, output: Option[String]): Unit = synchronized {
+    try commitTx {
+      val ps = conn.prepareStatement(
+        """UPDATE run_stages SET status = 'completed', completed_at = ?, output = ?
+           WHERE run_id = ? AND stage = ?""")
+      try {
+        ps.setString(1, nowIso())
+        if (output.isDefined) ps.setString(2, output.get) else ps.setNull(2, java.sql.Types.VARCHAR)
+        ps.setLong(3, runId)
+        ps.setString(4, stage)
+        ps.executeUpdate()
+      } finally ps.close()
+    } catch { case e: Exception => logger.warn(s"stageCompleted($runId,$stage) failed for $dbFile: ${e.getMessage}") }
+  }
+
+  private def setCurrentStage(runId: Long, stage: Option[String]): Unit = {
+    val ps = conn.prepareStatement("UPDATE runs SET current_stage = ? WHERE run_id = ?")
+    try {
+      if (stage.isDefined) ps.setString(1, stage.get) else ps.setNull(1, java.sql.Types.VARCHAR)
+      ps.setLong(2, runId)
+      ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def runStages(runId: Long): Seq[(String, String)] = synchronized {
+    val ps = conn.prepareStatement(
+      "SELECT stage, status FROM run_stages WHERE run_id = ? ORDER BY started_at")
+    try {
+      ps.setLong(1, runId)
+      val rs = ps.executeQuery()
+      try {
+        val buf = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
+        while (rs.next()) buf += ((rs.getString(1), rs.getString(2)))
+        buf.toSeq
+      } finally rs.close()
+    } finally ps.close()
+  }
+
   def completeRun(runId: Long, sentCount: Int): Unit = synchronized {
     commitTx {
       val diff = computeRunDiff(runId)
@@ -362,9 +473,9 @@ private[services] class SpecRegistry(val datasetDir: File) {
       // baseline import of a pre-existing dataset, not "+N records added".
       val isBaseline =
         diff.added > 0 && diff.added == diff.seenTotal && !hasOtherCompletedRun(runId)
-      val sql = """UPDATE harvest_runs
+      val sql = """UPDATE runs
                       SET completed_at = ?, status = ?, seen_count = ?, changed_count = ?, deleted_count = ?, added_count = ?, sent_count = ?,
-                          note = COALESCE(?, note)
+                          note = COALESCE(?, note), current_stage = NULL
                     WHERE run_id = ?"""
       val ps = conn.prepareStatement(sql)
       try {
@@ -417,6 +528,51 @@ private[services] class SpecRegistry(val datasetDir: File) {
     }
   }
 
+  /**
+   * Resolve raw tombstone ids, stamp them into records, AND record them in
+   * the tombstones table (normalized id + raw id for audit, run-stamped).
+   * The tombstones table is the future single owner of deletion state;
+   * deleted.ids stays write-through legacy until SourceRepo reads the table.
+   * Returns the resolved ids.
+   */
+  def stampTombstones(rawIds: Seq[String], runId: Long): Seq[String] = synchronized {
+    val resolved = resolveTombstoneIds(rawIds)
+    upsertDeleted(resolved, runId)
+    commitTx {
+      val ps = conn.prepareStatement(
+        """INSERT INTO tombstones (local_id, raw_id, first_run_id, last_run_id, created_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(local_id) DO UPDATE SET
+             last_run_id = excluded.last_run_id,
+             raw_id = COALESCE(tombstones.raw_id, excluded.raw_id)""")
+      try {
+        val ts = nowIso()
+        rawIds.zip(resolved).foreach { case (raw, local) =>
+          ps.setString(1, local)
+          ps.setString(2, raw)
+          ps.setLong(3, runId)
+          ps.setLong(4, runId)
+          ps.setString(5, ts)
+          ps.addBatch()
+        }
+        ps.executeBatch()
+      } finally ps.close()
+    }
+    resolved
+  }
+
+  def listTombstones(): Seq[(String, Option[String])] = synchronized {
+    val ps = conn.prepareStatement("SELECT local_id, raw_id FROM tombstones ORDER BY local_id")
+    try {
+      val rs = ps.executeQuery()
+      try {
+        val buf = scala.collection.mutable.ArrayBuffer.empty[(String, Option[String])]
+        while (rs.next()) buf += ((rs.getString(1), Option(rs.getString(2))))
+        buf.toSeq
+      } finally rs.close()
+    } finally ps.close()
+  }
+
   // What this run actually did, derived from the records table.
   // Caller must hold the lock.
   private def computeRunDiff(runId: Long): RunDiff = {
@@ -445,7 +601,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
 
   private def hasOtherCompletedRun(runId: Long): Boolean = {
     val ps = conn.prepareStatement(
-      "SELECT COUNT(*) FROM harvest_runs WHERE status = ? AND run_id <> ?")
+      "SELECT COUNT(*) FROM runs WHERE status = ? AND run_id <> ?")
     try {
       ps.setString(1, RUN_COMPLETED)
       ps.setLong(2, runId)
@@ -460,7 +616,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
                 COALESCE(added_count, 0), COALESCE(changed_count, 0),
                 COALESCE(deleted_count, 0), COALESCE(seen_count, 0),
                 COALESCE(sent_count, 0), note
-           FROM harvest_runs
+           FROM runs
           WHERE started_at >= ?
           ORDER BY run_id""")
     try {
@@ -497,7 +653,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
                 SUM(COALESCE(changed_count, 0)),
                 SUM(COALESCE(deleted_count, 0)),
                 COUNT(*)
-           FROM harvest_runs
+           FROM runs
           WHERE status = ? AND started_at >= ?
           GROUP BY day
           ORDER BY day""")
@@ -527,8 +683,21 @@ private[services] class SpecRegistry(val datasetDir: File) {
 
   // Caller must hold the lock and be inside commitTx.
   private def markOpenRunsFailed(note: String): Int = {
-    val sql = """UPDATE harvest_runs
-                    SET completed_at = ?, status = ?, note = ?
+    // Fail the open stage rows of the dying runs too, so the audit trail
+    // never shows a 'running' stage inside a failed run.
+    val psStages = conn.prepareStatement(
+      """UPDATE run_stages SET status = 'failed', completed_at = ?, error = ?
+          WHERE status = 'running'
+            AND run_id IN (SELECT run_id FROM runs WHERE status = ?)""")
+    try {
+      psStages.setString(1, nowIso())
+      psStages.setString(2, note)
+      psStages.setString(3, RUN_RUNNING)
+      psStages.executeUpdate()
+    } finally psStages.close()
+
+    val sql = """UPDATE runs
+                    SET completed_at = ?, status = ?, note = ?, current_stage = NULL
                   WHERE status = ?"""
     val ps = conn.prepareStatement(sql)
     try {
@@ -542,7 +711,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
 
   def latestCompletedFullRunId(): Option[Long] = synchronized {
     val ps = conn.prepareStatement(
-      """SELECT run_id FROM harvest_runs
+      """SELECT run_id FROM runs
           WHERE status = ? AND kind = ?
           ORDER BY run_id DESC LIMIT 1""")
     try {
@@ -556,7 +725,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
   }
 
   def runStatus(runId: Long): Option[String] = synchronized {
-    val ps = conn.prepareStatement("SELECT status FROM harvest_runs WHERE run_id = ?")
+    val ps = conn.prepareStatement("SELECT status FROM runs WHERE run_id = ?")
     try {
       ps.setLong(1, runId)
       val rs = ps.executeQuery()

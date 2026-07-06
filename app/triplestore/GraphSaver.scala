@@ -262,6 +262,17 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           }
         }
 
+        registryRunIdOpt.foreach { runId =>
+          registry.stageStarted(spec, runId, "save", Some(play.api.libs.json.Json.stringify(
+            play.api.libs.json.Json.obj(
+              "incremental" -> isIncremental,
+              "revisionSweep" -> willRevisionSweep,
+              "deltaFiltering" -> registryIndexFiltering,
+              "pending" -> expectedIndexIds.size,
+              "file" -> scheduledOpt.map(_.file.getName)
+            ))))
+        }
+
         reader = Some(
           datasetContext.processedRepo.createGraphReaderXML(
             scheduledOpt.map(_.file),
@@ -369,6 +380,12 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
           if (registryIndexFiltering && isIncremental && missingPending.nonEmpty) {
             log.warning(s"Registry: ${missingPending.size} pending record(s) not in this incremental file for $spec; they remain pending for the next full save")
           }
+
+          registryRunIdOpt.foreach { runId =>
+            registry.stageCompleted(spec, runId, "save", Some(play.api.libs.json.Json.stringify(
+              play.api.libs.json.Json.obj("chunks" -> chunksSaved, "sent" -> sentIds.size))))
+            registry.stageStarted(spec, runId, "reconcile", None)
+          }
           // Full-harvest registry sweep: mark records not seen this run as
           // deleted so they get drop_records actions below. Deliberately runs
           // only HERE, after every chunk was acked by Hub3 — a failed or
@@ -415,6 +432,8 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         // recordsSent answers "how much did this save actually push to Hub3".
         if (registryEnabled) {
           registryRunIdOpt.foreach { runId =>
+            registry.stageCompleted(spec, runId, "reconcile", Some(play.api.libs.json.Json.stringify(
+              play.api.libs.json.Json.obj("revisionSweep" -> willRevisionSweep))))
             scala.util.Try(registry.completeRun(spec, runId, recordsSent))
               .recover { case ex: Throwable =>
                 log.warning(s"Registry: completeRun failed for run $runId: ${ex.getMessage}")
