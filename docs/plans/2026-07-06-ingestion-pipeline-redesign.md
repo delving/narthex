@@ -231,6 +231,28 @@ types later); trends/activity JSONL (recently fixed, UI-only); AngularJS UI
 + its Fuseki read model (that's why the projector exists); Fuseki as
 descriptive-metadata store (only its pipeline-driver role is removed).
 
+## 5a. Fuseki end-state (decided 2026-07-06)
+
+Fuseki has four tenants; all have exits, so Fuseki is fully droppable:
+
+1. **Pipeline state driver** (DsState timestamp props, counts, retry/
+   operation) — dies in A4 (projector); role fully gone once the UI reads a
+   JSON status endpoint instead of the projected RDF props.
+2. **Descriptive metadata + harvest config** — B3: `dataset_props` table
+   (the archived PG branch's V1 schema is the column inventory).
+3. **Record graphs** — already gone; records flow to Hub3 only.
+4. **SKOS subsystem** (vocabularies, terminology mappings, skosification)
+   — product owner decision: **drop it, do not migrate it.** Removal is its
+   own change (Skosifier, PeriodicSkosifyCheck, VocabInfo, SkosMappingStore,
+   TermMappingStore, the skos/terms UI pages, skosification stage hooks),
+   scheduled after the A-phases. Consequences to accept: existing term
+   mappings are not carried forward; already-skosified records in Hub3 are
+   untouched; the terms/vocab UI disappears.
+
+Exit criteria for decommissioning Fuseki on the servers: A4 shipped + UI
+status endpoint, B3 dataset_props, SKOS removal merged. Then the Fuseki
+service (2.4.1/5.6.0 pair) is removed from deployment entirely.
+
 ## 6. Key code references for implementation
 
 - DatasetActor.scala: flags 217–227, command dispatch 479–708, chaining
