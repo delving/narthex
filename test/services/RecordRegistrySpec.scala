@@ -322,6 +322,22 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.allTombstonesSynced(spec, Seq("a", "b")) shouldBe false  // b unknown
   }
 
+  it should "re-pend everything after resetSentState (Hub3 wipe escape hatch)" in {
+    registry.resetSentState("never-seen") shouldBe 0   // no db, no-op
+
+    val run = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run)
+    registry.confirmIndexedByIds(spec, Seq("a", "b"), run)
+    registry.upsertDeleted(spec, "t", run)
+    registry.confirmDropped(spec, Seq("t"))
+    registry.pendingIndexBatch(spec, 100) shouldBe empty
+    registry.pendingDropBatch(spec, 100) shouldBe empty
+
+    registry.resetSentState(spec) shouldBe 3
+    registry.pendingIndexBatch(spec, 100).map(_._1).toSet shouldBe Set("a", "b")
+    registry.pendingDropBatch(spec, 100) shouldBe Seq("t")
+  }
+
   it should "record the sent count on completeRun" in {
     val run = registry.beginRun(spec, KIND_FULL)
     registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run)

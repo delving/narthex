@@ -686,6 +686,13 @@ class DatasetActor(val datasetContext: DatasetContext,
             broadcastIdleState()
             "counts reset"
 
+          case "reset registry sync" =>
+            // Escape hatch after a Hub3 wipe/reindex: forget what was sent so
+            // the next save re-sends every record and re-drops tombstones.
+            val rows = orgContext.recordRegistry.resetSentState(dsInfo.spec)
+            log.info(s"Registry sync state reset for ${dsInfo.spec}: $rows rows")
+            s"registry sync reset for $rows records; next save re-sends everything"
+
           // todo: category counting?
 
           case "clear error" =>
@@ -1132,6 +1139,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         } else {
           dsInfo.removeState(INCREMENTAL_SAVED)
           dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+          // A full run supersedes any earlier delta; a stale incremental
+          // count would keep showing in the UI's "last incremental" badge.
+          dsInfo.setIncrementalProcessedRecordCounts(0, 0)
         }
 
         val graphSaver = createChildActor(
@@ -1143,6 +1153,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       } else {
         dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
+        dsInfo.setIncrementalProcessedRecordCounts(0, 0)
         // No GraphSaver will run, so close the registry run here — otherwise
         // it would sit 'running' forever in harvest_runs.
         if (orgContext.narthexConfig.registryEnabled) {
@@ -1184,8 +1195,14 @@ class DatasetActor(val datasetContext: DatasetContext,
               log.info(s"Registry: deletes-only harvest, emitting drop_records for ${pendingDrops.size} ids ($spec)")
               dsInfo.dropRecordsByIds(pendingDrops).onComplete {
                 case scala.util.Success(_) =>
-                  scala.util.Try(registry.confirmDropped(spec, pendingDrops))
-                  emitDropBatch()
+                  // Only recurse after a successful confirm — a persistently
+                  // failing confirm would otherwise re-select the same batch
+                  // and POST identical drop_records to Hub3 forever.
+                  scala.util.Try(registry.confirmDropped(spec, pendingDrops)) match {
+                    case scala.util.Success(_) => emitDropBatch()
+                    case scala.util.Failure(ex) =>
+                      log.warning(s"Registry: confirmDropped failed, stopping deletes-only drop loop ($spec): ${ex.getMessage}")
+                  }
                 case scala.util.Failure(ex) =>
                   log.warning(s"Registry: drop_records failed for deletes-only harvest, will retry next save ($spec): ${ex.getMessage}")
               }

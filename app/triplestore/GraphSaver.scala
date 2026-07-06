@@ -40,7 +40,7 @@ object GraphSaver {
 
   /** Internal messages for thread-safe Future result handling */
   private case object RevisionReady
-  private case class ChunkSaved(recordCount: Int)
+  private case class ChunkSaved(ids: Seq[String])
   private case object RegistryDropsDone
   private case class AsyncFailure(ex: Throwable)
 
@@ -65,9 +65,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
   var isExplicitFileSave = false
   var chunksSaved = 0
   var recordsSent = 0
+  var sentIds = Set.empty[String]
   var registryRunIdOpt: Option[Long] = None
   var expectedIndexIds = Set.empty[String]
   var registryIndexFiltering = false
+  var willRevisionSweep = false
 
   var reader: Option[GraphReader] = None
   var progressOpt: Option[ProgressReporter] = None
@@ -232,15 +234,27 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             s"SaveGraphs received non-processed file ${file.getName}; expected .xml or .xml.zst")
         }
 
+        // MUTUALLY EXCLUSIVE with delta filtering: the revision sweep
+        // (increment_revision + clear_orphans) deletes everything in Hub3
+        // not re-indexed at the new revision. Filtering a full send while
+        // sweeping would mass-delete every unchanged record — and the
+        // registry would still record them as sent (permanent silent
+        // divergence). Sweep on => full send; filtering only when the
+        // registry is the sole orphan authority (keepRevisionSweep=false)
+        // or on incremental saves (which never sweep).
+        willRevisionSweep = !isIncremental && (!registryEnabled || keepRevisionSweep)
+
         expectedIndexIds =
-          if (registryEnabled) registry.pendingIndexBatch(spec, Int.MaxValue).map(_._1).toSet
+          if (registryEnabled && !willRevisionSweep) registry.pendingIndexBatch(spec, Int.MaxValue).map(_._1).toSet
           else Set.empty[String]
         val includeLocalIdsOpt =
-          if (registryEnabled && (registryRunIdOpt.isDefined || expectedIndexIds.nonEmpty)) Some(expectedIndexIds)
+          if (registryEnabled && !willRevisionSweep && (registryRunIdOpt.isDefined || expectedIndexIds.nonEmpty)) Some(expectedIndexIds)
           else None
         registryIndexFiltering = includeLocalIdsOpt.isDefined
         if (registryEnabled) {
-          includeLocalIdsOpt match {
+          if (willRevisionSweep) {
+            log.info(s"Registry: delta filtering disabled for $spec — revision sweep (clear_orphans) requires a full send")
+          } else includeLocalIdsOpt match {
             case Some(_) =>
               log.info(s"Registry: ${expectedIndexIds.size} pending index record(s) will be sent for $spec")
             case None =>
@@ -255,8 +269,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
             progressReporter,
             includeLocalIdsOpt))
 
-        val doRevisionSweep = !isIncremental && (!registryEnabled || keepRevisionSweep)
-        if (doRevisionSweep) {
+        if (willRevisionSweep) {
           log.info(s"Incrementing dataset revision (keepRevisionSweep=$keepRevisionSweep)")
           // IMPORTANT: Wait for increment_revision to complete before sending records.
           // Otherwise, the first batch may be indexed with the OLD revision and then
@@ -281,10 +294,11 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         sendGraphChunkOpt()
       }
 
-    case ChunkSaved(recordCount) =>
+    case ChunkSaved(ids) =>
       actorWork(context) {
         chunksSaved += 1
-        recordsSent += recordCount
+        recordsSent += ids.size
+        sentIds ++= ids
         sendGraphChunkOpt()
       }
 
@@ -325,7 +339,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
                   }
                 }
               }
-              selfRef ! ChunkSaved(ids.size)
+              selfRef ! ChunkSaved(ids)
             case Failure(ex) => selfRef ! AsyncFailure(ex)
           }
         }
@@ -336,12 +350,25 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
         reader.foreach(_.close())
         reader = None
 
-        if (isExplicitFileSave && chunksSaved == 0 && (!registryEnabled || (registryIndexFiltering && expectedIndexIds.nonEmpty))) {
+        // Compare the DISTINCT ids actually sent against the pending set: a
+        // raw count can double-count an id present in two processed files and
+        // mask a genuinely missing record.
+        val missingPending: Set[String] =
+          if (registryIndexFiltering) expectedIndexIds -- sentIds else Set.empty
+
+        if (isExplicitFileSave && chunksSaved == 0 &&
+            (!registryEnabled || (registryIndexFiltering && expectedIndexIds.nonEmpty && !isIncremental))) {
           failure(new RuntimeException("Explicit processed-file save completed with zero graph chunks"))
-        } else if (registryIndexFiltering && recordsSent < expectedIndexIds.size) {
+        } else if (registryIndexFiltering && !isIncremental && missingPending.nonEmpty) {
           failure(new RuntimeException(
-            s"Registry save for $spec found only $recordsSent of ${expectedIndexIds.size} pending index records in processed output"))
+            s"Registry save for $spec sent only ${sentIds.size} of ${expectedIndexIds.size} pending index records — ${missingPending.size} missing from processed output"))
         } else {
+          // A file-scoped incremental save can legitimately lack pending
+          // leftovers from earlier runs (failed save, record turned invalid).
+          // Not fatal: they stay pending and flush on the next full save.
+          if (registryIndexFiltering && isIncremental && missingPending.nonEmpty) {
+            log.warning(s"Registry: ${missingPending.size} pending record(s) not in this incremental file for $spec; they remain pending for the next full save")
+          }
           // Full-harvest registry sweep: mark records not seen this run as
           // deleted so they get drop_records actions below. Deliberately runs
           // only HERE, after every chunk was acked by Hub3 — a failed or
@@ -378,7 +405,7 @@ class GraphSaver(datasetContext: DatasetContext, val orgContext: OrgContext)
 
     case RegistryDropsDone =>
       actorWork(context) {
-        if (!isIncremental && (!registryEnabled || keepRevisionSweep)) {
+        if (willRevisionSweep) {
           datasetContext.dsInfo.removeNaveOrphans(startSave)
           log.info(s"Revision sweep: clear_orphans emitted (keepRevisionSweep=$keepRevisionSweep)")
         }

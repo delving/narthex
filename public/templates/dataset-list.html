@@ -333,22 +333,24 @@
                                 </span>
                             </td>
                             <td class="source"
-                                title="Valid: {{ dataset.harvestIncrementalMode == 'true' ? (dataset.processedIncrementalValid || 0) : (dataset.processedValid || 0) }}&#10;Invalid: {{ dataset.harvestIncrementalMode == 'true' ? (dataset.processedIncrementalInvalid || 0) : (dataset.processedInvalid || 0) }}">
-                                <!-- Valid count (primary) -->
-                                <span data-ng-if="dataset.harvestIncrementalMode == 'true'" class="text-success">
-                                    {{ dataset.processedIncrementalValid || '-' }}
-                                </span>
-                                <span data-ng-if="!dataset.harvestIncrementalMode || dataset.harvestIncrementalMode == 'false'" class="text-success">
+                                title="Total valid: {{ dataset.processedValid || 0 }}&#10;Invalid: {{ dataset.processedInvalid || 0 }}{{ dataset.harvestIncrementalMode == 'true' && dataset.processedIncrementalValid > 0 ? '&#10;Last incremental: ' + dataset.processedIncrementalValid + ' changed' : '' }}">
+                                <!-- Valid count (primary): ALWAYS the full total. The
+                                     incremental delta is a secondary badge — showing the
+                                     delta as the main number made a 91k dataset read as
+                                     having shrunk to a few hundred records. -->
+                                <span class="text-success">
                                     {{ dataset.processedValid || '-' }}
                                 </span>
                                 <!-- Invalid count (if any) -->
-                                <span data-ng-if="dataset.harvestIncrementalMode == 'true' && dataset.processedIncrementalInvalid > 0" class="text-danger">
-                                    /{{ dataset.processedIncrementalInvalid }}
-                                </span>
-                                <span data-ng-if="(!dataset.harvestIncrementalMode || dataset.harvestIncrementalMode == 'false') && dataset.processedInvalid > 0" class="text-danger">
+                                <span data-ng-if="dataset.processedInvalid > 0" class="text-danger">
                                     /{{ dataset.processedInvalid }}
                                 </span>
-                                <!-- Incremental indicator -->
+                                <!-- Last incremental delta (X of Y changed) -->
+                                <span data-ng-if="dataset.harvestIncrementalMode == 'true' && dataset.processedIncrementalValid > 0"
+                                      class="text-muted" style="font-size: 0.8em;"
+                                      title="Last incremental harvest: {{ dataset.processedIncrementalValid }} of {{ dataset.processedValid }} records changed">
+                                    (Δ{{ dataset.processedIncrementalValid }})
+                                </span>
                                 <span data-ng-if="dataset.harvestIncrementalMode == 'true'" class="text-muted" style="font-size: 0.8em;">(inc)</span>
                             </td>
                             <td class="trend" title="24h: source {{ dataset.trend24h.source >= 0 ? '+' : '' }}{{ dataset.trend24h.source }}, indexed {{ dataset.trend24h.indexed >= 0 ? '+' : '' }}{{ dataset.trend24h.indexed }}">
@@ -1903,11 +1905,12 @@
     <li class="list-group-item">Last scheduled: {{ dataset.lastIncrementalHarvestTime || '-' }}</li>
     <li class="list-group-item">
         <i class="fa fa-check text-success"></i>
-        Valid: <strong class="text-success">{{ dataset.processedIncrementalValid || '-' }}</strong>
+        Last incremental: <strong class="text-success">{{ dataset.processedIncrementalValid || 0 }}</strong>
+        of <strong>{{ dataset.processedValid || '-' }}</strong> records changed
     </li>
     <li class="list-group-item" data-ng-if="dataset.processedIncrementalInvalid > 0">
         <i class="fa fa-times text-danger"></i>
-        Invalid: <strong class="text-danger">{{ dataset.processedIncrementalInvalid }}</strong>
+        Invalid in last incremental: <strong class="text-danger">{{ dataset.processedIncrementalInvalid }}</strong>
     </li>
 </ul>
 

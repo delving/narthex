@@ -389,6 +389,17 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
     if (recordIds.isEmpty) {
       targetFile.delete()
+      // The harvester's PocketWriter has ALREADY overwritten pockets.xml.gz
+      // with this delta's (empty) content before we knew it held no records.
+      // With the zip deleted the repo may still have <= 1 zip, so the SIP
+      // fast path would stream that empty cache as the full dataset —
+      // an empty SIP claiming the full record count. Remove the stale cache
+      // so generatePockets falls back to parsing the real source zips.
+      val cachedPockets = new File(home, "pockets.xml.gz")
+      if (cachedPockets.exists()) {
+        cachedPockets.delete()
+        logger.info(s"Removed stale pockets cache after zero-record harvest: ${cachedPockets.getAbsolutePath}")
+      }
       None
     } else {
       // Write IDs file directly from pre-computed IDs
