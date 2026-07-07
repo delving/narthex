@@ -1074,7 +1074,11 @@ class DatasetActor(val datasetContext: DatasetContext,
         log.info(s"There is a mapper, so setting to processable")
         dsInfo.setState(PROCESSABLE)
       } else {
-        log.info("No mapper, not processing")
+        // No mapping for the current prefix: the dataset is MAPPABLE, and a
+        // stale PROCESSABLE stamp from an earlier prefix must not keep the
+        // UI offering follow-up steps that can only fail.
+        log.info("No mapper — dataset is mappable only; clearing stale PROCESSABLE")
+        dsInfo.removeState(PROCESSABLE)
       }
 
       // todo: figure this out
