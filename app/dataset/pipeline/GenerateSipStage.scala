@@ -57,6 +57,9 @@ object GenerateSipStage extends PipelineStage {
         val pocketCount =
           sourceRepo.generatePockets(pocketOutput, idFilter, ctx.progressReporter)
 
+        val recDefVersionHashOpt = dsInfo.getRecDefVersionHash
+        val targetPrefix = SipGenerationFacts(dsInfo).prefix
+
         // Effective mapping XML based on mapping source configuration
         val effectiveMappingXml: Option[String] = if (dsInfo.usesDefaultMapping) {
           (for {
@@ -82,21 +85,32 @@ object GenerateSipStage extends PipelineStage {
               }
             }
           }
-          repo.getXml("current") match {
-            case Some(xml) =>
-              logger.info(s"Using mapping from DatasetMappingRepo for dataset $spec (manual mode)")
-              Some(xml)
-            case None =>
+          // The stored mapping belongs to ONE prefix. After a cross-prefix
+          // switch, injecting it into a SIP of the new prefix makes sip-core
+          // resolve its dyn-opt paths against the wrong record definition
+          // ("Cannot find dyn-opt path ..."). Ignore a mismatched mapping —
+          // the SIP falls back to its own (matching) mapping.
+          repo.getInfo.map(_.prefix).filter(_ != targetPrefix) match {
+            case Some(repoPrefix) =>
               logger.warn(
-                s"Dataset $spec: manual mode but DatasetMappingRepo has no current mapping — " +
-                  s"SIP regeneration will reuse the prior SIP's mapping (stale-mapping risk). " +
-                  s"Open the mapping editor or upload a fresh SIP to register a current version.")
+                s"Dataset $spec: stored mapping is for prefix '$repoPrefix' but the dataset now targets " +
+                  s"'$targetPrefix' — ignoring it. Upload a SIP or save a mapping for '$targetPrefix' to replace it.")
               None
+            case None =>
+              repo.getXml("current") match {
+                case Some(xml) =>
+                  logger.info(s"Using mapping from DatasetMappingRepo for dataset $spec (manual mode)")
+                  Some(xml)
+                case None =>
+                  logger.warn(
+                    s"Dataset $spec: manual mode but DatasetMappingRepo has no current mapping — " +
+                      s"SIP regeneration will reuse the prior SIP's mapping (stale-mapping risk). " +
+                      s"Open the mapping editor or upload a fresh SIP to register a current version.")
+                  None
+              }
           }
         }
 
-        val recDefVersionHashOpt = dsInfo.getRecDefVersionHash
-        val targetPrefix = SipGenerationFacts(dsInfo).prefix
         // Only reuse the latest SIP when its mapping prefix matches the
         // dataset's CURRENT prefix — after a cross-prefix switch the old
         // SIP's internals must not be carried forward.
