@@ -1371,10 +1371,6 @@ define(["angular"], function () {
         $scope.enableDefaultMappings = $rootScope.enableDefaultMappings;
 
         // Function for tab switching (needed for mapping tab)
-        $scope.setLeftTab = function(tabName) {
-            $scope.leftTabOpen = tabName;
-        };
-
         // Initialize activity modal state
         $scope.activityModal = { visible: false };
         $scope.subscribe($scope.dataset.datasetSpec, function (message) {

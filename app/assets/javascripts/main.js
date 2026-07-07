@@ -113,7 +113,10 @@
   };
 
   require(
-    ['angular', 'angular-cookies', 'angular-route', 'angular-file-upload',
+    // 'moment' first: the stub above is only DEFINED until something loads
+    // it, and Chart.js's UMD factory does a synchronous require('moment') —
+    // loading it here keeps that probe from throwing "notloaded".
+    ['moment', 'angular', 'angular-cookies', 'angular-route', 'angular-file-upload',
       'angular-sanitize', 'ngStorage', 'jquery',
       'underscorejs', 'bootstrap', 'ui-bootstrap', 'ui-bootstrap-tpls', 'ng-grid', './app'],
     function (angular) {
