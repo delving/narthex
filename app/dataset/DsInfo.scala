@@ -527,7 +527,8 @@ object DsInfo {
         val docFacts = DatasetStatusDoc.Facts(
           delimitersSet = ds.delimitersSet,
           errorMessage = ds.errorMessage,
-          inRetry = retryStatus.contains(ds.spec)
+          inRetry = retryStatus.contains(ds.spec),
+          errorTime = ds.errorTime
         )
         val baseJson = JsObject(
           (Json.toJson(ds).as[JsObject].value -- staleStateKeys).toSeq
@@ -1766,7 +1767,8 @@ class DsInfo(
       val docFacts = DatasetStatusDoc.Facts(
         delimitersSet = getLiteralProp(triplestore.GraphProperties.delimitersSet),
         errorMessage = getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
-        inRetry = isInRetry
+        inRetry = isInRetry,
+        errorTime = getLiteralProp(triplestore.GraphProperties.datasetErrorTime)
       )
       projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }.toList ++
         DatasetStatusDoc.fields(orgContext, spec, projected, docFacts).toList

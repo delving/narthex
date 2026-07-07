@@ -178,13 +178,19 @@ object PipelinePlan {
   def afterAdoption: Plan =
     fullChain(List(STAGE_GENERATE_SIP))
 
-  /** Standalone manual "make sip" (Phase C2: every action is a run). */
+  /**
+   * Standalone manual "make sip" (Phase C2: every action is a run).
+   * KIND_TASK: an aux run must never be adopted by a manual save as "the
+   * run that produced the processed output" — observed live: a save
+   * attached its stage to a completed analyze run because both were
+   * kind=full and latestCompletedFullRunId picked the analyze run.
+   */
   def generateSipOnly: Plan =
-    fullChain(List(STAGE_GENERATE_SIP))
+    fullChain(List(STAGE_GENERATE_SIP)).copy(kind = RecordRegistry.KIND_TASK)
 
-  /** Analysis of raw / source / processed data (Phase C2). */
+  /** Analysis of raw / source / processed data (Phase C2). KIND_TASK, see above. */
   def analyzeOnly: Plan =
-    fullChain(List(STAGE_ANALYZE))
+    fullChain(List(STAGE_ANALYZE)).copy(kind = RecordRegistry.KIND_TASK)
 
   /**
    * A harvest-initiated run starts with only [harvest] — the continuation

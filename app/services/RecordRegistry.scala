@@ -24,6 +24,10 @@ object RecordRegistry {
 
   val KIND_FULL      = "full"
   val KIND_INCREMENT = "incremental"
+  // Aux single-stage runs (analysis, standalone make-sip): auditable like any
+  // run, but never adoptable as "the run that produced the processed output"
+  // (latestCompletedFullRunId) and never a saved-signal candidate.
+  val KIND_TASK      = "task"
 
   val NOTE_BASELINE = "baseline"
 

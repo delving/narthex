@@ -738,7 +738,8 @@ class AppController @Inject() (
       val docFacts = dataset.DatasetStatusDoc.Facts(
         delimitersSet = dsInfo.getLiteralProp(triplestore.GraphProperties.delimitersSet),
         errorMessage = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
-        inRetry = dsInfo.isInRetry
+        inRetry = dsInfo.isInRetry,
+        errorTime = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorTime)
       )
       val stateJson = JsObject(
         projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) } ++

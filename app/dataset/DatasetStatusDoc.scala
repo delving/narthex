@@ -39,7 +39,8 @@ object DatasetStatusDoc {
   case class Facts(
     delimitersSet: Option[String],
     errorMessage: Option[String],
-    inRetry: Boolean
+    inRetry: Boolean,
+    errorTime: Option[String] = None
   )
 
   val PHASE_IDLE = "idle"
@@ -84,13 +85,30 @@ object DatasetStatusDoc {
     else if (orgContext.jobQueue.queued().exists(_.spec == spec)) PHASE_QUEUED
     else if (facts.inRetry) PHASE_RETRY
     else if (latestOutcome.exists(_.status == "failed")) PHASE_ERROR
-    else if (latestOutcome.isEmpty && facts.errorMessage.exists(_.nonEmpty)) PHASE_ERROR
+    else if (propErrorCurrent(latestOutcome, facts)) PHASE_ERROR
     else PHASE_IDLE
   }
 
+  /**
+   * A stored error prop counts when there are no runs at all (legacy), or
+   * when it is NEWER than the latest run's completion — a manual save that
+   * adopts an already-completed run can only leave its failure in the prop
+   * (goes away when save becomes a first-class run, A3c-3).
+   */
+  private def propErrorCurrent(latestOutcome: Option[services.RecordRegistry.RunOutcome], facts: Facts): Boolean =
+    facts.errorMessage.exists(_.nonEmpty) && {
+      latestOutcome match {
+        case None => true
+        case Some(o) =>
+          val runMillis = o.completedAt.orElse(Some(o.startedAt)).map(t => services.Temporal.stringToTime(t).getMillis)
+          facts.errorTime.exists(t => runMillis.forall(services.Temporal.stringToTime(t).getMillis > _))
+      }
+    }
+
   /** Error detail for phase=error: the failed run's stage error or note. */
-  def errorJson(orgContext: OrgContext, spec: String, facts: Facts): Option[JsObject] =
-    orgContext.recordRegistry.latestRunOutcome(spec) match {
+  def errorJson(orgContext: OrgContext, spec: String, facts: Facts): Option[JsObject] = {
+    val latest = orgContext.recordRegistry.latestRunOutcome(spec)
+    latest match {
       case Some(o) if o.status == "failed" =>
         Some(Json.obj(
           "runId" -> o.runId,
@@ -98,10 +116,11 @@ object DatasetStatusDoc {
           "message" -> o.failedError.orElse(o.note).getOrElse[String]("run failed"),
           "at" -> o.completedAt
         ))
-      case Some(_) => None
-      case None =>
-        facts.errorMessage.filter(_.nonEmpty).map(m => Json.obj("message" -> m))
+      case other if propErrorCurrent(other, facts) =>
+        facts.errorMessage.filter(_.nonEmpty).map(m => Json.obj("message" -> m, "at" -> facts.errorTime))
+      case _ => None
     }
+  }
 
   /** The open run with its stage trail, if any. */
   def runJson(orgContext: OrgContext, spec: String): Option[JsObject] =
