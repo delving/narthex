@@ -510,24 +510,14 @@ define(["angular"], function () {
         ];
 
         /**
-         * Pick the current state by explicit pipeline lattice, NOT by date.
-         * State timestamps are now derived from artifact mtimes (Phase A4b)
-         * and are not pipeline-ordered — e.g. a SIP regenerated after
-         * processing is newer than the processed output.
+         * The status badge shows the LAST pipeline step: state timestamps
+         * are artifact/run times (Phase A4b), so the newest one is the most
+         * recent thing that happened to the dataset. Capability decisions
+         * (which actions are valid) use the backend's lattice instead.
          */
-        var stateLattice = ['stateSaved', 'stateIncrementalSaved', 'stateAnalyzed', 'stateProcessed',
-            'stateProcessable', 'stateMappable', 'stateSourceAnalyzed', 'stateSourced',
-            'stateRawAnalyzed', 'stateRaw', 'stateDisabled'];
         function pickCurrentState(states) {
-            var saved = _.find(states, function (s) { return s.name === 'stateSaved'; });
-            var inc = _.find(states, function (s) { return s.name === 'stateIncrementalSaved'; });
-            if (saved && inc) return inc.date > saved.date ? inc : saved;
-            for (var i = 0; i < stateLattice.length; i++) {
-                var name = stateLattice[i];
-                var found = _.find(states, function (s) { return s.name === name; });
-                if (found) return found;
-            }
-            return undefined;
+            var cur = _.max(states, function (state) { return state.date; });
+            return (cur && cur.name) ? cur : undefined;
         }
 
         /**
