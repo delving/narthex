@@ -118,25 +118,40 @@ object GenerateSipStage extends PipelineStage {
           latestSip.sipMappingOpt.map(_.prefix).contains(targetPrefix)
         }
 
+        // Existing SIPs are deleted only AFTER the new one is built
+        // successfully — a failed build must never destroy the dataset's
+        // only mapping carrier (observed: a failing generation deleted the
+        // good SIP and every retry reused its own corrupted output).
+        val priorSips = datasetContext.sipFiles.toList
         val sipBuilt: Either[String, File] = reusableLatestSip match {
           case Some(latestSip) =>
             val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping =>
               datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix, recDefVersionHashOpt))
-            datasetContext.sipFiles.foreach(_.delete())
             val sipFile = datasetContext.createSipFile
             pocketOutput.close()
-            latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo), effectiveMappingXml)
-            Right(sipFile)
+            try {
+              latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo), effectiveMappingXml)
+              Right(sipFile)
+            } catch {
+              case e: Exception =>
+                sipFile.delete()
+                throw e
+            }
           case None =>
             val facts = SipGenerationFacts(dsInfo)
             logger.info(s"Generating fresh SIP for $spec on prefix=${facts.prefix} (no reusable prior SIP for that prefix)")
             datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix, recDefVersionHashOpt) match {
               case Some(prefixRepo) =>
-                datasetContext.sipFiles.foreach(_.delete())
                 val sipFile = datasetContext.createSipFile
                 pocketOutput.close()
-                prefixRepo.initiateSipZip(sipFile, pocketFile, facts, effectiveMappingXml)
-                Right(sipFile)
+                try {
+                  prefixRepo.initiateSipZip(sipFile, pocketFile, facts, effectiveMappingXml)
+                  Right(sipFile)
+                } catch {
+                  case e: Exception =>
+                    sipFile.delete()
+                    throw e
+                }
               case None =>
                 pocketOutput.close()
                 Left("Unable to build sip for download")
@@ -146,8 +161,10 @@ object GenerateSipStage extends PipelineStage {
         sipBuilt match {
           case Left(message) => StageFailed(message)
           case Right(sipFile) =>
-            if (pocketCount > 0) SipGenerated(pocketCount)
-            else {
+            if (pocketCount > 0) {
+              priorSips.filterNot(_ == sipFile).foreach(_.delete())
+              SipGenerated(pocketCount)
+            } else {
               sipFile.delete()
               deleteQuietly(datasetContext.pocketFile)
               StageFailed(

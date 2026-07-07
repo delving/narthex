@@ -580,8 +580,14 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
                     case Some(bytes) =>
                       zos.write(bytes)
                     case None =>
-                      logger.warn(s"Could not parse customMappingXml for ${sipMapping.fileName}; writing verbatim (facts may be stale)")
-                      zos.write(customXml.getBytes("UTF-8"))
+                      // Writing an unparseable mapping verbatim corrupts the
+                      // SIP (observed: crmter mapping packaged as
+                      // mapping_ace.xml — every later generation fails on
+                      // dyn-opt resolution). Fail the generation instead;
+                      // the caller keeps the previous SIP intact.
+                      zos.close()
+                      throw new RuntimeException(
+                        s"Custom mapping XML does not parse against the record definition of ${sipMapping.fileName} — refusing to package it")
                   }
 
                 case None =>
