@@ -184,6 +184,15 @@ class RecordRegistry(datasetsDir: File) {
   def latestCompletedFullRunId(specName: String): Option[Long] =
     if (dbFileExists(specName)) spec(specName).latestCompletedFullRunId() else None
 
+  /**
+   * Completion time of the latest completed run of the given kind that
+   * actually ran a save or reconcile stage — the status projector's "saved"
+   * signal. Process-only runs complete without touching Hub3 and must not
+   * count as saved.
+   */
+  def latestSavedRunCompletion(specName: String, kind: String): Option[String] =
+    if (dbFileExists(specName)) spec(specName).latestSavedRunCompletion(kind) else None
+
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
 
@@ -772,6 +781,25 @@ private[services] class SpecRegistry(val datasetDir: File) {
       ps.setString(3, note)
       ps.setString(4, RUN_RUNNING)
       ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def latestSavedRunCompletion(kind: String): Option[String] = synchronized {
+    val ps = conn.prepareStatement(
+      """SELECT r.completed_at FROM runs r
+          WHERE r.status = ? AND r.kind = ? AND r.completed_at IS NOT NULL
+            AND EXISTS (SELECT 1 FROM run_stages s
+                         WHERE s.run_id = r.run_id
+                           AND s.stage IN ('save', 'reconcile')
+                           AND s.status = 'completed')
+          ORDER BY r.run_id DESC LIMIT 1""")
+    try {
+      ps.setString(1, RUN_COMPLETED)
+      ps.setString(2, kind)
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) Option(rs.getString(1)) else None
+      } finally rs.close()
     } finally ps.close()
   }
 

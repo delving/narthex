@@ -195,13 +195,12 @@ object DatasetStatusProjector {
       }
     }
 
-    // Registry runs are the truth for saved status; the legacy stored props
-    // cover datasets from before the registry existed.
-    val completedRuns = orgContext.recordRegistry
-      .listRuns(spec, sinceDays = 3650).filter(_.status == "completed")
+    // Registry runs are the truth for saved status — but only runs that
+    // actually ran a save/reconcile stage count (a process-only run also
+    // completes as kind=full and must not flip the dataset to saved). The
+    // legacy stored props cover datasets from before the registry existed.
     def runTime(kind: String): Option[DateTime] =
-      completedRuns.filter(_.kind == kind).flatMap(_.completedAt)
-        .sorted.lastOption.map(Temporal.stringToTime)
+      orgContext.recordRegistry.latestSavedRunCompletion(spec, kind).map(Temporal.stringToTime)
     def fallbackTime(iso: Option[String]): Option[DateTime] =
       iso.map(Temporal.stringToTime)
 

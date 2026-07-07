@@ -508,4 +508,26 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     r.added shouldBe 1
     r.seen shouldBe 2
   }
+  it should "count a run as saved only when it ran a save or reconcile stage" in {
+    // Process-only run: completes as kind=full but never touched Hub3
+    val processOnly = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, processOnly, "process")
+    registry.stageCompleted(spec, processOnly, "process")
+    registry.completeRun(spec, processOnly)
+    registry.latestSavedRunCompletion(spec, KIND_FULL) shouldBe None
+
+    // Full run with a completed save stage
+    val savedRun = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, savedRun, "save")
+    registry.stageCompleted(spec, savedRun, "save")
+    registry.completeRun(spec, savedRun)
+    registry.latestSavedRunCompletion(spec, KIND_FULL) shouldBe defined
+
+    // Deletes-only sync: reconcile stage counts too
+    val reconcileRun = registry.beginRun(spec, KIND_INCREMENT)
+    registry.stageStarted(spec, reconcileRun, "reconcile")
+    registry.stageCompleted(spec, reconcileRun, "reconcile")
+    registry.completeRun(spec, reconcileRun)
+    registry.latestSavedRunCompletion(spec, KIND_INCREMENT) shouldBe defined
+  }
 }
