@@ -1014,7 +1014,9 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
       dsInfo.setState(SOURCED)
-      if (datasetContext.sipRepo.latestSipOpt.isDefined)
+      // PROCESSABLE means "a mapper exists", not "a SIP file exists" — a
+      // skeleton SIP (no mapping yet) must leave the dataset MAPPABLE only.
+      if (datasetContext.sipMapperOpt.isDefined)
         dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.foreach(_ ! PoisonPill)

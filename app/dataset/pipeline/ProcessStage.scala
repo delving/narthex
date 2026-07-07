@@ -31,6 +31,7 @@ import play.api.libs.json.Json
 
 import dataset.DatasetActor.Scheduled
 import dataset.PipelinePlan
+import dataset.SipFactory.SipGenerationFacts
 import dataset.SipRepo.URIErrorsException
 import eu.delving.groovy.DiscardRecordException
 import record.PocketParser
@@ -68,8 +69,12 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
     val sourceFacts = datasetContext.sourceRepoOpt
       .map(_.sourceFacts)
       .getOrElse(return StageFailed(s"No source facts for $datasetContext"))
-    val sipMapper = datasetContext.sipMapperOpt
-      .getOrElse(return StageFailed(s"No sip mapper for $datasetContext"))
+    val sipMapper = datasetContext.sipMapperOpt.getOrElse {
+      val prefix = scala.util.Try(SipGenerationFacts(dsInfo).prefix).getOrElse("?")
+      return StageFailed(
+        s"No mapping available for $spec (prefix '$prefix'): the latest SIP has no mapping file. " +
+          s"Open the SIP in SIP-Creator to create a mapping and upload it, or switch the dataset back to a prefix that has one.")
+    }
 
     // Clear processed repo based on harvest type, not just presence of schedule
     val isIncrementalHarvest = scheduledOpt.exists(_.modifiedAfter.isDefined)

@@ -103,6 +103,11 @@
     }
   });
 
+  // Chart.js probes for "moment" via AMD (only needed for time-axis charts,
+  // which we don't use). Without this stub RequireJS logs a "notloaded"
+  // error on every page that pulls in Chart.
+  define('moment', [], function () { return undefined; });
+
   requirejs.onError = function (err) {
     console.log(err);
   };
