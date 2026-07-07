@@ -24,6 +24,7 @@ import play.api.Logger
 import dataset.PipelinePlan
 import dataset.SipFactory.SipGenerationFacts
 import mapping.DefaultMappingRepo
+import services.ProgressReporter.ProgressState
 
 /**
  * Generate the SIP zip + pockets file from the full accumulated source
@@ -39,6 +40,7 @@ object GenerateSipStage extends PipelineStage {
   private val logger = Logger(getClass)
 
   val id: String = PipelinePlan.STAGE_GENERATE_SIP
+  val progressState: ProgressState = ProgressState.GENERATING
 
   def run(ctx: StageContext): StageResult = {
     val datasetContext = ctx.datasetContext
@@ -130,7 +132,7 @@ object GenerateSipStage extends PipelineStage {
         sipBuilt match {
           case Left(message) => StageFailed(message)
           case Right(sipFile) =>
-            if (pocketCount > 0) StageOk(pocketCount)
+            if (pocketCount > 0) SipGenerated(pocketCount)
             else {
               sipFile.delete()
               deleteQuietly(datasetContext.pocketFile)

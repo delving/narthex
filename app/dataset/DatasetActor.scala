@@ -828,13 +828,10 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartProcessing(scheduledOpt), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
-      val sourceProcessor = createChildActor(
-        SourceProcessor.props(datasetContext, orgContext),
-        "source-processor")
-      sourceProcessor ! Process(scheduledOpt)
-      goto(Processing) using Active(dsInfo.spec,
-                                    Some(sourceProcessor),
-                                    PROCESSING)
+      // Phase A3c-2: Process runs as a synchronous PipelineStage on a
+      // worker thread; the result returns as ProcessingComplete/WorkFailure.
+      runStageAsync(pipeline.ProcessStage(scheduledOpt))
+      goto(Processing) using Active(dsInfo.spec, None, PROCESSING)
 
     case Event(StartSaving(scheduledOpt), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
@@ -1255,18 +1252,19 @@ class DatasetActor(val datasetContext: DatasetContext,
     }
 
   // Run a synchronous PipelineStage on the harvesting dispatcher and
-  // translate its result into the FSM events the existing handlers expect.
-  // Interrupt requests surface through the ProgressReporter (thrown), which
-  // lands in the Failure branch like the actor-based stages.
+  // translate its typed result into the FSM events the existing handlers
+  // expect. Interrupt requests surface through the ProgressReporter
+  // (thrown), landing in the Failure branch like the actor-based stages.
   private def runStageAsync(stage: pipeline.PipelineStage): Unit = {
     import services.ProgressReporter
-    import services.ProgressReporter.ProgressState.GENERATING
     val ctx = pipeline.StageContext(
-      datasetContext, orgContext, ProgressReporter(GENERATING, self))
+      datasetContext, orgContext, ProgressReporter(stage.progressState, self))
     val selfRef = self
     scala.concurrent.Future(stage.run(ctx))(harvestingExecutionContext).onComplete {
-      case scala.util.Success(pipeline.StageOk(count)) =>
+      case scala.util.Success(pipeline.SipGenerated(count)) =>
         selfRef ! SipZipGenerationComplete(count)
+      case scala.util.Success(pipeline.ProcessedRecords(valid, invalid, scheduledOut, runId)) =>
+        selfRef ! ProcessingComplete(valid, invalid, scheduledOut, runId)
       case scala.util.Success(pipeline.StageFailed(message)) =>
         selfRef ! WorkFailure(message, None)
       case scala.util.Failure(ex) =>
