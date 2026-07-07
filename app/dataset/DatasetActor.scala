@@ -595,7 +595,7 @@ class DatasetActor(val datasetContext: DatasetContext,
               case "stateProcessed" => PROCESSED
               case "stateProcessable" => PROCESSABLE
               case "stateSourced" => SOURCED
-              case _ => dsInfo.getState() // Auto-detect
+              case _ => DatasetStatusProjector.project(datasetContext).currentState // Auto-detect
             }
 
             val latestSourceFileOpt = datasetContext.sourceRepoOpt.flatMap(_.latestSourceFileOpt)
@@ -607,8 +607,11 @@ class DatasetActor(val datasetContext: DatasetContext,
                 self ! StartSaving(None)
                 "Fast save: Saving"
 
-              case PROCESSED =>
-                log.info(s"Fast save from PROCESSED: Save (${dsInfo.spec})")
+              case PROCESSED | SAVED | INCREMENTAL_SAVED =>
+                // SAVED/INCREMENTAL_SAVED: re-save the existing processed
+                // output (full send) — the projected lattice reports these
+                // where the old max-timestamp getState reported PROCESSED.
+                log.info(s"Fast save from $targetState: Save (${dsInfo.spec})")
                 workStarted = true
                 self ! StartSaving(None)
                 "Fast save: Saving"
@@ -643,7 +646,7 @@ class DatasetActor(val datasetContext: DatasetContext,
           case "start fast process" =>
             // Workflow: Make SIP → Process (stops at PROCESSED, does NOT save)
             // Used by discovery import to prepare datasets for review
-            val currentState = dsInfo.getState()
+            val currentState = DatasetStatusProjector.project(datasetContext).currentState
 
             currentState match {
               case PROCESSABLE =>
@@ -660,7 +663,7 @@ class DatasetActor(val datasetContext: DatasetContext,
                 self ! GenerateSipZip
                 "Fast process: Make SIP → Process"
 
-              case PROCESSED | ANALYZED | SAVED =>
+              case PROCESSED | ANALYZED | SAVED | INCREMENTAL_SAVED =>
                 "Dataset already processed"
 
               case _ =>
@@ -690,9 +693,6 @@ class DatasetActor(val datasetContext: DatasetContext,
             log.info(s"Resetting record counts for ${dsInfo.spec}")
             dsInfo.setRecordCount(0)
             dsInfo.setAcquisitionCounts(0, 0, 0, "harvest")
-            dsInfo.removeState(SOURCED)
-            dsInfo.removeState(MAPPABLE)
-            dsInfo.setState(RAW)
             broadcastIdleState()
             "counts reset"
 
@@ -793,9 +793,10 @@ class DatasetActor(val datasetContext: DatasetContext,
                                AnalysisType.PROCESSED)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       } else {
-        // Raw analysis: clean up all downstream workflow states (they're now stale)
-        log.info(s"Cleaning up stale workflow states for ${dsInfo.spec}")
-        dsInfo.clearWorkflowStates()
+        // Raw re-analysis invalidates the record root / unique id choice;
+        // downstream states are projected from disk (Phase A4b).
+        log.info(s"Clearing delimiters for raw re-analysis of ${dsInfo.spec}")
+        dsInfo.removeLiteralProp(triplestore.GraphProperties.delimitersSet)
 
         val rawFile = datasetContext.rawXmlFile.getOrElse(
           throw new Exception(s"Unable to find 'raw' file to analyze"))
@@ -905,19 +906,16 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         noRecordsMatch match {
           case true =>
-            logger.debug(
-              "NoRecordsMatch, so setting state to Incremental Saved")
+            logger.debug("NoRecordsMatch — quiet incremental tick")
             // Quiet tick: nothing fetched, nothing to audit — a completed
             // all-zero run every 5 minutes would be noise, not history.
             discardHarvestRun()
-            dsInfo.setState(INCREMENTAL_SAVED)
             if (dsInfo
                   .getLiteralProp(harvestIncrementalMode)
                   .getOrElse("false") != "true") {
               dsInfo.setHarvestIncrementalMode(true)
             }
           case _ =>
-            dsInfo.resetToSourced()
             dsInfo.setLastHarvestTime(incremental = true)
         }
         dsInfo.setHarvestCron(dsInfo.currentHarvestCron)
@@ -946,10 +944,10 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
       strategy match {
         case Sample =>
-          // Sample harvests bypass the lease, nothing to free
-          // Note: We always set RAW state even with noRecordsMatch so frontend can detect the harvest completed
-          // The frontend will show a modal when stateRaw is set but acquiredRecordCount is 0
-          dsInfo.setState(RAW)
+          // Sample harvests bypass the lease, nothing to free. RAW is now
+          // projected from the downloaded raw file itself; a sample harvest
+          // that returned nothing simply projects no state.
+          ()
         case FromScratch(autoProcess) =>
           if (noRecordsMatch) {
             // Full harvest returned no records - all records depublished
@@ -960,7 +958,6 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.setProcessedRecordCounts(0, 0)
             completeHarvestRun()   // rare and significant — keep the audit row
           } else {
-            dsInfo.resetToSourced()
             dsInfo.setLastHarvestTime(incremental = false)
 
             // Auto-continue to Make SIP → Process (discovery imports): the
@@ -1013,11 +1010,6 @@ class DatasetActor(val datasetContext: DatasetContext,
   when(Adopting) {
 
     case Event(SourceAdoptionComplete(file), active: Active) =>
-      dsInfo.setState(SOURCED)
-      // PROCESSABLE means "a mapper exists", not "a SIP file exists" — a
-      // skeleton SIP (no mapping yet) must leave the dataset MAPPABLE only.
-      if (datasetContext.sipMapperOpt.isDefined)
-        dsInfo.setState(PROCESSABLE)
       datasetContext.dropTree()
       active.childOpt.foreach(_ ! PoisonPill)
       val adoptRunId = beginPlannedRun(PipelinePlan.afterAdoption, trigger = "upload")
@@ -1031,13 +1023,14 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(SipZipGenerationComplete(recordCount), active: Active) =>
       log.info(s"Generated $recordCount pockets")
-      // Externally-processed datasets (SIP-Creator upload-processed) must keep
-      // PROCESSED as their effective state. getState() returns the state with
-      // the latest timestamp, so any setState() call here would race PROCESSED
-      // and win. Capture the externally-processed marker BEFORE touching state
-      // and use it to gate the transition + re-stamp PROCESSED at the end.
-      val externallyProcessed = dsInfo.getLiteralProp(processedExternally).isDefined
-      dsInfo.setState(MAPPABLE)
+      // Phase A4b: MAPPABLE/PROCESSABLE/PROCESSED are projected from the SIP
+      // file, the mapping folder, and the processed output — the whole
+      // externally-processed re-stamp dance is gone. Only hygiene remains:
+      // a processedExternally marker with no processed/ tree is stale.
+      if (dsInfo.getLiteralProp(processedExternally).isDefined && !datasetContext.processedRepo.nonEmpty) {
+        log.warning(s"Clearing stale processedExternally marker for ${dsInfo.spec}: processed/ tree is empty")
+        dsInfo.removeLiteralProp(processedExternally)
+      }
       dsInfo.setRecordCount(recordCount)
 
       // Set acquisition tracking counts
@@ -1050,35 +1043,6 @@ class DatasetActor(val datasetContext: DatasetContext,
         if (deletedCount > 0) {
           log.info(s"Acquisition counts set: acquired=$acquiredCount, deleted=$deletedCount, source=$recordCount, method=$acquisitionMethod")
         }
-      }
-
-      if (externallyProcessed && datasetContext.processedRepo.nonEmpty) {
-        // Re-stamp PROCESSED so its timestamp beats the MAPPABLE one we just
-        // wrote — externally-processed datasets must surface as PROCESSED.
-        log.info(s"Keeping PROCESSED state (externally processed)")
-        dsInfo.setState(PROCESSED)
-      } else if (externallyProcessed) {
-        // Stale processedExternally marker: the processed/ tree is gone (e.g.
-        // dropped by a workflow reset), so the dataset is no longer actually
-        // processed. Clear the marker and fall through to the normal mapper
-        // gating below.
-        log.warning(
-          s"Clearing stale processedExternally marker for ${dsInfo.spec}: " +
-            s"processed/ tree is empty"
-        )
-        dsInfo.removeLiteralProp(processedExternally)
-        if (datasetContext.sipMapperOpt.isDefined) {
-          dsInfo.setState(PROCESSABLE)
-        }
-      } else if (datasetContext.sipMapperOpt.isDefined) {
-        log.info(s"There is a mapper, so setting to processable")
-        dsInfo.setState(PROCESSABLE)
-      } else {
-        // No mapping for the current prefix: the dataset is MAPPABLE, and a
-        // stale PROCESSABLE stamp from an earlier prefix must not keep the
-        // UI offering follow-up steps that can only fail.
-        log.info("No mapper — dataset is mappable only; clearing stale PROCESSABLE")
-        dsInfo.removeState(PROCESSABLE)
       }
 
       // todo: figure this out
@@ -1116,19 +1080,13 @@ class DatasetActor(val datasetContext: DatasetContext,
   when(Analyzing) {
 
     case Event(AnalysisComplete(errorOption, analysisType), active: Active) =>
-      val dsState = analysisType match {
-        case AnalysisType.PROCESSED => ANALYZED
-        case AnalysisType.SOURCE => SOURCE_ANALYZED
-        case AnalysisType.RAW => RAW_ANALYZED
-      }
+      // Phase A4b: analysis states are projected from the tree index files;
+      // a failed analysis just drops its (partial) tree.
       if (errorOption.isDefined) {
-        dsInfo.removeState(dsState)
         analysisType match {
           case AnalysisType.SOURCE => datasetContext.dropSourceTree()
           case _ => datasetContext.dropTree()
         }
-      } else {
-        dsInfo.setState(dsState)
       }
       active.childOpt.foreach(_ ! PoisonPill)
       goto(Idle) using Dormant
@@ -1139,7 +1097,6 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(ProcessingComplete(validRecords, invalidRecords, scheduledOpt, registryRunId),
                active: Active) =>
-      dsInfo.setState(PROCESSED)
       val planIncludesSave = registryRunId.exists { runId =>
         orgContext.recordRegistry.runPlan(dsInfo.spec, runId)
           .flatMap(PipelinePlan.Plan.fromJson)
@@ -1165,9 +1122,7 @@ class DatasetActor(val datasetContext: DatasetContext,
               log.info(s"Acquisition counts set during ProcessingComplete: acquired=$acquiredCount, deleted=$deletedCount, source=$totalSourceRecords, method=$acquisitionMethod")
             }
           }
-          dsInfo.setState(INCREMENTAL_SAVED)
         } else {
-          dsInfo.removeState(INCREMENTAL_SAVED)
           dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
           // A full run supersedes any earlier delta; a stale incremental
           // count would keep showing in the UI's "last incremental" badge.
@@ -1184,7 +1139,6 @@ class DatasetActor(val datasetContext: DatasetContext,
         active.childOpt.foreach(_ ! PoisonPill)
         goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
       } else {
-        dsInfo.removeState(INCREMENTAL_SAVED)
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         dsInfo.setIncrementalProcessedRecordCounts(0, 0)
         // No GraphSaver will run, so close the run here — otherwise it
@@ -1295,8 +1249,8 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(GraphSaveComplete, active: Active) =>
       log.info(s"GraphSaveComplete received for $dsInfo.spec")
-      // Lease freed by the Idle transition that follows
-      dsInfo.setState(SAVED)
+      // Lease freed by the Idle transition that follows; SAVED is projected
+      // from the registry's completed runs (Phase A4b).
       dsInfo.setRecordsSync(false)
 
       // Capture trend snapshot after successful save (change-gated).
@@ -1457,7 +1411,6 @@ class DatasetActor(val datasetContext: DatasetContext,
       } else {
         fileOpt match {
           case Some(file) =>
-            dsInfo.setState(RAW)
             val analyzer = createChildActor(Analyzer.props(datasetContext), "analyzer")
             analyzer ! AnalyzeFile(file, AnalysisType.RAW)
             goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)

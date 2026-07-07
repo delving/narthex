@@ -50,15 +50,26 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
   def receive = {
 
     case ScanForHarvests =>
-      // OPTIMIZATION: Only query datasets with harvestable states to prevent error dataset timestamp updates
-      val allowedStateStrings = PeriodicHarvest.harvestingAllowed.map(_.toString)
-      logger.info(s"PeriodicHarvest: Scanning for datasets in states: ${allowedStateStrings.mkString(", ")}")
-      val futureList = DsInfo.listDsInfoWithStateFilter(orgContext, allowedStateStrings)
+      // Phase A4b: harvestability is projected from disk + registry facts
+      // (stored state triples are no longer written), so filter the cheap
+      // light listing through the projector before touching full models.
+      logger.info(s"PeriodicHarvest: Scanning for datasets projecting states: ${PeriodicHarvest.harvestingAllowed.mkString(", ")}")
+      val futureList = DsInfo.listDsInfoLight(orgContext).map { lightList =>
+        lightList.filter { ds =>
+          val state = dataset.DatasetStatusProjector.project(
+            orgContext,
+            spec = ds.spec,
+            targetPrefix = ds.mapToPrefix.getOrElse(""),
+            savedFallback = ds.stateSaved,
+            incrementalSavedFallback = ds.stateIncrementalSaved,
+            disabledFallback = ds.stateDisabled
+          ).currentState
+          PeriodicHarvest.harvestingAllowed.contains(state)
+        }.map(ds => DsInfo.getDsInfo(ds.spec, orgContext))
+      }
       futureList.onComplete {
-        case Success(list) =>
-          // Filter by current state to exclude datasets that were disabled long ago but still carry a stateDisabled triple
-          val harvestableDatasets = list.filter(info => PeriodicHarvest.harvestingAllowed.contains(info.getState()))
-          logger.info(s"PeriodicHarvest: Found ${harvestableDatasets.length} datasets in harvestable states: ${harvestableDatasets.map(_.spec).mkString(", ")} (out of ${list.length} with matching state triples)")
+        case Success(harvestableDatasets) =>
+          logger.info(s"PeriodicHarvest: Found ${harvestableDatasets.length} datasets in harvestable states: ${harvestableDatasets.map(_.spec).mkString(", ")}")
 
           val datasetsWithPreviousTime = harvestableDatasets.filter(info => info.hasPreviousTime())
           logger.info(s"PeriodicHarvest: ${datasetsWithPreviousTime.length} datasets have previous harvest time: ${datasetsWithPreviousTime.map(_.spec).mkString(", ")}")

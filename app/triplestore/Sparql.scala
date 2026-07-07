@@ -98,7 +98,7 @@ object Sparql {
       |                ?harvestIncrementalMode ?processedIncrementalValid ?processedIncrementalInvalid
       |                ?delimitersSet ?recordRoot ?uniqueId ?mappingSource
       |                ?defaultMappingPrefix ?defaultMappingName ?defaultMappingVersion
-      |                ?harvestUsername ?harvestPasswordSet ?harvestApiKeySet
+      |                ?harvestUsername ?harvestPasswordSet ?harvestApiKeySet ?mapToPrefix
       |WHERE {
       |  GRAPH ?g {
       |    ?s nx:datasetSpec ?spec .
@@ -141,6 +141,7 @@ object Sparql {
       |    BIND(BOUND(?harvestPw) AS ?harvestPasswordSet)
       |    OPTIONAL { ?s nx:harvestApiKey ?harvestApiKeyVal }
       |    BIND(BOUND(?harvestApiKeyVal) AS ?harvestApiKeySet)
+      |    OPTIONAL { ?s nx:datasetMapToPrefix ?mapToPrefix }
       |    FILTER NOT EXISTS { ?s <$deleted> true }
       |  }
       |}

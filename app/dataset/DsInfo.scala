@@ -370,7 +370,8 @@ object DsInfo {
     mappingSource: Option[String],
     harvestUsername: Option[String],
     harvestPasswordSet: Option[Boolean],
-    harvestApiKeySet: Option[Boolean]
+    harvestApiKeySet: Option[Boolean],
+    mapToPrefix: Option[String]
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -490,7 +491,8 @@ object DsInfo {
           mappingSource = row.get("mappingSource").map(_.text),
           harvestUsername = row.get("harvestUsername").map(_.text),
           harvestPasswordSet = row.get("harvestPasswordSet").map(_.text.toBoolean),
-          harvestApiKeySet = row.get("harvestApiKeySet").map(_.text.toBoolean)
+          harvestApiKeySet = row.get("harvestApiKeySet").map(_.text.toBoolean),
+          mapToPrefix = row.get("mapToPrefix").map(_.text)
         )
       }
     }
@@ -508,7 +510,21 @@ object DsInfo {
       retryStatus <- listRetryStatus()
     } yield {
       datasets.map { ds =>
-        val baseJson = Json.toJson(ds).as[JsObject]
+        // Phase A4b: lifecycle state comes from the projector (disk +
+        // registry truth); the stored state props in the SPARQL row serve
+        // only as legacy fallbacks for saved/incrementalSaved/disabled.
+        val projected = DatasetStatusProjector.project(
+          orgContext,
+          spec = ds.spec,
+          targetPrefix = ds.mapToPrefix.getOrElse(""),
+          savedFallback = ds.stateSaved,
+          incrementalSavedFallback = ds.stateIncrementalSaved,
+          disabledFallback = ds.stateDisabled
+        )
+        val staleStateKeys = Json.toJson(ds).as[JsObject].keys.filter(_.startsWith("state"))
+        val baseJson = JsObject(
+          (Json.toJson(ds).as[JsObject].value -- staleStateKeys).toSeq
+        ) ++ JsObject(projected.stateFields.map { case (k, v) => k -> Json.toJson(v) })
 
         // Add retry status
         val withRetry = retryStatus.get(ds.spec) match {
@@ -1043,25 +1059,9 @@ class DsInfo(
 
   def usesDefaultMapping: Boolean = getMappingSource == "default"
 
-  def getState(): DsState.Value = {
-
-    def max(lh: (DsState.Value, DateTime), rh: (DsState.Value, DateTime)) =
-      if (lh._2.isAfter(rh._2)) lh else rh
-
-    val statesAndTimestamps = DsState.values
-      .map(state =>
-        (state, getTimeProp(NXProp(state.toString, GraphProperties.timeProp))))
-      .filter(stateAndTimeStampOpt => stateAndTimeStampOpt._2.isDefined)
-      .map(stateAndTimestamp =>
-        (stateAndTimestamp._1, stateAndTimestamp._2.get))
-
-    val actualState =
-      if (statesAndTimestamps.isEmpty) DsState.EMPTY
-      else statesAndTimestamps.reduceLeft(max)._1
-
-    DsState.withName(actualState.toString)
-
-  }
+  // Phase A4b: getState()-by-max-timestamp is gone — lifecycle state is
+  // computed by DatasetStatusProjector from disk + registry facts. setState/
+  // removeState remain only for the DISABLED admin flag (and legacy cleanup).
 
   def setState(state: DsState.Value) = {
     setSingularLiteralProps(
@@ -1118,31 +1118,6 @@ class DsInfo(
 
   def removeState(state: DsState.Value) =
     removeLiteralProp(NXProp(state.toString, GraphProperties.timeProp))
-
-  /** Clear all post-harvest workflow states, resetting back to SOURCED. */
-  def resetToSourced(): Unit = {
-    import DsState._
-    removeState(SAVED)
-    removeState(ANALYZED)
-    removeState(INCREMENTAL_SAVED)
-    removeState(PROCESSED)
-    removeState(PROCESSABLE)
-    setState(SOURCED)
-  }
-
-  /** Clear all downstream workflow states (e.g. after re-analysis or new upload). */
-  def clearWorkflowStates(): Unit = {
-    import DsState._
-    removeState(RAW_ANALYZED)
-    removeState(ANALYZED)
-    removeState(SOURCED)
-    removeState(MAPPABLE)
-    removeState(PROCESSABLE)
-    removeState(PROCESSED)
-    removeState(SAVED)
-    removeState(INCREMENTAL_SAVED)
-    removeLiteralProp(GraphProperties.delimitersSet)
-  }
 
   def clearError(): Unit = {
     removeLiteralProp(datasetErrorMessage)
@@ -1762,10 +1737,24 @@ class DsInfo(
       "orgId" -> JsString(orgId)
     )
 
-    // All fields from the registry - uses getValue which handles type conversion
-    val registryFields: scala.collection.immutable.Seq[(String, JsValue)] = DsInfo.webSocketFields.flatMap { field =>
-      field.getValue(this).map(value => field.jsonName -> value)
-    }
+    // All fields from the registry - uses getValue which handles type conversion.
+    // Phase A4b: lifecycle state* fields are excluded here — they come from
+    // the projector below (disk + registry truth), not from stored props.
+    val registryFields: scala.collection.immutable.Seq[(String, JsValue)] = DsInfo.webSocketFields
+      .filterNot(_.jsonName.startsWith("state"))
+      .flatMap { field =>
+        field.getValue(this).map(value => field.jsonName -> value)
+      }
+
+    val projectedStateFields: scala.collection.immutable.Seq[(String, JsValue)] =
+      DatasetStatusProjector.project(
+        orgContext,
+        spec = spec,
+        targetPrefix = getLiteralProp(triplestore.GraphProperties.datasetMapToPrefix).getOrElse(""),
+        savedFallback = getLiteralProp(triplestore.GraphProperties.stateSaved),
+        incrementalSavedFallback = getLiteralProp(triplestore.GraphProperties.stateIncrementalSaved),
+        disabledFallback = getLiteralProp(triplestore.GraphProperties.stateDisabled)
+      ).stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }.toList
 
     // Computed fields that require method calls (not simple property lookups)
     // These are fields derived from multiple properties or require special logic
@@ -1787,7 +1776,7 @@ class DsInfo(
       "errorMessage" -> getLiteralProp(triplestore.GraphProperties.datasetErrorMessage).map(JsString(_)).getOrElse(JsNull)
     ).filterNot(_._2 == JsNull)
 
-    JsObject(coreFields ++ registryFields ++ computedFields)
+    JsObject(coreFields ++ registryFields ++ projectedStateFields ++ computedFields)
   }
 
 }

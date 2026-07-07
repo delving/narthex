@@ -46,7 +46,7 @@ import dataset.DatasetActor._
 import dataset.DsInfo
 import dataset.DsInfo._
 import dataset.DsInfo.DsState._
-import dataset.{Sip, SipFactory}
+import dataset.{DatasetContext, DatasetStatusProjector, Sip, SipFactory}
 import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.SkosMappingStore.SkosMapping
 import mapping.SkosVocabulary._
@@ -730,7 +730,18 @@ class AppController @Inject() (
   }
 
   def datasetInfo(spec: String) = Action { request =>
-    withDsInfo(spec, orgContext)(dsInfo => Ok(Json.toJson(dsInfo)))
+    withDsInfo(spec, orgContext) { dsInfo =>
+      // Phase A4b: overlay projector-derived state* fields (flat names, the
+      // ones the frontend reads) on the legacy JSON-LD serialization.
+      val stateJson = JsObject(
+        DatasetStatusProjector.project(new DatasetContext(orgContext, dsInfo))
+          .stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }
+      )
+      Json.toJson(dsInfo) match {
+        case obj: JsObject => Ok(obj ++ stateJson)
+        case other => Ok(other)
+      }
+    }
   }
 
   def createDataset(spec: String, character: String, mapToPrefix: String) = Action.async { request =>
@@ -746,23 +757,13 @@ class AppController @Inject() (
 
   def fastSave(spec: String) = Action { request =>
     val datasetContext = orgContext.datasetContext(spec)
-    val dsInfo = datasetContext.dsInfo
-    val state = dsInfo.getState()
-    val hasProcessedOutput = datasetContext.processedRepo.nonEmpty
-    val hasSourceFile = datasetContext.sourceRepoOpt.exists(_.latestSourceFileOpt.isDefined)
+    // Phase A4b: the projected state IS the artifact truth — a dataset can
+    // only project PROCESSED with processed output on disk, PROCESSABLE
+    // with a mapping, SOURCED with source zips.
+    val state = DatasetStatusProjector.project(datasetContext).currentState
 
     val problemOpt = state match {
-      case ANALYZED | PROCESSED if !hasProcessedOutput =>
-        Some(s"Dataset $spec is $state but has no processed output to save")
-      case ANALYZED | PROCESSED =>
-        None
-      case PROCESSABLE if !hasSourceFile =>
-        Some(s"Dataset $spec is processable but has no source file to process")
-      case PROCESSABLE =>
-        None
-      case SOURCED if !hasSourceFile =>
-        Some(s"Dataset $spec is sourced but has no source file")
-      case SOURCED =>
+      case ANALYZED | PROCESSED | PROCESSABLE | SOURCED | SAVED | INCREMENTAL_SAVED =>
         None
       case _ =>
         Some(s"Dataset $spec is not ready for fast save: $state")
@@ -2599,15 +2600,16 @@ $nodeMappingsXml
           logger.info(s"Copied error file to ${output.errorFile.getAbsolutePath}")
         }
 
-        // 4. Update dataset state - mark as processed externally
-        datasetContext.dsInfo.setState(PROCESSED)
+        // 4. Mark as processed externally (PROCESSED itself is projected
+        //    from the processed/ output just written)
         datasetContext.dsInfo.setProcessedRecordCounts(validCount, invalidCount)
         datasetContext.dsInfo.setSingularLiteralProps(
           processedExternally -> source
         )
 
-        // 5. Clear stale analysis if present (analysis is stale after new processing)
-        datasetContext.dsInfo.removeState(ANALYZED)
+        // 5. Drop stale analysis tree — it describes the previous processed
+        //    output, and its presence would project ANALYZED
+        datasetContext.dropTree()
 
         // 6. Broadcast update via WebSocket so UI refreshes
         sendRefresh(spec)

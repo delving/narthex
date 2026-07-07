@@ -510,6 +510,27 @@ define(["angular"], function () {
         ];
 
         /**
+         * Pick the current state by explicit pipeline lattice, NOT by date.
+         * State timestamps are now derived from artifact mtimes (Phase A4b)
+         * and are not pipeline-ordered — e.g. a SIP regenerated after
+         * processing is newer than the processed output.
+         */
+        var stateLattice = ['stateSaved', 'stateIncrementalSaved', 'stateAnalyzed', 'stateProcessed',
+            'stateProcessable', 'stateMappable', 'stateSourceAnalyzed', 'stateSourced',
+            'stateRawAnalyzed', 'stateRaw', 'stateDisabled'];
+        function pickCurrentState(states) {
+            var saved = _.find(states, function (s) { return s.name === 'stateSaved'; });
+            var inc = _.find(states, function (s) { return s.name === 'stateIncrementalSaved'; });
+            if (saved && inc) return inc.date > saved.date ? inc : saved;
+            for (var i = 0; i < stateLattice.length; i++) {
+                var name = stateLattice[i];
+                var found = _.find(states, function (s) { return s.name === name; });
+                if (found) return found;
+            }
+            return undefined;
+        }
+
+        /**
          * Decorate a dataset with minimal info (for collapsed view).
          * Used with lightweight dataset list.
          */
@@ -557,9 +578,7 @@ define(["angular"], function () {
                 dataset.empty = true;
             }
 
-            dataset.stateCurrent = _.max(dataset.states, function (state) {
-                return state.date
-            });
+            dataset.stateCurrent = pickCurrentState(dataset.states);
 
             // Check if delimiters are valid (set after the latest analysis)
             // States that indicate delimiters have been set (you can't reach these without valid delimiters)
@@ -721,9 +740,7 @@ define(["angular"], function () {
             if (!stateVisible) {
                 dataset.empty = true;
             };
-            dataset.stateCurrent = _.max(dataset.states, function (state) {
-                return state.date
-            });
+            dataset.stateCurrent = pickCurrentState(dataset.states);
 
             // Check if delimiters are valid (set after the latest analysis)
             // States that indicate delimiters have been set (you can't reach these without valid delimiters)

@@ -136,7 +136,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
     def sendRefresh() = orgContext.orgActor ! dsInfo.createMessage(Command("refresh"))
 
-    def cleanupWorkflowStates(): Unit = dsInfo.clearWorkflowStates()
+    // New raw data invalidates the record root / unique id choice; the
+    // lifecycle states themselves are projected from disk (Phase A4b).
+    def cleanupWorkflowStates(): Unit = dsInfo.removeLiteralProp(GraphProperties.delimitersSet)
 
     if (fileName.endsWith(".csv")) {
       val csvFile = setTargetFile(createRawFile(fileName))
@@ -148,8 +150,11 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       reader.close()
       writer.close()
       tryConvert match {
-        case Success(_) => dsInfo.setState(RAW)
-        case Failure(e) => dsInfo.removeState(RAW)
+        case Success(_) => ()
+        case Failure(e) =>
+          // A partial converted file must not project as RAW
+          logger.warn(s"CSV conversion failed for $dsInfo: ${e.getMessage}")
+          deleteQuietly(xmlFile)
       }
       cleanupWorkflowStates()
       dropTree()
@@ -158,7 +163,6 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     }
     else if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
       setTargetFile(createRawFile(fileName))
-      dsInfo.setState(RAW)
       cleanupWorkflowStates()
       dsInfo.removeLiteralProp(GraphProperties.harvestType)
       dropTree()
@@ -237,53 +241,44 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     allZip.headOption
   }
 
+  // Phase A4b: the drops below only remove artifacts — the projector
+  // derives the states from their absence.
+
   def dropRaw() = {
     dropSourceRepo()
     deleteQuietly(rawDir)
-    dsInfo.removeState(RAW)
   }
 
   def dropSourceRepo() = {
     dropProcessedRepo()
     // todo: note that we lose the delimiters this way:
     deleteQuietly(sourceDir)
-    dsInfo.removeState(SOURCED)
     sipFiles.foreach(deleteQuietly)
-    dsInfo.removeState(MAPPABLE)
-    dsInfo.removeState(PROCESSABLE)
   }
 
   def dropProcessedRepo() = {
     dropTree()
     deleteQuietly(processedDir)
-    dsInfo.removeState(PROCESSED)
     // Clear externally-processed marker so SipZipGenerationComplete does not
     // re-stamp PROCESSED for a dataset whose processed/ tree is gone.
     dsInfo.removeLiteralProp(GraphProperties.processedExternally)
   }
 
   def dropTree() = {
-    // dropRecords should not be called here
-    // dropRecords
     deleteQuietly(treeDir)
-    dsInfo.removeState(RAW_ANALYZED)
-    dsInfo.removeState(ANALYZED)
     logger.debug("Dropping analysis tree")
   }
 
   def dropSourceTree() = {
     deleteQuietly(sourceTreeDir)
-    dsInfo.removeState(SOURCE_ANALYZED)
     logger.debug("Dropping source analysis tree")
   }
 
   def dropRecords = {
-    dsInfo.removeState(SAVED)
     dsInfo.dropDatasetRecords
   }
 
   def dropIndex = {
-    dsInfo.removeState(SAVED)
     dsInfo.dropDatasetIndex
     dsInfo.dropDatasetRecords
   }
