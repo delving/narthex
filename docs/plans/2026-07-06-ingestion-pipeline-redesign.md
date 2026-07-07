@@ -192,9 +192,28 @@ operate the same db files (WAL multi-process; jobs lease = one writer).
   Reconcile behind the synchronous Stage trait on worker threads;
   `queue.db` lease replaces OrgActor queue + semaphores; stuck-state
   poller and ForceReleaseAndReset deleted.
-- **A4 (~1–1.5 wk)** DatasetStatusProjector (single writer of RDF state
-  props); RecordId newtype; tombstones table becomes read path; pockets
-  manifest.
+- **A4a Mapping single-owner (~5–7 days, flag-gated).** DatasetMappingRepo
+  becomes the ONLY mapping truth (audit 2026-07-07: three stores + a
+  pointer, nine divergence paths — incl. web SIP upload never writing the
+  repo, editor saves invisible to processing/preview, default selection
+  writing nothing). Processing builds its SipMapper from repo-current +
+  RecDefRepo (no zip); uploads ingest into the repo unconditionally;
+  default selection COPIES into the repo with provenance; SIP zips become
+  fully derived exchange artifacts (download/generate package
+  repo-current); editor saves via RecMapping serialization (the
+  string-templated XML may not round-trip to SIP-Creator). Cutover script
+  ingests zip-newer-than-repo mappings first. Repo-backed mapper ships
+  behind a config flag with the zip path as fallback for one release.
+- **A4b Status projector + API swap (~3–4 days).** DatasetStatusProjector
+  computes dataset status from runs + run_stages + filesystem + mapping
+  repo and feeds the EXISTING dataset-list JSON API directly (same field
+  names → minimal AngularJS churn); the RDF state props are never written
+  again — no projector-to-RDF intermediate era. "processable" = "a mapping
+  exists for the current prefix", derived fresh (kills the stale-state
+  false-positive class); the API also serves planner-derived available
+  actions and run_stages-based live progress (rebirths the archived PG
+  branch's displayLabel/nextCheckpoint work). RecordId newtype; tombstones
+  table becomes read path; pockets manifest.
 
 After Phase A the Scala app already is the maintainable system: explicit
 persisted state machine, no flag choreography, every branch unit-testable,
