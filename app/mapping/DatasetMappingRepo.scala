@@ -267,6 +267,23 @@ class DatasetMappingRepo(datasetDir: File) {
     getInfo.map(_.prefix)
   }
 
+  /**
+   * Move every version file + the metadata of the old prefix into
+   * mappings/archive-<prefix>-<timestamp>/ and leave the repo empty.
+   * Archival, not deletion — recoverable by hand if the switch was a mistake.
+   */
+  private def archivePrefix(oldInfo: DatasetMappingInfo, timestamp: DateTime): Unit = {
+    val archiveDir = new File(mappingsDir, s"archive-${oldInfo.prefix}-${timestamp.toString("yyyyMMdd_HHmmss")}")
+    archiveDir.mkdirs()
+    oldInfo.versions.foreach { v =>
+      val f = new File(mappingsDir, v.filename)
+      if (f.exists()) FileUtils.moveFile(f, new File(archiveDir, v.filename))
+    }
+    if (metadataFile.exists()) FileUtils.moveFile(metadataFile, new File(archiveDir, METADATA_FILE))
+    logger.warn(s"Dataset ${datasetDir.getName}: prefix switched away from '${oldInfo.prefix}' — " +
+      s"archived ${oldInfo.versions.size} mapping version(s) to ${archiveDir.getName}")
+  }
+
   private def saveVersion(
     xmlContent: String,
     prefix: String,
@@ -281,6 +298,14 @@ class DatasetMappingRepo(datasetDir: File) {
 
     // Update metadata
     val spec = datasetDir.getName
+    // INVARIANT: the repo holds mappings for exactly ONE prefix. Saving a
+    // mapping for a different prefix means the dataset switched rec-defs —
+    // the old prefix's versions are archived (moved aside, never deleted)
+    // and the repo starts clean. Without this, a stale cross-prefix
+    // "current" mapping leaks into SIP generation nondeterministically.
+    getInfo.filter(_.prefix != prefix).foreach { oldInfo =>
+      archivePrefix(oldInfo, timestamp)
+    }
     val existingInfo = getInfo.getOrElse(
       DatasetMappingInfo(spec = spec, prefix = prefix, versions = List.empty, currentVersion = None)
     )
