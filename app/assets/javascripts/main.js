@@ -113,12 +113,13 @@
   };
 
   require(
-    // 'moment' first: the stub above is only DEFINED until something loads
-    // it, and Chart.js's UMD factory does a synchronous require('moment') —
-    // loading it here keeps that probe from throwing "notloaded".
-    ['moment', 'angular', 'angular-cookies', 'angular-route', 'angular-file-upload',
+    // 'moment' LAST (positional args!): the stub above is only DEFINED until
+    // something loads it, and Chart.js's UMD factory does a synchronous
+    // require('moment') — loading it here keeps that probe from throwing
+    // "notloaded". It must not displace 'angular' as the first callback arg.
+    ['angular', 'angular-cookies', 'angular-route', 'angular-file-upload',
       'angular-sanitize', 'ngStorage', 'jquery',
-      'underscorejs', 'bootstrap', 'ui-bootstrap', 'ui-bootstrap-tpls', 'ng-grid', './app'],
+      'underscorejs', 'bootstrap', 'ui-bootstrap', 'ui-bootstrap-tpls', 'ng-grid', './app', 'moment'],
     function (angular) {
       angular.bootstrap(document, ['app']);
     }
