@@ -444,6 +444,16 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     }
   }
 
+  /** The raw mapping XML exactly as stored in the zip: (prefix, xml). */
+  def rawMappingXmlOpt: Option[(String, String)] = schemaVersionOpt.flatMap { schemaVersion =>
+    val PrefixVersion(prefix, _) = schemaVersion
+    entries.get(s"mapping_$prefix.xml").map { entry =>
+      val is = zipFile.getInputStream(entry)
+      try (prefix, IOUtils.toString(is, "UTF-8"))
+      finally is.close()
+    }
+  }
+
   def containsSource = entries.asJava.containsKey("source.xml.gz")
 
   def copySourceToTempFile: Option[File] = {
@@ -460,67 +470,15 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     }
   }
 
-  class MappingEngine(sipMapping: SipMapping) extends SipMapper {
-    val now = new DateTime
-    val serializer = new XmlSerializer
-    val namespaces = sipMapping.recDefTree.getRecDef.namespaces.asScala.map(ns => ns.prefix -> ns.uri).toMap
-    val factory = new MetadataRecordFactory(namespaces.asJava)
-
-    val runner = new BulkMappingRunner(sipMapping.recMapping, new CodeGenerator(sipMapping.recMapping).withTrace(false).toRecordMappingCode)
-
-    // Thread pool for parallel processing - sized to available processors
-    private val forkJoinPool = new ForkJoinPool(
-      Math.max(2, Runtime.getRuntime.availableProcessors())
-    )
-
-    override val datasetName = sipMapping.spec
-
-    override val prefix: String = sipMapping.prefix
-
-    /**
-     * Execute mapping on multiple pockets in parallel.
-     * Thread-safe: CompiledScript.eval() and MetadataRecordFactory are both thread-safe.
-     * Returns results in same order as input.
-     */
-    override def executeMappingsParallel(pockets: Seq[Pocket]): Seq[(Pocket, Try[Pocket])] = {
-      val parPockets = pockets.par
-      parPockets.tasksupport = new ForkJoinTaskSupport(forkJoinPool)
-      parPockets.map { pocket =>
-        (pocket, executeMapping(pocket))
-      }.seq.toSeq
-    }
-
-    override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
-      val metadataRecord = factory.metadataRecordFrom(pocket.getText)
-      val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord),
-        sipMapping.recMapping.getRecDefTree)
-      // check uri errors
-      val uriErrors = result.getUriErrors.asScala.toList
-      if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
-      // validate using XSD
-      sipMapping.validatorOpt.foreach(_.validate(new DOMSource(result.root())))
-      // re-wrap in an RDF construction
-      val root = result.root().asInstanceOf[Element]
-      val doc = root.getOwnerDocument
-      root.removeAttribute("xsi:schemaLocation")
-      val cn = root.getChildNodes
-      val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
-      // Create RDF wrapper and append children
-      val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
-      kids.foreach(rdfWrapper.appendChild)
-      // Use URN-based graph name for compatibility with SIP-Creator
-      val graphName = StringHandling.createHubGraphName(
-        sipMapping.sip.orgId.getOrElse("unknownOrg"),
-        sipMapping.spec,
-        pocket.id
-      )
-      // deliver the pocket
-      val xml = serializer.toXml(rdfWrapper, true).replaceFirst("<[?].*[?]>\n", "")
-      Pocket(graphName, xml, sipMapping.namespaces + (RDF_PREFIX -> RDF_URI))
-    }
+  def createSipMapper: Option[SipMapper] = sipMappingOpt.map { sm =>
+    new PocketMappingEngine(
+      spec = sm.spec,
+      prefix = sm.prefix,
+      recDefTree = sm.recDefTree,
+      recMapping = sm.recMapping,
+      validatorOpt = sm.validatorOpt,
+      orgId = sm.sip.orgId.getOrElse("unknownOrg"))
   }
-
-  def createSipMapper: Option[SipMapper] = sipMappingOpt.map(new MappingEngine(_))
 
   def copyWithSourceTo(sipFile: File, sourceXmlFile: File, sipPrefixRepoOpt: Option[SipPrefixRepo], facts: SipGenerationFacts, customMappingXml: Option[String] = None) = {
     val zos = new ZipOutputStream(new FileOutputStream(sipFile))
@@ -715,4 +673,74 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
     zos.close()
   }
 
+}
+
+/**
+ * Executes a record mapping against pockets — extracted from the Sip inner
+ * class (Phase A4a) so a mapper can be built from ANY mapping source (the
+ * DatasetMappingRepo + RecDefRepo, not only a SIP zip).
+ */
+class PocketMappingEngine(
+  spec: String,
+  override val prefix: String,
+  recDefTree: RecDefTree,
+  recMapping: RecMapping,
+  validatorOpt: Option[Validator],
+  orgId: String
+) extends Sip.SipMapper {
+
+  import Sip.{RDF_PREFIX, RDF_ROOT_TAG, RDF_URI}
+  import SipRepo.URIErrorsException
+
+  val serializer = new XmlSerializer
+  val namespaces: Map[String, String] =
+    recDefTree.getRecDef.namespaces.asScala.map(ns => ns.prefix -> ns.uri).toMap
+  val factory = new MetadataRecordFactory(namespaces.asJava)
+
+  val runner = new BulkMappingRunner(recMapping, new CodeGenerator(recMapping).withTrace(false).toRecordMappingCode)
+
+  // Thread pool for parallel processing - sized to available processors
+  private val forkJoinPool = new ForkJoinPool(
+    Math.max(2, Runtime.getRuntime.availableProcessors())
+  )
+
+  override val datasetName = spec
+
+  /**
+   * Execute mapping on multiple pockets in parallel.
+   * Thread-safe: CompiledScript.eval() and MetadataRecordFactory are both thread-safe.
+   * Returns results in same order as input.
+   */
+  override def executeMappingsParallel(pockets: Seq[Pocket]): Seq[(Pocket, Try[Pocket])] = {
+    val parPockets = pockets.par
+    parPockets.tasksupport = new ForkJoinTaskSupport(forkJoinPool)
+    parPockets.map { pocket =>
+      (pocket, executeMapping(pocket))
+    }.seq.toSeq
+  }
+
+  override def executeMapping(pocket: Pocket): Try[Pocket] = Try {
+    val metadataRecord = factory.metadataRecordFrom(pocket.getText)
+    val result = new MappingResult(serializer, pocket.id, runner.runMapping(metadataRecord),
+      recMapping.getRecDefTree)
+    // check uri errors
+    val uriErrors = result.getUriErrors.asScala.toList
+    if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
+    // validate using XSD
+    validatorOpt.foreach(_.validate(new DOMSource(result.root())))
+    // re-wrap in an RDF construction
+    val root = result.root().asInstanceOf[Element]
+    val doc = root.getOwnerDocument
+    root.removeAttribute("xsi:schemaLocation")
+    val cn = root.getChildNodes
+    val kids = for (index <- 0 to (cn.getLength - 1)) yield cn.item(index)
+    // Create RDF wrapper and append children
+    val rdfWrapper = doc.createElementNS(RDF_URI, s"$RDF_PREFIX:$RDF_ROOT_TAG")
+    kids.foreach(rdfWrapper.appendChild)
+    // Use URN-based graph name for compatibility with SIP-Creator
+    val graphName = StringHandling.createHubGraphName(orgId, spec, pocket.id)
+    // deliver the pocket
+    val xml = serializer.toXml(rdfWrapper, true).replaceFirst("<[?].*[?]>\n", "")
+    Pocket(graphName, xml, namespaces + (RDF_PREFIX -> RDF_URI))
+  }
 }

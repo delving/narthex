@@ -134,6 +134,14 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   def leaseTimeoutMinutes: Int =
     configuration.getOptional[Int]("narthex.leaseTimeoutMinutes").getOrElse(120)
 
+  // Phase A4a: processing builds its mapper from the DatasetMappingRepo +
+  // RecDefRepo (single mapping owner) instead of the newest SIP zip. The
+  // zip path remains the fallback while this rolls out.
+  def mappingRepoBacked: Boolean = configuration
+    .getOptional[Boolean]("narthex.mapping.repoBacked")
+    .getOrElse(false)
+  logger.info(s"narthex.mapping.repoBacked: $mappingRepoBacked")
+
   def sessionTimeoutInSeconds: Int = configuration
     .getOptional[Int]("sessionTimeoutInSeconds")
     .getOrElse(60 * 60 * 4)

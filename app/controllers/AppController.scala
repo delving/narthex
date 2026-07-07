@@ -1821,6 +1821,24 @@ class AppController @Inject() (
 
     DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
       dsInfo.setMappingSource(source, prefix, name, version)
+      // Single-owner (A4a): selecting a default MATERIALIZES it into the
+      // dataset's mapping repo — previously this wrote only a preference
+      // prop, so the repo's "current" and the actually-generated mapping
+      // silently diverged.
+      if (source == "default") {
+        for (p <- prefix; n <- name) {
+          val v = version.getOrElse("latest")
+          val defaultMappingRepo = new mapping.DefaultMappingRepo(orgContext.orgRoot)
+          defaultMappingRepo.getXml(p, n, v) match {
+            case Some(xml) =>
+              orgContext.datasetContext(spec).datasetMappingRepo
+                .saveFromDefault(xml, p, v, Some(s"Materialized default $p/$n@$v"))
+              logger.info(s"Materialized default mapping $p/$n@$v into repo for $spec")
+            case None =>
+              logger.warn(s"Default mapping $p/$n@$v not found — repo not updated for $spec")
+          }
+        }
+      }
       Ok(Json.obj(
         "success" -> true,
         "mappingSource" -> dsInfo.getMappingSource,

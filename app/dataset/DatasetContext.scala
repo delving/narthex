@@ -85,7 +85,16 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   lazy val datasetMappingRepo = new DatasetMappingRepo(rootDir)
 
-  def sipMapperOpt: Option[SipMapper] = sipRepo.latestSipOpt.flatMap(_.createSipMapper)
+  // Phase A4a single-owner: with narthex.mapping.repoBacked the mapper comes
+  // from the DatasetMappingRepo + RecDefRepo; the newest SIP zip is only the
+  // legacy fallback during rollout. Without the flag, zip-backed as before.
+  def sipMapperOpt: Option[SipMapper] =
+    if (orgContext.narthexConfig.mappingRepoBacked)
+      mapping.RepoSipMapper.build(this).orElse(zipBackedSipMapperOpt)
+    else zipBackedSipMapperOpt
+
+  private def zipBackedSipMapperOpt: Option[SipMapper] =
+    sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 
   def mkdirs = {
     rootDir.mkdirs()
@@ -177,6 +186,14 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
           recordId = sip.harvestSpec.getOrElse(""),
           prefix = sip.harvestPrefix.getOrElse("")
         )
+        // Single-owner ingest (A4a): every SIP upload lands its mapping in
+        // the DatasetMappingRepo — previously only the SIP-Creator endpoint
+        // did, so web uploads left the repo stale and the next generate-sip
+        // overwrote the freshly uploaded mapping with the old repo-current.
+        sip.rawMappingXmlOpt.foreach { case (prefix, xml) =>
+          datasetMappingRepo.saveFromSipUpload(xml, prefix, Some("Uploaded via web UI (.sip.zip)"))
+        }
+
         // todo: should probably wait for the above future
         sip.sipMappingOpt.map { sipMapping =>
           if (sip.containsSource) {

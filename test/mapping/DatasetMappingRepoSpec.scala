@@ -44,6 +44,15 @@ class DatasetMappingRepoSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     archived.count(_.endsWith(".xml")) shouldBe 1
   }
 
+  it should "record default-mapping provenance via saveFromDefault" in {
+    repo.saveFromDefault("<mapping>default edm</mapping>", "edm", "abc12345", Some("Materialized default edm/base@abc12345"))
+    val info = repo.getInfo.get
+    info.prefix shouldBe "edm"
+    info.versions.head.source shouldBe "default_copy"
+    info.versions.head.sourceDefault shouldBe Some("edm:abc12345")
+    repo.getXml("current") shouldBe Some("<mapping>default edm</mapping>")
+  }
+
   it should "not archive when saving another version of the same prefix" in {
     repo.saveFromSipUpload("<mapping>v1</mapping>", "edm")
     repo.saveFromSipUpload("<mapping>v2</mapping>", "edm")
