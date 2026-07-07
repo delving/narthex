@@ -339,6 +339,19 @@ database/sql — no actor, no RDF. The affordance function transliterates
 line-for-line. The websocket becomes "push the status doc on run-row
 change", which a Go worker can do with a NOTIFY-style poll.
 
+### Decisions (2026-07-07, with Sjoerd)
+
+1. **Full cancel is a first-class action**: cancel removes queued jobs AND
+   interrupts running runs (run marked failed, note "cancelled", lease
+   freed). Replaces the half-working interrupt.
+2. **Errors = failed runs, no sticky prop.** One clean run clears the
+   error; old prop-based errors simply stop being shown at C3.
+3. **C1 ships as additive fields** on the existing light JSON; UI migrates
+   widget by widget; old state* fields retire when unread.
+4. **Global `datasets` registry table stays B3** (after C1–C3). Noted:
+   the migration is trivial — dump the Fuseki dataset list JSON once and
+   insert rows; no elaborate migration machinery needed.
+
 ### Phasing (each step deployable)
 
 - **C1 — status document + affordance function.** New endpoint shape (or
