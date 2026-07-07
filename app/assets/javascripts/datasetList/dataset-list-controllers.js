@@ -521,6 +521,15 @@ define(["angular"], function () {
         }
 
         /**
+         * Phase C1: workflow buttons render only when the backend's
+         * affordance function offers the action. Tolerant of payloads from
+         * before C1 (no actions field -> old behavior, button shows).
+         */
+        $scope.hasAction = function (dataset, action) {
+            return !dataset.actions || dataset.actions.indexOf(action) >= 0;
+        };
+
+        /**
          * Decorate a dataset with minimal info (for collapsed view).
          * Used with lightweight dataset list.
          */

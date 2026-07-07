@@ -461,7 +461,7 @@
                                         dataset.stateRaw.t }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="start('start raw analysis')">
+                                    <a href data-ng-if="hasAction(dataset, 'analyze_raw')" data-ng-click="start('start raw analysis')">
                                         <i class="fa fa-fw fa-bar-chart"></i>
                                         <span>Analyze</span>
                                     </a>
@@ -476,11 +476,11 @@
                                         'HH:mm' }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="goToDataset()" data-ng-if="!dataset.delimitersValid">
+                                    <a href data-ng-click="goToDataset()" data-ng-if="hasAction(dataset, 'delimit')">
                                         <i class="fa fa-fw fa-eye"></i>
                                         <span>Delimit</span>
                                     </a>
-                                    <a href data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')" data-ng-if="dataset.delimitersValid">
+                                    <a href data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')" data-ng-if="hasAction(dataset, 'first_harvest')">
                                         <i class="fa fa-fw fa-download"></i>
                                         <span>Start Harvest</span>
                                     </a>
@@ -495,7 +495,7 @@
                                         dataset.delimitersSet | date: 'HH:mm' }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')">
+                                    <a href data-ng-if="hasAction(dataset, 'first_harvest')" data-ng-click="start('start first harvest', 'Erase existing data, including records from the triple-store?')">
                                         <i class="fa fa-fw fa-download"></i>
                                         <span>Start Harvest</span>
                                     </a>
@@ -509,15 +509,15 @@
                                         dataset.stateSourced.t }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="start('start source analysis')">
+                                    <a href data-ng-if="hasAction(dataset, 'analyze_source')" data-ng-click="start('start source analysis')">
                                         <i class="fa fa-fw fa-bar-chart"></i>
                                         <span>Analyze Source</span>
                                     </a>
-                                    <a href data-ng-click="start('start generating sip')">
+                                    <a href data-ng-if="hasAction(dataset, 'generate_sip')" data-ng-click="start('start generating sip')">
                                         <i class="fa fa-fw fa-cube"></i>
                                         <span>Make SIP</span>
                                     </a>
-                                    <a href data-ng-click="fastSave(dataset, 'stateSourced')" ng-disabled="dataset.isActive || datasetBusy">
+                                    <a href data-ng-if="hasAction(dataset, 'fast_save')" data-ng-click="fastSave(dataset, 'stateSourced')" ng-disabled="dataset.isActive || datasetBusy">
                                         <i class="fa fa-fw fa-bolt"></i>
                                         <span>Fast Save</span>
                                     </a>
@@ -535,7 +535,7 @@
                                         <i class="fa fa-fw fa-sitemap"></i>
                                         <span>View Source Tree</span>
                                     </a>
-                                    <a href data-ng-click="start('start source analysis')">
+                                    <a href data-ng-if="hasAction(dataset, 'analyze_source')" data-ng-click="start('start source analysis')">
                                         <i class="fa fa-fw fa-refresh"></i>
                                         <span>Re-analyze</span>
                                     </a>
@@ -563,11 +563,11 @@
                                         dataset.stateProcessable.t }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="start('start processing')">
+                                    <a href data-ng-if="hasAction(dataset, 'process')" data-ng-click="start('start processing')">
                                         <i class="fa fa-fw fa-cogs"></i>
                                         <span>Process</span>
                                     </a>
-                                    <a href data-ng-click="fastSave(dataset, 'stateProcessable')" ng-disabled="dataset.isActive || datasetBusy">
+                                    <a href data-ng-if="hasAction(dataset, 'fast_save')" data-ng-click="fastSave(dataset, 'stateProcessable')" ng-disabled="dataset.isActive || datasetBusy">
                                         <i class="fa fa-fw fa-bolt"></i>
                                         <span>Fast Save</span>
                                     </a>
@@ -583,7 +583,7 @@
                                         }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="start('start processed analysis')">
+                                    <a href data-ng-if="hasAction(dataset, 'analyze_processed')" data-ng-click="start('start processed analysis')">
                                         <i class="fa fa-fw fa-bar-chart"></i>
                                         <span>Analyze</span>
                                     </a>
@@ -598,11 +598,11 @@
                                         dataset.stateProcessed.t }}</small>
                                 </h4>
                                 <div class="btn-toolbar">
-                                    <a href data-ng-click="start('start processed analysis')">
+                                    <a href data-ng-if="hasAction(dataset, 'analyze_processed')" data-ng-click="start('start processed analysis')">
                                         <i class="fa fa-fw fa-bar-chart"></i>
                                         <span>Analyze</span>
                                     </a>
-                                    <a href data-ng-click="fastSave(dataset, 'stateProcessed')" ng-disabled="dataset.isActive || datasetBusy">
+                                    <a href data-ng-if="hasAction(dataset, 'fast_save')" data-ng-click="fastSave(dataset, 'stateProcessed')" ng-disabled="dataset.isActive || datasetBusy">
                                         <i class="fa fa-fw fa-bolt"></i>
                                         <span>Fast Save</span>
                                     </a>
@@ -629,11 +629,11 @@
                                     <!--<a href data-ng-click="goToTerms()" data-ng-if="dataset.skosField">-->
                                     <!--<i class="fa fa-fw fa-magic"></i> <span>Map vocabulary terms</span>-->
                                     <!--</a>-->
-                                    <a href data-ng-click="start('start saving')">
+                                    <a href data-ng-if="hasAction(dataset, 'save')" data-ng-click="start('start saving')">
                                         <i class="fa fa-fw fa-database"></i>
                                         <span>Save</span>
                                     </a>
-                                    <a href data-ng-click="fastSave(dataset, 'stateAnalyzed')" ng-disabled="dataset.isActive || datasetBusy">
+                                    <a href data-ng-if="hasAction(dataset, 'fast_save')" data-ng-click="fastSave(dataset, 'stateAnalyzed')" ng-disabled="dataset.isActive || datasetBusy">
                                         <i class="fa fa-fw fa-bolt"></i>
                                         <span>Fast Save</span>
                                     </a>

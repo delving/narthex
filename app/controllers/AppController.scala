@@ -733,9 +733,16 @@ class AppController @Inject() (
     withDsInfo(spec, orgContext) { dsInfo =>
       // Phase A4b: overlay projector-derived state* fields (flat names, the
       // ones the frontend reads) on the legacy JSON-LD serialization.
+      // Phase C1: plus the status document fields (phase/actions/lastStep/run).
+      val projected = DatasetStatusProjector.project(new DatasetContext(orgContext, dsInfo))
+      val docFacts = dataset.DatasetStatusDoc.Facts(
+        delimitersSet = dsInfo.getLiteralProp(triplestore.GraphProperties.delimitersSet),
+        errorMessage = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
+        inRetry = dsInfo.isInRetry
+      )
       val stateJson = JsObject(
-        DatasetStatusProjector.project(new DatasetContext(orgContext, dsInfo))
-          .stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }
+        projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) } ++
+          dataset.DatasetStatusDoc.fields(orgContext, spec, projected, docFacts)
       )
       Json.toJson(dsInfo) match {
         case obj: JsObject => Ok(obj ++ stateJson)

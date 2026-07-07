@@ -522,9 +522,17 @@ object DsInfo {
           disabledFallback = ds.stateDisabled
         )
         val staleStateKeys = Json.toJson(ds).as[JsObject].keys.filter(_.startsWith("state"))
+        // Phase C1: phase / actions / lastStep / run — the status document
+        // fields the UI renders without deciding anything itself.
+        val docFacts = DatasetStatusDoc.Facts(
+          delimitersSet = ds.delimitersSet,
+          errorMessage = ds.errorMessage,
+          inRetry = retryStatus.contains(ds.spec)
+        )
         val baseJson = JsObject(
           (Json.toJson(ds).as[JsObject].value -- staleStateKeys).toSeq
-        ) ++ JsObject(projected.stateFields.map { case (k, v) => k -> Json.toJson(v) })
+        ) ++ JsObject(projected.stateFields.map { case (k, v) => k -> Json.toJson(v) }) ++
+          JsObject(DatasetStatusDoc.fields(orgContext, ds.spec, projected, docFacts))
 
         // Add retry status
         val withRetry = retryStatus.get(ds.spec) match {
@@ -1746,15 +1754,23 @@ class DsInfo(
         field.getValue(this).map(value => field.jsonName -> value)
       }
 
-    val projectedStateFields: scala.collection.immutable.Seq[(String, JsValue)] =
-      DatasetStatusProjector.project(
+    val projectedStateFields: scala.collection.immutable.Seq[(String, JsValue)] = {
+      val projected = DatasetStatusProjector.project(
         orgContext,
         spec = spec,
         targetPrefix = getLiteralProp(triplestore.GraphProperties.datasetMapToPrefix).getOrElse(""),
         savedFallback = getLiteralProp(triplestore.GraphProperties.stateSaved),
         incrementalSavedFallback = getLiteralProp(triplestore.GraphProperties.stateIncrementalSaved),
         disabledFallback = getLiteralProp(triplestore.GraphProperties.stateDisabled)
-      ).stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }.toList
+      )
+      val docFacts = DatasetStatusDoc.Facts(
+        delimitersSet = getLiteralProp(triplestore.GraphProperties.delimitersSet),
+        errorMessage = getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
+        inRetry = isInRetry
+      )
+      projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }.toList ++
+        DatasetStatusDoc.fields(orgContext, spec, projected, docFacts).toList
+    }
 
     // Computed fields that require method calls (not simple property lookups)
     // These are fields derived from multiple properties or require special logic
