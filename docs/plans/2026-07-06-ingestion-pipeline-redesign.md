@@ -239,6 +239,120 @@ every schema/file a language-neutral contract.
   persists until sip-core is ported/replaced; the stage boundary
   quarantines it.
 
+## 4a. Phase C — one state model, one affordance function (designed 2026-07-07)
+
+### Diagnosis
+
+The app answers three different questions with tangled machinery:
+
+| Question | Where it lives today | Health |
+|---|---|---|
+| What does the dataset HAVE? | DatasetStatusProjector (fs + registry + mapping folder) | fixed by A4b |
+| What is HAPPENING now? | Akka FSM state + queue.db lease + open run + websocket progress — four sources | fragmented |
+| What CAN the user DO next? | ~20 `ng-show="dataset.stateXxx"` conditionals + client-side `delimitersValid` in AngularJS | **nowhere in the backend** |
+
+Question 3 is the free-for-all: the backend owns the workflow (planner,
+stage vocabulary) but the UI re-derives affordances by hand from state
+timestamps. Every affordance bug so far (offering process without a
+mapping, fast-save from impossible states, buttons during runs) is this
+duplication drifting.
+
+### Target model — the dataset status document
+
+ONE backend-computed JSON per dataset, served identically by the list
+endpoint, the detail endpoint, and every websocket push. The UI renders
+it and decides nothing.
+
+```json
+{
+  "spec": "brocade-cat-mas",
+  "phase": "idle | queued | running | error | retry | disabled",
+  "run":   { "id": 42, "kind": "incremental", "trigger": "periodic",
+             "stage": "process",
+             "stages": [ {"id": "harvest", "status": "completed"}, ... ],
+             "progress": {"count": 61, "of": "percent"} },
+  "artifacts": {
+    "raw":       {"at": "..."},
+    "source":    {"at": "...", "records": 2814, "deleted": 3},
+    "sip":       {"at": "..."},
+    "mapping":   {"prefix": "edm", "hash": "dad0faea", "at": "..."},
+    "processed": {"at": "...", "valid": 2814, "invalid": 0},
+    "analysis":  {"at": "...", "of": "processed"},
+    "saved":     {"at": "...", "runId": 41, "sent": 2814}
+  },
+  "lastStep": "processed",
+  "actions":  ["harvest", "analyze_source", "generate_sip", "process",
+               "save", "fast_save", "disable"],
+  "error":    null
+}
+```
+
+- `artifacts` = the projector, renamed from state-timestamps to the nouns
+  they actually are. `lastStep` = newest artifact (the badge, per the
+  2026-07-07 decision: display shows the last step; capability ordering
+  is backend-only).
+- `phase` + `run` come from queue.db (queued/leased) + the open run row +
+  run_stages. The Akka FSM stops being a state source — it is only an
+  executor.
+- `actions` is computed by ONE pure backend function (the affordance
+  function): `actions(artifacts, phase, config) -> Set[Action]`. ~20
+  lines, exhaustively unit-tested, same vocabulary as the planner. The
+  ng-show forest in dataset-list.html is replaced by
+  `ng-show="dataset.actions.includes('process')"`.
+
+### Workflow rules (the free-for-all ends here)
+
+1. **Every action is a job; every job executes as a planned run.** Today
+   analysis and standalone make-sip run outside the run model, so they
+   are invisible to history and to "busy" detection. New rule: even
+   single-stage work gets a run row. Then phase/queued/running/stage are
+   pure DB reads — no actor state consulted anywhere.
+2. **The planner is the only author of plans.** Free-text command strings
+   ("start fast save from stateX") die; jobs carry typed payloads that
+   map 1:1 to planner entry points (JobPayload already does this).
+3. **Stage vocabulary is closed**: harvest, generate_sip, process, save,
+   reconcile, analyze. A new stage = a schema-visible decision, not a
+   string.
+4. **Errors are failed runs, not sticky props.** `phase=error` ⇔ latest
+   run failed and no later run succeeded; the error message is the failed
+   stage's error column. Retry = a scheduled retry job + counter on the
+   run row. datasetErrorMessage/harvestInRetry props retire with this.
+5. **Single writer per dataset** stays the lease (queue.db partial unique
+   index); progress updates are run-row/stage-row updates the websocket
+   relays.
+
+### Storage (unchanged pieces stay)
+
+- `records.db` (conceptually dataset.db): records, runs, run_stages,
+  tombstones — already the shape Go wants (schema IS the contract).
+- `queue.db`: jobs + lease — already right.
+- Filesystem artifacts: already the truth the projector reads.
+- Fuseki props: shrink to metadata + harvest config + DISABLED until B3
+  moves them to dataset_props; nothing in Phase C adds a prop.
+
+### Go translation
+
+The status document is a pure function:
+`status(spec) = f(dir listing, records.db, queue.db, dataset_props)`.
+In Go: one `Status(spec string) (StatusDoc, error)` over os.Stat +
+database/sql — no actor, no RDF. The affordance function transliterates
+line-for-line. The websocket becomes "push the status doc on run-row
+change", which a Go worker can do with a NOTIFY-style poll.
+
+### Phasing (each step deployable)
+
+- **C1 — status document + affordance function.** New endpoint shape (or
+  additive fields on the existing light JSON), backend `actions[]`,
+  UI renders buttons/badge/progress from it. Biggest confusion-killer,
+  no storage change.
+- **C2 — every action a run.** Analysis + standalone generate-sip get
+  planned runs; phase derived from queue+runs; active-datasets endpoint
+  and actor-state reads retire.
+- **C3 — errors/retry as run outcomes.** Error/retry props retire;
+  recovery UI reads failed runs.
+- B3 (dataset_props) then strands Fuseki entirely (with SKOS already
+  decided out).
+
 ## 5. What NOT to rebuild
 
 RecordRegistry (it's the template); SourceRepo's on-disk format (quirky but
