@@ -233,6 +233,13 @@ class DatasetActor(val datasetContext: DatasetContext,
       planJson.flatMap(PipelinePlan.Plan.fromJson).map(runId -> _)
     }
 
+  // Phase C2: analysis is a planned run like every other action.
+  private def beginAnalyzeRun(input: String): Long = {
+    val runId = beginPlannedRun(PipelinePlan.analyzeOnly, trigger = "manual")
+    orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_ANALYZE, input = Some(input))
+    runId
+  }
+
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1.minute) {
     case _: OutOfMemoryError =>
       log.error("Child actor ran out of memory - stopping")
@@ -776,6 +783,12 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(GenerateSipZip, Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
+      // Phase C2: standalone make-sip is a planned run too (chained callers
+      // arrive here with their run already open).
+      if (openPlan().isEmpty) {
+        val runId = beginPlannedRun(PipelinePlan.generateSipOnly, trigger = "manual")
+        orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
+      }
       // Phase A3c-1: GenerateSip runs as a synchronous PipelineStage on a
       // worker thread instead of a child actor — the engine shape that
       // transliterates to Go. Results come back as the same FSM events.
@@ -787,6 +800,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       dsInfo.removeState(DISABLED)
       log.info(s"Start analysis processed=$processed")
       if (processed) {
+        beginAnalyzeRun("processed")
         val analyzer = createChildActor(
           Analyzer.props(datasetContext), "analyzer-processed")
         analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile,
@@ -800,6 +814,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         val rawFile = datasetContext.rawXmlFile.getOrElse(
           throw new Exception(s"Unable to find 'raw' file to analyze"))
+        beginAnalyzeRun("raw")
         val analyzer = createChildActor(
           Analyzer.props(datasetContext), "analyzer-raw")
         analyzer ! AnalyzeFile(rawFile, AnalysisType.RAW)
@@ -815,6 +830,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       // Use source.xml.gz from the SIP file (created during SIP generation)
       datasetContext.sipRepo.latestSipOpt.flatMap(_.copySourceToTempFile) match {
         case Some(sourceFile) =>
+          beginAnalyzeRun("source")
           val analyzer = createChildActor(
             Analyzer.props(datasetContext), "analyzer-source")
           analyzer ! AnalyzeFile(sourceFile, AnalysisType.SOURCE,
@@ -1086,6 +1102,15 @@ class DatasetActor(val datasetContext: DatasetContext,
         analysisType match {
           case AnalysisType.SOURCE => datasetContext.dropSourceTree()
           case _ => datasetContext.dropTree()
+        }
+        failOpenRegistryRuns(s"analysis failed: ${errorOption.get}")
+      } else {
+        // Phase C2: close the analyze run (guarded — only our own plan).
+        openPlan().foreach { case (runId, plan) =>
+          if (plan.includes(PipelinePlan.STAGE_ANALYZE)) {
+            orgContext.recordRegistry.stageCompleted(dsInfo.spec, runId, PipelinePlan.STAGE_ANALYZE)
+            orgContext.recordRegistry.completeRun(dsInfo.spec, runId)
+          }
         }
       }
       active.childOpt.foreach(_ ! PoisonPill)

@@ -129,4 +129,11 @@ class PipelinePlanSpec extends AnyFlatSpec with Matchers {
     }
     SaveMode.fromName("nope") shouldBe None
   }
+  it should "plan standalone analysis and make-sip as single-stage runs (C2)" in {
+    analyzeOnly.stages shouldBe List(STAGE_ANALYZE)
+    analyzeOnly.includes(STAGE_SAVE) shouldBe false
+    generateSipOnly.stages shouldBe List(STAGE_GENERATE_SIP)
+    // round-trip like every other plan
+    Plan.fromJson(analyzeOnly.toJson).map(_.stages) shouldBe Some(List(STAGE_ANALYZE))
+  }
 }

@@ -107,11 +107,16 @@ object DatasetStatusDoc {
   /** Additive JSON fields for the list / websocket / info payloads. */
   def fields(orgContext: OrgContext, spec: String, p: ProjectedStatus, facts: Facts): Seq[(String, JsValue)] = {
     val ph = phase(orgContext, spec, p, facts)
+    val queuePosition: JsValue =
+      if (ph == PHASE_QUEUED)
+        JsNumber(orgContext.jobQueue.queued().indexWhere(_.spec == spec) + 1)
+      else JsNull
     Seq(
       "phase" -> JsString(ph),
       "actions" -> Json.toJson(actions(p, ph, facts)),
       "lastStep" -> lastStep(p).map(JsString(_)).getOrElse[JsValue](JsNull),
-      "run" -> runJson(orgContext, spec).getOrElse[JsValue](JsNull)
+      "run" -> runJson(orgContext, spec).getOrElse[JsValue](JsNull),
+      "queuePosition" -> queuePosition
     )
   }
 }

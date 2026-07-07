@@ -46,6 +46,7 @@ object PipelinePlan {
   val STAGE_PROCESS      = "process"
   val STAGE_SAVE         = "save"
   val STAGE_RECONCILE    = "reconcile"
+  val STAGE_ANALYZE      = "analyze"
 
   /**
    * How a save treats Hub3 — decided once by the planner (or the save
@@ -176,6 +177,14 @@ object PipelinePlan {
   /** Source adoption (upload): regenerate the SIP, then stop. */
   def afterAdoption: Plan =
     fullChain(List(STAGE_GENERATE_SIP))
+
+  /** Standalone manual "make sip" (Phase C2: every action is a run). */
+  def generateSipOnly: Plan =
+    fullChain(List(STAGE_GENERATE_SIP))
+
+  /** Analysis of raw / source / processed data (Phase C2). */
+  def analyzeOnly: Plan =
+    fullChain(List(STAGE_ANALYZE))
 
   /**
    * A harvest-initiated run starts with only [harvest] — the continuation
