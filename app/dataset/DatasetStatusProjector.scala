@@ -48,6 +48,8 @@ import triplestore.GraphProperties
  */
 object DatasetStatusProjector {
 
+  private val logger = play.api.Logger(getClass)
+
   case class ProjectedStatus(
     raw: Option[DateTime],
     rawAnalyzed: Option[DateTime],
@@ -179,9 +181,17 @@ object DatasetStatusProjector {
         .filter(info => info.prefix == targetPrefix && info.currentVersion.isDefined)
         .flatMap(info => info.currentVersion.flatMap(h => info.versions.find(_.hash == h)).map(_.timestamp))
       folderMapping.orElse {
-        new SipRepo(orgContext.sipsDir, spec, orgContext.appConfig.rdfBaseUrl).latestSipOpt
-          .filter(_.sipMappingOpt.map(_.prefix).contains(targetPrefix))
-          .map(sip => new DateTime(sip.file.lastModified()))
+        // sipMappingOpt parses the zip's mapping and THROWS on one that does
+        // not resolve against its rec-def — one broken dataset must not take
+        // down the whole list projection.
+        scala.util.Try {
+          new SipRepo(orgContext.sipsDir, spec, orgContext.appConfig.rdfBaseUrl).latestSipOpt
+            .filter(_.sipMappingOpt.map(_.prefix).contains(targetPrefix))
+            .map(sip => new DateTime(sip.file.lastModified()))
+        }.recover { case e =>
+          logger.warn(s"Projector: unreadable zip mapping for $spec — not processable: ${e.getMessage}")
+          None
+        }.get
       }
     }
 
