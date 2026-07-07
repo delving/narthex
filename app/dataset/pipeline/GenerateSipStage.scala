@@ -60,62 +60,74 @@ object GenerateSipStage extends PipelineStage {
         val recDefVersionHashOpt = dsInfo.getRecDefVersionHash
         val targetPrefix = SipGenerationFacts(dsInfo).prefix
 
-        // Effective mapping XML based on mapping source configuration
-        val effectiveMappingXml: Option[String] = if (dsInfo.usesDefaultMapping) {
+        // The mapping folder (DatasetMappingRepo) is the single owner of the
+        // mapping that goes into the SIP. Before reading it, heal it:
+
+        // 1) Ingest a zip-borne mapping the folder doesn't know yet (legacy
+        //    datasets, uploads predating unconditional ingest) — only when
+        //    the zip is newer than the folder's latest version, so editor or
+        //    default work done after the upload is never clobbered.
+        val repo = datasetContext.datasetMappingRepo
+        datasetContext.sipRepo.latestSipOpt.foreach { sip =>
+          sip.rawMappingXmlOpt.foreach { case (zipPrefix, xml) =>
+            val latestFolderMillis = repo.listVersions.headOption.map(_.timestamp.getMillis).getOrElse(0L)
+            if (zipPrefix == targetPrefix &&
+                !repo.hasVersion(DefaultMappingRepo.computeHash(xml)) &&
+                sip.file.lastModified > latestFolderMillis) {
+              val v = repo.saveFromSipUpload(xml, zipPrefix, Some("Ingested from SIP zip during generation"))
+              logger.info(s"Dataset $spec: ingested newer zip mapping into folder (hash=${v.hash})")
+            }
+          }
+        }
+
+        // 2) Default mode: materialize the selected default into the folder
+        //    when current differs — generation never reads the default store
+        //    directly, so folder history records every default update.
+        if (dsInfo.usesDefaultMapping) {
           (for {
             prefix <- dsInfo.getDefaultMappingPrefix
             name <- dsInfo.getDefaultMappingName
             version = dsInfo.getDefaultMappingVersion.getOrElse("latest")
-            defaultMappingRepo = new DefaultMappingRepo(datasetContext.orgContext.orgRoot)
-            xml <- defaultMappingRepo.getXml(prefix, name, version)
-          } yield {
-            logger.info(s"Using default mapping for dataset $spec: prefix=$prefix, name=$name, version=$version")
-            xml
-          }).orElse {
-            logger.warn(s"Dataset $spec configured for default mapping but mapping not found, falling back to manual")
-            None
-          }
-        } else {
-          // Manual mode: DatasetMappingRepo, auto-migrating legacy SIP mappings
-          val repo = datasetContext.datasetMappingRepo
-          if (repo.listVersions.isEmpty) {
-            datasetContext.sipRepo.latestSipOpt.foreach { sip =>
-              repo.ensureMigratedFromSip(sip).foreach { v =>
-                logger.info(s"Auto-migrated mapping from SIP for $spec (hash=${v.hash})")
+            xml <- new DefaultMappingRepo(datasetContext.orgContext.orgRoot).getXml(prefix, name, version)
+          } yield (prefix, name, version, xml)) match {
+            case Some((prefix, name, version, xml)) if prefix == targetPrefix =>
+              val hash = DefaultMappingRepo.computeHash(xml)
+              if (!repo.getCurrentVersionHash.contains(hash)) {
+                if (repo.hasVersion(hash)) repo.setCurrentVersion(hash)
+                else repo.saveFromDefault(xml, prefix, version, Some(s"Materialized default $prefix/$name@$version at generation"))
+                logger.info(s"Dataset $spec: default mapping $prefix/$name@$version is now folder-current")
               }
-            }
-          }
-          // The stored mapping belongs to ONE prefix. After a cross-prefix
-          // switch, injecting it into a SIP of the new prefix makes sip-core
-          // resolve its dyn-opt paths against the wrong record definition
-          // ("Cannot find dyn-opt path ..."). Ignore a mismatched mapping —
-          // the SIP falls back to its own (matching) mapping.
-          repo.getInfo.map(_.prefix).filter(_ != targetPrefix) match {
-            case Some(repoPrefix) =>
-              logger.warn(
-                s"Dataset $spec: stored mapping is for prefix '$repoPrefix' but the dataset now targets " +
-                  s"'$targetPrefix' — ignoring it. Upload a SIP or save a mapping for '$targetPrefix' to replace it.")
-              None
+            case Some((prefix, _, _, _)) =>
+              logger.warn(s"Dataset $spec: default mapping prefix '$prefix' does not match target '$targetPrefix' — ignored")
             case None =>
-              repo.getXml("current") match {
-                case Some(xml) =>
-                  logger.info(s"Using mapping from DatasetMappingRepo for dataset $spec (manual mode)")
-                  Some(xml)
-                case None =>
-                  logger.warn(
-                    s"Dataset $spec: manual mode but DatasetMappingRepo has no current mapping — " +
-                      s"SIP regeneration will reuse the prior SIP's mapping (stale-mapping risk). " +
-                      s"Open the mapping editor or upload a fresh SIP to register a current version.")
-                  None
-              }
+              logger.warn(s"Dataset $spec configured for default mapping but the default was not found")
           }
         }
 
-        // Only reuse the latest SIP when its mapping prefix matches the
-        // dataset's CURRENT prefix — after a cross-prefix switch the old
-        // SIP's internals must not be carried forward.
+        // Single read path: folder-current for the target prefix, or nothing.
+        // A cross-prefix folder ("Cannot find dyn-opt path ..." class) or an
+        // empty folder yields a skeleton SIP — never a stale mapping.
+        val effectiveMappingXml: Option[String] = repo.getInfo match {
+          case Some(info) if info.prefix == targetPrefix =>
+            val xml = repo.getXml("current")
+            if (xml.isEmpty)
+              logger.warn(s"Dataset $spec: mapping folder has no current version for '$targetPrefix' — building skeleton SIP")
+            xml
+          case Some(info) =>
+            logger.warn(s"Dataset $spec: mapping folder holds prefix '${info.prefix}' but dataset targets '$targetPrefix' — building skeleton SIP")
+            None
+          case None =>
+            logger.info(s"Dataset $spec: no mapping in folder for '$targetPrefix' — building skeleton SIP")
+            None
+        }
+
+        // Reuse the prior SIP only when the folder supplied a mapping (which
+        // replaces the SIP's embedded one wholesale) AND its prefix matches.
+        // With no folder mapping a fresh skeleton is built instead — the old
+        // SIP's embedded mapping must never be carried forward verbatim.
         val reusableLatestSip = datasetContext.sipRepo.latestSipOpt.filter { latestSip =>
-          latestSip.sipMappingOpt.map(_.prefix).contains(targetPrefix)
+          effectiveMappingXml.isDefined &&
+            latestSip.sipMappingOpt.map(_.prefix).contains(targetPrefix)
         }
 
         // Existing SIPs are deleted only AFTER the new one is built

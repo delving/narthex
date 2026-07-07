@@ -17,7 +17,7 @@
 package controllers
 
 import javax.inject._
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPOutputStream
 import scala.concurrent.ExecutionContext
@@ -1893,24 +1893,55 @@ class AppController @Inject() (
       // Convert JSON to XML
       val mappingXml = convertJsonToMappingXml(request.body)
 
-      // Save to repository
-      val version = repo.saveFromEditor(mappingXml, prefix, description)
-
-      // Switch to manual mapping source since we're editing directly
-      DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
-        dsInfo.setMappingSource("manual", None, None)
+      // Round-trip guard: the folder-current version is what SIP generation
+      // and processing execute, and what SIP-Creator must be able to open.
+      // XML that RecMapping cannot parse against the rec-def is rejected
+      // here rather than poisoning every SIP built from the folder.
+      val roundTripError: Option[String] = {
+        val recDefHashOpt = DsInfo.withDsInfo(spec, orgContext)(_.getRecDefVersionHash)
+        orgContext.sipFactory.prefixRepo(prefix, recDefHashOpt) match {
+          case Some(prefixRepo) =>
+            try {
+              val tree = Sip.loadRecDefTree(prefixRepo.recordDefinition)
+              val in = new ByteArrayInputStream(mappingXml.getBytes("UTF-8"))
+              try eu.delving.metadata.RecMapping.read(in, tree) finally in.close()
+              None
+            } catch {
+              case e: Exception => Some(e.getMessage)
+            }
+          case None =>
+            logger.warn(s"No rec-def for prefix '$prefix' — skipping round-trip validation of editor save for $spec")
+            None
+        }
       }
 
-      Ok(Json.obj(
-        "success" -> true,
-        "version" -> Json.obj(
-          "hash" -> version.hash,
-          "timestamp" -> version.timestamp.toString,
-          "source" -> version.source,
-          "description" -> version.description
-        ),
-        "xml" -> mappingXml
-      ))
+      roundTripError match {
+        case Some(parseError) =>
+          logger.warn(s"Rejected editor mapping save for $spec: does not round-trip ($parseError)")
+          BadRequest(Json.obj(
+            "success" -> false,
+            "error" -> s"Mapping does not round-trip to SIP-Creator format: $parseError"
+          ))
+        case None =>
+          // Save to repository
+          val version = repo.saveFromEditor(mappingXml, prefix, description)
+
+          // Switch to manual mapping source since we're editing directly
+          DsInfo.withDsInfo(spec, orgContext) { dsInfo =>
+            dsInfo.setMappingSource("manual", None, None)
+          }
+
+          Ok(Json.obj(
+            "success" -> true,
+            "version" -> Json.obj(
+              "hash" -> version.hash,
+              "timestamp" -> version.timestamp.toString,
+              "source" -> version.source,
+              "description" -> version.description
+            ),
+            "xml" -> mappingXml
+          ))
+      }
     } catch {
       case e: Exception =>
         logger.error(s"Failed to save mapping from editor for $spec: ${e.getMessage}", e)
