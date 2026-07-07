@@ -71,15 +71,37 @@ object DatasetStatusDoc {
       b.result()
   }
 
-  /** Phase from queue lease + open run + stored flags. */
+  /**
+   * Phase from queue lease + open run + run outcomes + stored flags.
+   * Phase C3: an error IS a failed latest run — one later successful run
+   * clears it. The errorMessage prop remains only as a legacy fallback for
+   * datasets with no registry runs.
+   */
   def phase(orgContext: OrgContext, spec: String, p: ProjectedStatus, facts: Facts): String = {
+    lazy val latestOutcome = orgContext.recordRegistry.latestRunOutcome(spec)
     if (p.disabled.isDefined) PHASE_DISABLED
     else if (orgContext.jobQueue.isLeased(spec) || orgContext.recordRegistry.openRun(spec).isDefined) PHASE_RUNNING
     else if (orgContext.jobQueue.queued().exists(_.spec == spec)) PHASE_QUEUED
     else if (facts.inRetry) PHASE_RETRY
-    else if (facts.errorMessage.exists(_.nonEmpty)) PHASE_ERROR
+    else if (latestOutcome.exists(_.status == "failed")) PHASE_ERROR
+    else if (latestOutcome.isEmpty && facts.errorMessage.exists(_.nonEmpty)) PHASE_ERROR
     else PHASE_IDLE
   }
+
+  /** Error detail for phase=error: the failed run's stage error or note. */
+  def errorJson(orgContext: OrgContext, spec: String, facts: Facts): Option[JsObject] =
+    orgContext.recordRegistry.latestRunOutcome(spec) match {
+      case Some(o) if o.status == "failed" =>
+        Some(Json.obj(
+          "runId" -> o.runId,
+          "stage" -> o.failedStage,
+          "message" -> o.failedError.orElse(o.note).getOrElse[String]("run failed"),
+          "at" -> o.completedAt
+        ))
+      case Some(_) => None
+      case None =>
+        facts.errorMessage.filter(_.nonEmpty).map(m => Json.obj("message" -> m))
+    }
 
   /** The open run with its stage trail, if any. */
   def runJson(orgContext: OrgContext, spec: String): Option[JsObject] =
@@ -116,7 +138,8 @@ object DatasetStatusDoc {
       "actions" -> Json.toJson(actions(p, ph, facts)),
       "lastStep" -> lastStep(p).map(JsString(_)).getOrElse[JsValue](JsNull),
       "run" -> runJson(orgContext, spec).getOrElse[JsValue](JsNull),
-      "queuePosition" -> queuePosition
+      "queuePosition" -> queuePosition,
+      "error" -> (if (ph == PHASE_ERROR) errorJson(orgContext, spec, facts).getOrElse[JsValue](JsNull) else JsNull)
     )
   }
 }

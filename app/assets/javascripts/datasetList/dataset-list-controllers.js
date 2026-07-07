@@ -167,6 +167,12 @@ define(["angular"], function () {
                                 if (message.operationStatus !== undefined) existingDataset.operationStatus = message.operationStatus;
                                 // Update error fields - clear them when absent from message
                                 existingDataset.errorMessage = message.errorMessage || null;
+                                // Status document fields (Phase C1/C3)
+                                if (message.phase !== undefined) existingDataset.phase = message.phase;
+                                if (message.actions !== undefined) existingDataset.actions = message.actions;
+                                if (message.run !== undefined) existingDataset.run = message.run;
+                                if (message.lastStep !== undefined) existingDataset.lastStep = message.lastStep;
+                                if (message.error !== undefined) existingDataset.error = message.error;
                                 existingDataset.errorTime = message.errorTime || null;
                                 existingDataset.datasetErrorMessage = message.datasetErrorMessage || null;
                                 existingDataset.datasetErrorTime = message.datasetErrorTime || null;
@@ -615,8 +621,11 @@ define(["angular"], function () {
                 }
             }
 
-            // Check for error state (errorMessage comes from DsInfoLight)
-            // Use truthiness check - null and undefined should not trigger error state
+            // Check for error state: run-derived (Phase C3, dataset.error from
+            // the status document) or the legacy errorMessage prop
+            if (dataset.error && dataset.error.message && !dataset.errorMessage) {
+                dataset.errorMessage = (dataset.error.stage ? dataset.error.stage + ': ' : '') + dataset.error.message;
+            }
             if (dataset.errorMessage) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
@@ -776,7 +785,10 @@ define(["angular"], function () {
                     dataset.stateCurrent = {"name": "stateEmpty", "date": Date.now()};
                 }
             }
-            // Use truthiness check - null and undefined should not trigger error state
+            // Run-derived error (Phase C3) or the legacy error props
+            if (dataset.error && dataset.error.message && !dataset.errorMessage && !dataset.datasetErrorMessage) {
+                dataset.errorMessage = (dataset.error.stage ? dataset.error.stage + ': ' : '') + dataset.error.message;
+            }
             if (dataset.datasetErrorMessage || dataset.errorMessage) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }

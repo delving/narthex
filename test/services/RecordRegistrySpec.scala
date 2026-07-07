@@ -530,4 +530,28 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.completeRun(spec, reconcileRun)
     registry.latestSavedRunCompletion(spec, KIND_INCREMENT) shouldBe defined
   }
+  it should "report the latest run outcome with the failing stage's error (C3)" in {
+    registry.latestRunOutcome(spec) shouldBe None  // no db yet is fine too
+
+    val ok = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, ok, "process")
+    registry.stageCompleted(spec, ok, "process")
+    registry.completeRun(spec, ok)
+    registry.latestRunOutcome(spec).map(_.status) shouldBe Some("completed")
+
+    val bad = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, bad, "process")
+    registry.failOpenRuns(spec, "boom: mapper exploded")
+    val outcome = registry.latestRunOutcome(spec).get
+    outcome.status shouldBe "failed"
+    outcome.failedStage shouldBe Some("process")
+    outcome.failedError shouldBe Some("boom: mapper exploded")
+
+    // a later successful run supersedes the failure
+    val again = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, again, "process")
+    registry.stageCompleted(spec, again, "process")
+    registry.completeRun(spec, again)
+    registry.latestRunOutcome(spec).map(_.status) shouldBe Some("completed")
+  }
 }

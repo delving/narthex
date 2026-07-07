@@ -48,6 +48,17 @@ object RecordRegistry {
   /** Completed-run diffs summed per UTC day, for the trends API. */
   case class DailyRunDiff(date: String, added: Int, changed: Int, deleted: Int, runs: Int)
 
+  /** Latest run, whatever its outcome (Phase C3: errors are failed runs). */
+  case class RunOutcome(
+    runId: Long,
+    status: String,
+    startedAt: String,
+    completedAt: Option[String],
+    note: Option[String],
+    failedStage: Option[String],
+    failedError: Option[String]
+  )
+
   /** Records not yet confirmed in Hub3 — explains indexed-count lag to the UI. */
   case class PendingCounts(pendingIndex: Int, pendingDrops: Int)
 
@@ -192,6 +203,14 @@ class RecordRegistry(datasetsDir: File) {
    */
   def latestSavedRunCompletion(specName: String, kind: String): Option[String] =
     if (dbFileExists(specName)) spec(specName).latestSavedRunCompletion(kind) else None
+
+  /**
+   * Phase C3: the latest run, whatever its outcome — errors ARE failed
+   * runs. `failedStage`/`failedError` carry the failing stage's error when
+   * the run failed; `note` the run-level reason.
+   */
+  def latestRunOutcome(specName: String): Option[RunOutcome] =
+    if (dbFileExists(specName)) spec(specName).latestRunOutcome() else None
 
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
@@ -781,6 +800,34 @@ private[services] class SpecRegistry(val datasetDir: File) {
       ps.setString(3, note)
       ps.setString(4, RUN_RUNNING)
       ps.executeUpdate()
+    } finally ps.close()
+  }
+
+  def latestRunOutcome(): Option[RunOutcome] = synchronized {
+    val ps = conn.prepareStatement(
+      """SELECT r.run_id, r.status, r.started_at, r.completed_at, r.note,
+                (SELECT s.stage FROM run_stages s
+                  WHERE s.run_id = r.run_id AND s.status = 'failed'
+                  ORDER BY s.started_at DESC LIMIT 1),
+                (SELECT s.error FROM run_stages s
+                  WHERE s.run_id = r.run_id AND s.status = 'failed'
+                  ORDER BY s.started_at DESC LIMIT 1)
+           FROM runs r ORDER BY r.run_id DESC LIMIT 1""")
+    try {
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next())
+          Some(RunOutcome(
+            runId = rs.getLong(1),
+            status = rs.getString(2),
+            startedAt = rs.getString(3),
+            completedAt = Option(rs.getString(4)),
+            note = Option(rs.getString(5)),
+            failedStage = Option(rs.getString(6)),
+            failedError = Option(rs.getString(7))
+          ))
+        else None
+      } finally rs.close()
     } finally ps.close()
   }
 
