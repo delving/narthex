@@ -366,6 +366,92 @@ change", which a Go worker can do with a NOTIFY-style poll.
 - B3 (dataset_props) then strands Fuseki entirely (with SKOS already
   decided out).
 
+## 4b. Phase D — counts clarity + total Fuseki removal (designed 2026-07-09)
+
+Decision (Sjoerd): no legacy fallbacks — Fuseki dies completely; one-shot
+migration, not compat layers.
+
+### D0 findings (three inventories, 2026-07-09)
+
+**Counts.** Truth already exists outside Fuseki for nearly everything:
+registry `runs` (added/changed/deleted/seen/sent per run), `run_stages`
+process output (`{"valid":N,"invalid":N}` since A3c-2), SourceRepo `.act`
++ `deleted.ids`, Hub3 facet counts. The Trends expanded section (runs
+table, per-day diff chart, pending sync) is already the reference
+implementation. Gaps/warts found:
+- "Indexed" truth is Hub3-only; registry offers sent/confirmed + pending
+  as the Narthex-side proxy.
+- `harvesting-info.html` is a DEAD ng-include — the detail Record Counts
+  panel renders nothing today.
+- `acquisitionMethod` written as harvest/upload on the full path but
+  adlib/pmh/json by sample harvests — templates only know the former.
+- OrgActor `completedOperations.recordCount` is structurally always None.
+- The (Δ57) incremental badge and the 24h trend have ambiguous
+  definitions (valid-of-delta vs registry added+changed; end-of-day net
+  vs per-run sums) — decide once in D1.
+
+**Fuseki.** Only two things live there: the per-dataset info graph
+(≈70 NXProps in ~10 concern groups → one `datasets` row) and the SKOS
+graphs (dropped wholesale — explicit death list of files, props, queries,
+routes, UI captured in D0). Record graphs no longer touch Fuseki at all.
+Only stateSaved/stateIncrementalSaved/stateDisabled props still matter
+(projector fallbacks); the other state props are dead. Infra to delete:
+TripleStore/Sparql/GraphProperties(mostly), Fuseki healthcheck+bindings,
+config blocks in every org conf, fuseki.ttl + deploy/fuseki/.
+
+**DsInfo.** ~90% of the class is scalar KV over the graph — a straight
+table swap behind unchanged signatures. Hairy 10%: the JSON-LD writer
+(exactly ONE consumer: the single-dataset info endpoint — flatten it),
+the three-layer existence/model cache (becomes a row read; preserve the
+EMPTY-vs-DISABLED existence rule), list-valued props (4 callers → JSON
+column), createDsInfo (→ INSERT). SkosGraph inheritance dies with SKOS.
+
+### D1 design
+
+**`datasets.db`** (org-level SQLite, sibling of queue.db): one `datasets`
+table, spec PK; real columns for everything the light list and pipeline
+read (metadata, harvest config incl. credentials, delimiters, mapping
+source, operation tracking, error+retry, disabled, publish flags, id
+filter); one `props_json` TEXT column for the long tail (json-harvest
+cluster, list-valued props). WAL; same file-is-the-contract rule as
+records.db — Go reads it directly.
+
+**Counts document** (truth-only, part of the status doc):
+```json
+"counts": {
+  "acquired":  {"records": N, "deleted": N, "method": "harvest",
+                 "at": ts},                         // registry seen+deleted / .act
+  "processed": {"valid": N, "invalid": N, "runId": R, "at": ts},
+                                                    // latest process stage output
+  "lastIncrement": {"added": N, "changed": N, "deleted": N,
+                     "sent": N, "runId": R, "at": ts},  // last incremental run
+  "indexed":   {"hub3": N, "sent": N, "pendingIndex": N,
+                 "pendingDrops": N, "at": ts}       // Hub3 facet + registry
+}
+```
+Total-correctness rule: totals ALWAYS from full-truth sources; increments
+always deltas, never totals.
+
+**One-shot migration** (`migrate-fuseki` admin task): dump every dataset
+graph → INSERT rows; seed a synthetic baseline run in records.db for
+datasets with prior stateSaved but no registry history (honest saved
+status from day one); then Fuseki is never read again.
+
+### Phasing
+
+- **D2 — datasets.db + DsInfo strangler.** Table + row-backed prop
+  get/set behind unchanged DsInfo signatures; light list becomes a SQL
+  SELECT; JSON-LD endpoint flattened; migration task; deploy runs the
+  migration once at startup when the table is empty.
+- **D3 — counts + surfaces.** Counts block in the status doc; dataset
+  list columns, detail panel (resurrect the dead include as a counts
+  panel), trends list/header, activity + completion stats (populate
+  recordCount from runs), index stats valid-vs-Hub3 from registry.
+  Normalize acquisitionMethod. Decide Δ-badge + trend-source semantics.
+- **D4 — the bonfire.** Delete SKOS subsystem (death list), TripleStore/
+  Sparql/healthcheck/bindings/config, deploy files; decommission the
+  Fuseki service on datahub (brabantcloud at its next major deploy).
+
 ## 5. What NOT to rebuild
 
 RecordRegistry (it's the template); SourceRepo's on-disk format (quirky but
