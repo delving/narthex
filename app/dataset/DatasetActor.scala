@@ -754,12 +754,9 @@ class DatasetActor(val datasetContext: DatasetContext,
         // No state transition happened, so no DatasetBecameIdle will fire —
         // signal it explicitly so OrgActor frees the lease taken at dispatch.
         context.parent ! DatasetBecameIdle(dsInfo.spec, None)
-      } else if (isHeavyCommand) {
-        // Work started: push the new status document (the lease is already
-        // held, so phase=running and actions=[cancel]) — otherwise the row
-        // keeps offering the idle-time actions until the run completes.
-        broadcastIdleState()
       }
+      // (The status push for started work happens on the FSM transition —
+      // by then the run row exists, so the actions filter knows the stage.)
 
       stay()
 
@@ -858,6 +855,13 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartProcessing(scheduledOpt), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
+      // Phase C2: the run exists BEFORE the transition broadcast so the
+      // status document knows the running stage (ProcessStage will find and
+      // reuse this open run).
+      if (openPlan().isEmpty) {
+        val runId = beginPlannedRun(PipelinePlan.processOnly, trigger = "manual")
+        orgContext.recordRegistry.stageStarted(dsInfo.spec, runId, PipelinePlan.STAGE_PROCESS)
+      }
       // Phase A3c-2: Process runs as a synchronous PipelineStage on a
       // worker thread; the result returns as ProcessingComplete/WorkFailure.
       runStageAsync(pipeline.ProcessStage(scheduledOpt))
@@ -1695,6 +1699,13 @@ class DatasetActor(val datasetContext: DatasetContext,
           log.debug("State data: Dormant")
         case InError(error) =>
           log.warning(s"State data: InError($error)")
+      }
+
+      // Entering work: push the status document now — the run row exists,
+      // so phase=running carries the stage and the linear action filter
+      // (hide only consumers of this stage's output) can apply.
+      if (fromState == Idle && toState != Idle) {
+        broadcastIdleState()
       }
 
       // Track operation state for restart recovery and activity logging
