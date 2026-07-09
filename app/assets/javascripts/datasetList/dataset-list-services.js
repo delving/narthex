@@ -59,8 +59,8 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                fastSave: function (spec) {
-                    return app.fastSave(spec).post().then(
+                fastSave: function (spec, fromState) {
+                    return app.fastSave(spec).post({fromState: fromState || null}).then(
                         function (response) {
                             return response.data;
                         },

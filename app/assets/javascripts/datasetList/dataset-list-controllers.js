@@ -1143,7 +1143,7 @@ define(["angular"], function () {
             modalAlert.confirm("Fast Save Confirmation", confirmMessage, function() {
                 console.log("Confirm callback executed");
                 // On confirm - execute fast save after server-side readiness checks
-                datasetListService.fastSave(dataset.datasetSpec)
+                datasetListService.fastSave(dataset.datasetSpec, state)
                     .then(function(reply) {
                         console.log("Fast save queued: " + stepsList, reply);
                     })

@@ -768,13 +768,29 @@ class AppController @Inject() (
     // Phase A4b: the projected state IS the artifact truth — a dataset can
     // only project PROCESSED with processed output on disk, PROCESSABLE
     // with a mapping, SOURCED with source zips.
-    val state = DatasetStatusProjector.project(datasetContext).currentState
+    val projected = DatasetStatusProjector.project(datasetContext)
 
-    val problemOpt = state match {
-      case ANALYZED | PROCESSED | PROCESSABLE | SOURCED | SAVED | INCREMENTAL_SAVED =>
-        None
-      case _ =>
-        Some(s"Dataset $spec is not ready for fast save: $state")
+    // The UI's per-card Fast Save carries the intended starting point
+    // (e.g. Sourced card = full Make SIP → Process → Save chain). Honor it
+    // when the artifact backs it — auto-detect by lattice picks the
+    // furthest-along state and would silently degrade a requested full
+    // re-chain into a save-only run.
+    val requestedOpt = request.body.asJson.flatMap(j => (j \ "fromState").asOpt[String])
+    val stateEither: Either[String, DsState.Value] = requestedOpt match {
+      case Some("stateSourced") if projected.sourced.isDefined => Right(SOURCED)
+      case Some("stateProcessable") if projected.processable.isDefined => Right(PROCESSABLE)
+      case Some("stateProcessed") if projected.processed.isDefined => Right(PROCESSED)
+      case Some("stateAnalyzed") if projected.analyzed.isDefined => Right(ANALYZED)
+      case Some(requested) => Left(s"Dataset $spec cannot fast-save from $requested — artifact missing")
+      case None => Right(projected.currentState)
+    }
+
+    val (problemOpt, state) = stateEither match {
+      case Left(problem) => (Some(problem), projected.currentState)
+      case Right(s) => (s match {
+        case ANALYZED | PROCESSED | PROCESSABLE | SOURCED | SAVED | INCREMENTAL_SAVED => None
+        case _ => Some(s"Dataset $spec is not ready for fast save: $s")
+      }, s)
     }
 
     problemOpt match {
