@@ -267,6 +267,18 @@ class RecordRegistry(datasetsDir: File) {
   def count(specName: String, status: String): Int =
     spec(specName).count(status)
 
+  /** Guarded count — never creates a db for specs that have none. */
+  def countIfExists(specName: String, status: String): Option[Int] =
+    if (dbFileExists(specName)) Some(spec(specName).count(status)) else None
+
+  /**
+   * The latest completed process stage: (runId, completedAt, output JSON
+   * like {"valid":N,"invalid":N}) — the truth behind processed counts
+   * (Phase D3).
+   */
+  def latestProcessOutput(specName: String): Option[(Long, String, String)] =
+    if (dbFileExists(specName)) spec(specName).latestProcessOutput() else None
+
   def dropDatasetDb(specName: String): Unit = {
     val reg = specs.remove(specName)
     if (reg != null) reg.closeAndDelete()
@@ -877,6 +889,19 @@ private[services] class SpecRegistry(val datasetDir: File) {
             failedError = Option(rs.getString(7))
           ))
         else None
+      } finally rs.close()
+    } finally ps.close()
+  }
+
+  def latestProcessOutput(): Option[(Long, String, String)] = synchronized {
+    val ps = conn.prepareStatement(
+      """SELECT s.run_id, s.completed_at, s.output FROM run_stages s
+          WHERE s.stage = 'process' AND s.status = 'completed' AND s.output IS NOT NULL
+          ORDER BY s.run_id DESC LIMIT 1""")
+    try {
+      val rs = ps.executeQuery()
+      try {
+        if (rs.next()) Some((rs.getLong(1), rs.getString(2), rs.getString(3))) else None
       } finally rs.close()
     } finally ps.close()
   }

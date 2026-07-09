@@ -173,6 +173,7 @@ define(["angular"], function () {
                                 if (message.run !== undefined) existingDataset.run = message.run;
                                 if (message.lastStep !== undefined) existingDataset.lastStep = message.lastStep;
                                 if (message.error !== undefined) existingDataset.error = message.error;
+                                if (message.counts !== undefined) existingDataset.counts = message.counts;
                                 existingDataset.errorTime = message.errorTime || null;
                                 existingDataset.datasetErrorMessage = message.datasetErrorMessage || null;
                                 existingDataset.datasetErrorTime = message.datasetErrorTime || null;

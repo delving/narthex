@@ -555,17 +555,16 @@ object DsInfo {
         // Prefer daily summaries (accurate), fall back to raw snapshots (legacy)
         val trendsLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends.jsonl")
         val dailyLog = new java.io.File(orgContext.datasetsDir, s"${ds.spec}/trends-daily.jsonl")
-        val trendData = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, ds.spec) match {
-          case Some(summary) =>
-            Json.obj(
-              "trend24h" -> Json.obj(
-                "source" -> summary.delta24h.source,
-                "indexed" -> summary.delta24h.indexed
-              )
-            )
-          case None =>
-            Json.obj("trend24h" -> Json.obj("source" -> 0, "indexed" -> 0))
-        }
+        // D3 (decision 2026-07-10): source trend from registry per-run
+        // diffs (exact); indexed trend keeps the nightly Hub3 snapshot.
+        val regSource24h = orgContext.recordRegistry.dailyRunDiffs(ds.spec, 1)
+          .map(d => d.added - d.deleted).sum
+        val indexed24h = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, ds.spec)
+          .map(_.delta24h.indexed).getOrElse(0)
+        val trendData = Json.obj("trend24h" -> Json.obj(
+          "source" -> regSource24h,
+          "indexed" -> indexed24h
+        ))
 
         withRetry ++ trendData
       }

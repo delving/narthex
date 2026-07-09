@@ -166,6 +166,70 @@ object DatasetStatusDoc {
     ).collect { case (name, Some(dt)) => name -> dt.getMillis }
       .sortBy(_._2).lastOption.map(_._1)
 
+  /**
+   * The counts document (Phase D3, decisions 2026-07-10): truth-only —
+   * registry records/runs/stages + source-dir files. Totals from
+   * full-truth sources; increments always deltas. `indexed` is the
+   * registry side (sent/pending); the authoritative Hub3 number lives on
+   * the index-stats page (no cheap per-list Hub3 call exists).
+   */
+  def countsJson(orgContext: OrgContext, spec: String): JsObject = {
+    val reg = orgContext.recordRegistry
+    val sourceDir = new java.io.File(new java.io.File(orgContext.datasetsDir, spec), "source")
+
+    def actSum: Option[Int] = Option(sourceDir.listFiles())
+      .map(_.filter(_.getName.endsWith(".act"))
+        .flatMap(f => scala.util.Try(
+          org.apache.commons.io.FileUtils.readFileToString(f, "UTF-8").trim.toInt).toOption).sum)
+      .filter(_ > 0)
+    def deletedIdsCount: Option[Int] = {
+      val f = new java.io.File(sourceDir, "deleted.ids")
+      if (f.exists())
+        scala.util.Try(org.apache.commons.io.FileUtils.readLines(f, "UTF-8").size).toOption
+      else None
+    }
+
+    val seen = reg.countIfExists(spec, "seen").filter(_ > 0)
+    val acquiredRecords = seen.orElse(actSum)
+    val deleted = reg.countIfExists(spec, "deleted").filter(_ > 0).orElse(deletedIdsCount)
+    val methodRaw = orgContext.datasetsDb.getProp(spec, "acquisitionMethod")
+    val method = methodRaw.map {
+      case "upload" => "upload"
+      case _ => "harvest" // pmh/adlib/json/harvest all mean harvested
+    }
+
+    val processed = reg.latestProcessOutput(spec).map { case (runId, at, outputJson) =>
+      val js = scala.util.Try(Json.parse(outputJson)).toOption
+      Json.obj(
+        "valid" -> js.flatMap(j => (j \ "valid").asOpt[Int]),
+        "invalid" -> js.flatMap(j => (j \ "invalid").asOpt[Int]),
+        "runId" -> runId,
+        "at" -> at
+      )
+    }
+
+    val lastIncrement = reg.listRuns(spec, 3650)
+      .filter(r => r.kind == "incremental" && r.status == "completed")
+      .sortBy(_.runId).lastOption.map { r =>
+        Json.obj("added" -> r.added, "changed" -> r.changed, "deleted" -> r.deleted,
+          "sent" -> r.sent, "runId" -> r.runId, "at" -> r.completedAt)
+      }
+
+    val pending = reg.pendingCounts(spec)
+    val indexed = Json.obj(
+      "sent" -> seen.map(s => math.max(0, s - pending.pendingIndex)),
+      "pendingIndex" -> pending.pendingIndex,
+      "pendingDrops" -> pending.pendingDrops
+    )
+
+    Json.obj(
+      "acquired" -> Json.obj("records" -> acquiredRecords, "deleted" -> deleted, "method" -> method),
+      "processed" -> processed,
+      "lastIncrement" -> lastIncrement,
+      "indexed" -> indexed
+    )
+  }
+
   /** Additive JSON fields for the list / websocket / info payloads. */
   def fields(orgContext: OrgContext, spec: String, p: ProjectedStatus, facts: Facts): Seq[(String, JsValue)] = {
     val ph = phase(orgContext, spec, p, facts)
@@ -181,6 +245,7 @@ object DatasetStatusDoc {
       "lastStep" -> lastStep(p).map(JsString(_)).getOrElse[JsValue](JsNull),
       "run" -> runJs.getOrElse[JsValue](JsNull),
       "queuePosition" -> queuePosition,
+      "counts" -> countsJson(orgContext, spec),
       "error" -> (if (ph == PHASE_ERROR) errorJson(orgContext, spec, facts).getOrElse[JsValue](JsNull) else JsNull)
     )
   }

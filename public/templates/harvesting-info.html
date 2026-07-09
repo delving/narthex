@@ -1,0 +1,50 @@
+<!-- Phase D3: the dataset counts panel — this include was dead for months
+     (referenced but the file did not exist). Renders the truth-only counts
+     document (registry + disk), not stored props. -->
+<div class="panel panel-default">
+    <div class="panel-heading"><i class="fa fa-bar-chart"></i> Record Counts</div>
+    <table class="table table-condensed" style="margin-bottom: 0;">
+        <tbody>
+        <tr title="Records currently at the source (registry seen / source files)">
+            <td>Acquired</td>
+            <td class="text-right">
+                <strong>{{ dataset.counts.acquired.records || '-' }}</strong>
+                <span data-ng-if="dataset.counts.acquired.deleted > 0" class="text-danger">
+                    (−{{ dataset.counts.acquired.deleted }} deleted)</span>
+                <span class="text-muted" data-ng-if="dataset.counts.acquired.method">
+                    via {{ dataset.counts.acquired.method }}</span>
+            </td>
+        </tr>
+        <tr title="Latest processing run output">
+            <td>Processed</td>
+            <td class="text-right" data-ng-if="dataset.counts.processed">
+                <strong class="text-success">{{ dataset.counts.processed.valid }}</strong> valid
+                <span data-ng-if="dataset.counts.processed.invalid > 0" class="text-danger">
+                    / {{ dataset.counts.processed.invalid }} invalid</span>
+                <span class="text-muted">(run {{ dataset.counts.processed.runId }})</span>
+            </td>
+            <td class="text-right text-muted" data-ng-if="!dataset.counts.processed">not processed</td>
+        </tr>
+        <tr data-ng-if="dataset.counts.lastIncrement"
+            title="Last incremental run: registry diff (+new ~changed −removed)">
+            <td>Last increment</td>
+            <td class="text-right">
+                <span class="text-success">+{{ dataset.counts.lastIncrement.added }}</span>
+                <span>~{{ dataset.counts.lastIncrement.changed }}</span>
+                <span class="text-danger">−{{ dataset.counts.lastIncrement.deleted }}</span>
+                <span class="text-muted">{{ dataset.counts.lastIncrement.sent }} sent</span>
+            </td>
+        </tr>
+        <tr title="Registry view of the index: confirmed sent + still pending">
+            <td>Indexed</td>
+            <td class="text-right">
+                <strong>{{ dataset.counts.indexed.sent || '-' }}</strong> sent
+                <span data-ng-if="dataset.counts.indexed.pendingIndex > 0" class="text-warning">
+                    ({{ dataset.counts.indexed.pendingIndex }} pending)</span>
+                <span data-ng-if="dataset.counts.indexed.pendingDrops > 0" class="text-warning">
+                    ({{ dataset.counts.indexed.pendingDrops }} drops pending)</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>

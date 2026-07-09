@@ -345,11 +345,12 @@
                                 <span data-ng-if="dataset.processedInvalid > 0" class="text-danger">
                                     /{{ dataset.processedInvalid }}
                                 </span>
-                                <!-- Last incremental delta (X of Y changed) -->
-                                <span data-ng-if="dataset.harvestIncrementalMode == 'true' && dataset.processedIncrementalValid > 0"
+                                <!-- Last incremental run, registry-diff vocabulary:
+                                     +added ~changed(content hash differs) −deleted -->
+                                <span data-ng-if="dataset.counts.lastIncrement && (dataset.counts.lastIncrement.added + dataset.counts.lastIncrement.changed + dataset.counts.lastIncrement.deleted) > 0"
                                       class="text-muted" style="font-size: 0.8em;"
-                                      title="Last incremental harvest: {{ dataset.processedIncrementalValid }} of {{ dataset.processedValid }} records changed">
-                                    (Δ{{ dataset.processedIncrementalValid }})
+                                      title="Last incremental run: {{ dataset.counts.lastIncrement.added }} new, {{ dataset.counts.lastIncrement.changed }} changed, {{ dataset.counts.lastIncrement.deleted }} removed — {{ dataset.counts.lastIncrement.sent }} sent to the index">
+                                    (+{{ dataset.counts.lastIncrement.added }} ~{{ dataset.counts.lastIncrement.changed }} −{{ dataset.counts.lastIncrement.deleted }})
                                 </span>
                                 <span data-ng-if="dataset.harvestIncrementalMode == 'true'" class="text-muted" style="font-size: 0.8em;">(inc)</span>
                             </td>

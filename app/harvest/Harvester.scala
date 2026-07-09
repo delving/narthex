@@ -531,7 +531,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                 acquired = page.diagnostic.totalItems,
                 deleted = 0,
                 source = page.diagnostic.totalItems,
-                method = "adlib"
+                method = "harvest"
               )
               finish(strategy, None)
           }
@@ -752,7 +752,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                 acquired = sampled,
                 deleted = 0,
                 source = sampled,
-                method = "pmh"
+                method = "harvest"
               )
               finish(strategy, None)
             case NoRecordsMatch(message, _) =>
@@ -931,7 +931,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                 acquired = page.diagnostic.totalItems.getOrElse(0),
                 deleted = 0,
                 source = page.diagnostic.totalItems.getOrElse(0),
-                method = "json"
+                method = "harvest"
               )
               finish(strategy, None)
           }

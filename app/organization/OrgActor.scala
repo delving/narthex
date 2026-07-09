@@ -382,7 +382,14 @@ class OrgActor (
       activeDatasets = activeDatasets + spec
 
     case DatasetBecameIdle(spec, recordCount) =>
-      log.info(s"Dataset $spec became idle (records: ${recordCount.getOrElse("N/A")})")
+      // D3: completion stats get real record volumes — callers pass None,
+      // so read the just-finished run (sent if it saved, else seen).
+      val effectiveCount = recordCount.orElse {
+        scala.util.Try(orgContext.recordRegistry.listRuns(spec, 30)).toOption
+          .flatMap(_.filter(_.status == "completed").sortBy(_.runId).lastOption)
+          .map(r => if (r.sent > 0) r.sent else r.seen)
+      }
+      log.info(s"Dataset $spec became idle (records: ${effectiveCount.getOrElse("N/A")})")
       activeDatasets = activeDatasets - spec
 
       // Track completion if we were tracking a workflow for this spec
@@ -395,7 +402,7 @@ class OrgActor (
             completedAt = now,
             trigger = trigger,
             durationSeconds = Some(durationSeconds),
-            recordCount = recordCount
+            recordCount = effectiveCount
           )
           completedOperations = completedOperations :+ completed
           workflowSpecs = workflowSpecs - spec  // Remove from tracking
