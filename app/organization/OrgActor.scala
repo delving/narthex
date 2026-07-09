@@ -422,6 +422,10 @@ class OrgActor (
 
       if (jobQueue.releaseLease(spec)) log.info(s"Released lease for $spec")
       removeFromQueue(spec)  // Remove if still in queue (e.g., cancelled)
+      // The dataset's own completion broadcast ran while the lease was still
+      // held (phase=running); push a fresh status document now that the
+      // lease is gone so the row lands on the true idle phase/actions.
+      sender() ! BroadcastStatus
       processQueue()         // Try to start next queued operation
 
     case GetActiveDatasets =>

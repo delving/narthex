@@ -165,6 +165,13 @@ object DatasetActor {
   /** Save+reconcile finished (Phase A3c-3: emitted by the engine for GraphsSaved). */
   case object GraphSaveComplete
 
+  /**
+   * Re-push the status document. Sent by OrgActor AFTER releasing the lease:
+   * the completion broadcast fires while the lease is still held, so it
+   * carries phase=running and the row would stay stuck there.
+   */
+  case object BroadcastStatus
+
   case class WorkFailure(message: String,
                          exceptionOpt: Option[Throwable] = None)
 
@@ -1453,6 +1460,10 @@ class DatasetActor(val datasetContext: DatasetContext,
   }
 
   whenUnhandled {
+
+    case Event(BroadcastStatus, _) =>
+      broadcastIdleState()
+      stay()
 
     case Event(GetCurrentState, _) =>
       // Return whether this actor is currently active (not in Idle state)
