@@ -15,9 +15,20 @@ class DatasetStatusDocSpec extends AnyFlatSpec with Matchers {
   private val blank = ProjectedStatus(None, None, None, None, None, None, None, None, None, None, None)
   private val noFacts = Facts(delimitersSet = None, errorMessage = None, inRetry = false)
 
-  "actions" should "offer only cancel while running or queued" in {
-    actions(blank.copy(sourced = Some(t0), processable = Some(t0)), PHASE_RUNNING, noFacts) shouldBe Seq("cancel")
-    actions(blank.copy(sourced = Some(t0)), PHASE_QUEUED, noFacts) shouldBe Seq("cancel")
+  "actions" should "keep upstream actions during a run, hiding consumers of its output" in {
+    val s = blank.copy(sourced = Some(t0), processable = Some(t0), processed = Some(t0), analyzed = Some(t0))
+    // While processing: redo of earlier steps stays; analyze_processed and
+    // save consume this run's output and hide. Cancel always offered.
+    val during = actions(s, PHASE_RUNNING, noFacts, runningStage = Some("process"))
+    during should contain allOf ("cancel", "analyze_source", "generate_sip", "fast_save", "process")
+    during should contain noneOf ("analyze_processed", "save")
+    // While generating the SIP: process consumes the pockets being rebuilt
+    val genning = actions(s, PHASE_RUNNING, noFacts, runningStage = Some("generate_sip"))
+    genning should contain ("analyze_source")
+    genning should not contain "process"
+    // Queued job hasn't mutated anything: everything stays, plus cancel
+    val queued = actions(s, PHASE_QUEUED, noFacts)
+    queued should contain allOf ("cancel", "save")
   }
 
   it should "offer only enable when disabled" in {

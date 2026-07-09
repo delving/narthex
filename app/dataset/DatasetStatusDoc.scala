@@ -50,26 +50,47 @@ object DatasetStatusDoc {
   val PHASE_ERROR = "error"
   val PHASE_DISABLED = "disabled"
 
+  // Pipeline rank of the artifact each action CONSUMES — an action hides
+  // while a run is producing (replacing) that artifact or anything before
+  // it. Earlier/redo actions stay visible (the linear model: from analyzed
+  // you can still re-run make-sip).
+  private val actionDependsRank = Map(
+    "analyze_raw" -> 0, "delimit" -> 1, "first_harvest" -> 1,
+    "analyze_source" -> 2, "generate_sip" -> 2, "fast_save" -> 2,
+    "process" -> 4, "analyze_processed" -> 6, "save" -> 7, "disable" -> 0)
+  private val stageOutputRank = Map(
+    "harvest" -> 2, "generate_sip" -> 4, "process" -> 6,
+    "analyze" -> 7, "save" -> 8, "reconcile" -> 8)
+
   /** Pure: which workflow actions are valid right now. */
-  def actions(p: ProjectedStatus, phase: String, facts: Facts): Seq[String] = phase match {
-    case PHASE_RUNNING | PHASE_QUEUED => Seq("cancel")
+  def actions(p: ProjectedStatus, phase: String, facts: Facts, runningStage: Option[String] = None): Seq[String] = phase match {
+    case PHASE_RUNNING | PHASE_QUEUED =>
+      // Linear model: upstream actions remain (they re-run earlier steps);
+      // only actions depending on what this run is producing hide. A queued
+      // job hasn't started mutating anything yet — everything stays.
+      val outputRank = runningStage.flatMap(stageOutputRank.get).getOrElse(Int.MaxValue)
+      val base = workflowActions(p, facts).filter(a => actionDependsRank.getOrElse(a, 0) < outputRank)
+      "cancel" +: base
     case PHASE_DISABLED => Seq("enable")
-    case _ =>
-      // Delimiters (record root / unique id) are valid when the dataset has
-      // progressed past them, or they were set after the latest raw analysis.
-      val delimitersValid = p.sourced.isDefined || facts.delimitersSet.exists { set =>
-        p.rawAnalyzed.forall(ra => services.Temporal.stringToTime(set).isAfter(ra))
-      }
-      val b = Seq.newBuilder[String]
-      if (p.raw.isDefined) b += "analyze_raw"
-      if (p.raw.isDefined && p.rawAnalyzed.isDefined && !delimitersValid) b += "delimit"
-      if (delimitersValid && p.sourced.isEmpty) b += "first_harvest"
-      if (p.sourced.isDefined) { b += "analyze_source"; b += "generate_sip"; b += "fast_save" }
-      if (p.sourced.isDefined && p.processable.isDefined) b += "process"
-      if (p.processed.isDefined) b += "analyze_processed"
-      if (p.analyzed.isDefined) b += "save"
-      b += "disable"
-      b.result()
+    case _ => workflowActions(p, facts)
+  }
+
+  private def workflowActions(p: ProjectedStatus, facts: Facts): Seq[String] = {
+    // Delimiters (record root / unique id) are valid when the dataset has
+    // progressed past them, or they were set after the latest raw analysis.
+    val delimitersValid = p.sourced.isDefined || facts.delimitersSet.exists { set =>
+      p.rawAnalyzed.forall(ra => services.Temporal.stringToTime(set).isAfter(ra))
+    }
+    val b = Seq.newBuilder[String]
+    if (p.raw.isDefined) b += "analyze_raw"
+    if (p.raw.isDefined && p.rawAnalyzed.isDefined && !delimitersValid) b += "delimit"
+    if (delimitersValid && p.sourced.isEmpty) b += "first_harvest"
+    if (p.sourced.isDefined) { b += "analyze_source"; b += "generate_sip"; b += "fast_save" }
+    if (p.sourced.isDefined && p.processable.isDefined) b += "process"
+    if (p.processed.isDefined) b += "analyze_processed"
+    if (p.analyzed.isDefined) b += "save"
+    b += "disable"
+    b.result()
   }
 
   /**
@@ -148,15 +169,17 @@ object DatasetStatusDoc {
   /** Additive JSON fields for the list / websocket / info payloads. */
   def fields(orgContext: OrgContext, spec: String, p: ProjectedStatus, facts: Facts): Seq[(String, JsValue)] = {
     val ph = phase(orgContext, spec, p, facts)
+    val runJs = runJson(orgContext, spec)
+    val runningStage = runJs.flatMap(js => (js \ "stage").asOpt[String])
     val queuePosition: JsValue =
       if (ph == PHASE_QUEUED)
         JsNumber(orgContext.jobQueue.queued().indexWhere(_.spec == spec) + 1)
       else JsNull
     Seq(
       "phase" -> JsString(ph),
-      "actions" -> Json.toJson(actions(p, ph, facts)),
+      "actions" -> Json.toJson(actions(p, ph, facts, runningStage)),
       "lastStep" -> lastStep(p).map(JsString(_)).getOrElse[JsValue](JsNull),
-      "run" -> runJson(orgContext, spec).getOrElse[JsValue](JsNull),
+      "run" -> runJs.getOrElse[JsValue](JsNull),
       "queuePosition" -> queuePosition,
       "error" -> (if (ph == PHASE_ERROR) errorJson(orgContext, spec, facts).getOrElse[JsValue](JsNull) else JsNull)
     )

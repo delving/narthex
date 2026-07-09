@@ -555,12 +555,9 @@ define(["angular"], function () {
         };
 
         $scope.hasAction = function (dataset, action) {
-            // While a run is active or queued, only cancel makes sense —
-            // covers the window where the actions array is stale.
-            if (dataset.phase === 'running' || dataset.phase === 'queued' ||
-                dataset.isActive || dataset.isQueued) {
-                return action === 'cancel';
-            }
+            // The backend curates actions for every phase — including
+            // during runs (linear model: upstream/redo actions stay, only
+            // consumers of the running stage's output hide).
             return !dataset.actions || dataset.actions.indexOf(action) >= 0;
         };
 
