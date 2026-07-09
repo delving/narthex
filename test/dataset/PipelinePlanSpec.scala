@@ -136,4 +136,9 @@ class PipelinePlanSpec extends AnyFlatSpec with Matchers {
     // round-trip like every other plan
     Plan.fromJson(analyzeOnly.toJson).map(_.stages) shouldBe Some(List(STAGE_ANALYZE))
   }
+  it should "plan manual save as a first-class [save, reconcile] run" in {
+    saveOnly.stages shouldBe List(STAGE_SAVE, STAGE_RECONCILE)
+    saveOnly.includes(STAGE_PROCESS) shouldBe false
+    Plan.fromJson(saveOnly.toJson).map(_.stages) shouldBe Some(List(STAGE_SAVE, STAGE_RECONCILE))
+  }
 }

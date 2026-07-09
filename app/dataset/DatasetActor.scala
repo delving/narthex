@@ -856,7 +856,11 @@ class DatasetActor(val datasetContext: DatasetContext,
       dsInfo.removeState(DISABLED)
       log.info(s"Starting save for ${dsInfo.spec}")
       // Phase A3c-3: save+reconcile run as a synchronous PipelineStage.
-      runStageAsync(pipeline.SaveStage(scheduledOpt, None, Some(PipelinePlan.saveModeFor(
+      // Manual saves are first-class runs — an open chained run is reused,
+      // otherwise a fresh saveOnly run is planned (adoption is gone).
+      val saveRunId = openPlan().map(_._1)
+        .getOrElse(beginPlannedRun(PipelinePlan.saveOnly, trigger = "manual"))
+      runStageAsync(pipeline.SaveStage(scheduledOpt, Some(saveRunId), Some(PipelinePlan.saveModeFor(
         scheduledOpt.exists(_.modifiedAfter.isDefined),
         orgContext.narthexConfig.registryEnabled,
         orgContext.narthexConfig.registryKeepRevisionSweep))))

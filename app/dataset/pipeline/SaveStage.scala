@@ -88,17 +88,10 @@ case class SaveStage(
       return StageFailed(s"Save received non-processed file ${file.getName}; expected .xml or .xml.zst")
     }
 
-    // Manual saves ("start saving", fast-save from PROCESSED) carry no run
-    // id. Adopt the run that produced the processed output — the latest
-    // completed FULL run — so chunk confirms, the missing-sweep and
-    // completeRun happen exactly as in the harvest-chained flow.
-    val registryRunIdOpt = registryRunId.orElse {
-      if (registryEnabled && !isIncremental) {
-        val adopted = registry.latestCompletedFullRunId(spec)
-        adopted.foreach(id => logger.info(s"Registry: manual save adopting run $id ($spec)"))
-        adopted
-      } else None
-    }
+    // First-class save runs (A3c-3 follow-up): the dispatcher always
+    // provides the run — the chain's run for chained saves, a fresh
+    // saveOnly run for manual saves. No adoption.
+    val registryRunIdOpt = registryRunId
 
     // The save mode is decided ONCE — by the planner for chained saves, by
     // the same pure function here for legacy callers — and makes the sweep
@@ -216,9 +209,21 @@ case class SaveStage(
       // Incremental saves skip the sweep — they see only the delta and
       // cannot reason about the absent set.
       if (registryEnabled && !isIncremental && processedInvalidCount == 0) {
-        registryRunIdOpt.foreach { runId =>
-          val swept = registry.markMissingForFullRun(spec, runId)
-          if (swept > 0) logger.info(s"Registry: marked $swept records missing for full run $runId ($spec)")
+        // The sweep must run against the run that PRODUCED the processed
+        // output (the run whose process stage stamped records seen). For a
+        // chained save that is this run; for a manual saveOnly run it is
+        // the latest completed process-staged full run. Sweeping against a
+        // run that stamped nothing marks every record missing (observed:
+        // 2808 live records tombstoned).
+        val sweepRunIdOpt = registryRunIdOpt
+          .filter(id => registry.runStages(spec, id).exists { case (st, status) => st == "process" && status == "completed" })
+          .orElse(registry.latestCompletedFullRunId(spec))
+        sweepRunIdOpt match {
+          case Some(sweepRunId) =>
+            val swept = registry.markMissingForFullRun(spec, sweepRunId)
+            if (swept > 0) logger.info(s"Registry: marked $swept records missing for producing run $sweepRunId ($spec)")
+          case None =>
+            logger.info(s"Registry: no producing run for $spec — skipping missing-record sweep")
         }
       } else if (registryEnabled && !isIncremental) {
         logger.warn(s"Registry: skipping missing-record sweep for $spec because processedInvalid=$processedInvalidCount")

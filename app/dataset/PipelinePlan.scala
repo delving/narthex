@@ -179,6 +179,15 @@ object PipelinePlan {
     fullChain(List(STAGE_GENERATE_SIP))
 
   /**
+   * Manual "start saving" / fast-save from PROCESSED: a first-class run of
+   * its own (A3c-3 follow-up) — run adoption is gone. The destructive
+   * missing-record sweep still targets the run that PRODUCED the processed
+   * output, which SaveStage resolves separately.
+   */
+  def saveOnly: Plan =
+    fullChain(List(STAGE_SAVE, STAGE_RECONCILE))
+
+  /**
    * Standalone manual "make sip" (Phase C2: every action is a run).
    * KIND_TASK: an aux run must never be adopted by a manual save as "the
    * run that produced the processed output" — observed live: a save
