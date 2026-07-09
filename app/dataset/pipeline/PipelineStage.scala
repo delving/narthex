@@ -60,6 +60,8 @@ sealed trait StageResult
 case class StageFailed(message: String) extends StageResult
 /** GenerateSip succeeded. */
 case class SipGenerated(recordCount: Int) extends StageResult
+/** Save+reconcile pushed the records to Hub3 and closed the run. */
+case class GraphsSaved(recordsSent: Int) extends StageResult
 /** Process succeeded; scheduledOutput carries the processed file for delta saves. */
 case class ProcessedRecords(
   validRecords: Int,

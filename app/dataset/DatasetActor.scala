@@ -48,8 +48,6 @@ import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
 import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter, RecordRegistry, TrendTrackingService}
 import triplestore.GraphProperties._
-import triplestore.GraphSaver
-import triplestore.GraphSaver.{GraphSaveComplete, SaveGraphs}
 import triplestore.Sparql.SkosifiedField
 
 import scala.concurrent.duration._
@@ -163,6 +161,9 @@ object DatasetActor {
   case class StartSkosification(skosifiedField: SkosifiedField)
 
   case object StartCategoryCounting
+
+  /** Save+reconcile finished (Phase A3c-3: emitted by the engine for GraphsSaved). */
+  case object GraphSaveComplete
 
   case class WorkFailure(message: String,
                          exceptionOpt: Option[Throwable] = None)
@@ -853,16 +854,13 @@ class DatasetActor(val datasetContext: DatasetContext,
     case Event(StartSaving(scheduledOpt), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
-      // OrgActor already manages concurrency via queue - just track save for status reporting
       log.info(s"Starting save for ${dsInfo.spec}")
-      val graphSaver = createChildActor(
-        GraphSaver.props(datasetContext, orgContext),
-        "graph-saver")
-      graphSaver ! SaveGraphs(scheduledOpt, None, Some(PipelinePlan.saveModeFor(
+      // Phase A3c-3: save+reconcile run as a synchronous PipelineStage.
+      runStageAsync(pipeline.SaveStage(scheduledOpt, None, Some(PipelinePlan.saveModeFor(
         scheduledOpt.exists(_.modifiedAfter.isDefined),
         orgContext.narthexConfig.registryEnabled,
-        orgContext.narthexConfig.registryKeepRevisionSweep)))
-      goto(Saving) using Active(dsInfo.spec, Some(graphSaver), PROCESSING)
+        orgContext.narthexConfig.registryKeepRevisionSweep))))
+      goto(Saving) using Active(dsInfo.spec, None, SAVING)
 
     case Event(StartSkosification(skosifiedField), Dormant) =>
       // Auto-enable: remove disabled state when starting any workflow
@@ -1154,15 +1152,13 @@ class DatasetActor(val datasetContext: DatasetContext,
           dsInfo.setIncrementalProcessedRecordCounts(0, 0)
         }
 
-        val graphSaver = createChildActor(
-          GraphSaver.props(datasetContext, orgContext),
-          "graph-saver")
-        graphSaver ! SaveGraphs(saveScheduledOpt, registryRunId, Some(PipelinePlan.saveModeFor(
+        // Phase A3c-3: save+reconcile run as a synchronous PipelineStage.
+        runStageAsync(pipeline.SaveStage(saveScheduledOpt, registryRunId, Some(PipelinePlan.saveModeFor(
           saveScheduledOpt.exists(_.modifiedAfter.isDefined),
           orgContext.narthexConfig.registryEnabled,
-          orgContext.narthexConfig.registryKeepRevisionSweep)))
+          orgContext.narthexConfig.registryKeepRevisionSweep))))
         active.childOpt.foreach(_ ! PoisonPill)
-        goto(Saving) using Active(dsInfo.spec, Some(graphSaver), SAVING)
+        goto(Saving) using Active(dsInfo.spec, None, SAVING)
       } else {
         dsInfo.setProcessedRecordCounts(validRecords, invalidRecords)
         dsInfo.setIncrementalProcessedRecordCounts(0, 0)
@@ -1248,6 +1244,8 @@ class DatasetActor(val datasetContext: DatasetContext,
     scala.concurrent.Future(stage.run(ctx))(harvestingExecutionContext).onComplete {
       case scala.util.Success(pipeline.SipGenerated(count)) =>
         selfRef ! SipZipGenerationComplete(count)
+      case scala.util.Success(pipeline.GraphsSaved(_)) =>
+        selfRef ! GraphSaveComplete
       case scala.util.Success(pipeline.ProcessedRecords(valid, invalid, scheduledOut, runId)) =>
         selfRef ! ProcessingComplete(valid, invalid, scheduledOut, runId)
       case scala.util.Success(pipeline.StageFailed(message)) =>
