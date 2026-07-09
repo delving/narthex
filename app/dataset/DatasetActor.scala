@@ -747,6 +747,11 @@ class DatasetActor(val datasetContext: DatasetContext,
         // No state transition happened, so no DatasetBecameIdle will fire —
         // signal it explicitly so OrgActor frees the lease taken at dispatch.
         context.parent ! DatasetBecameIdle(dsInfo.spec, None)
+      } else if (isHeavyCommand) {
+        // Work started: push the new status document (the lease is already
+        // held, so phase=running and actions=[cancel]) — otherwise the row
+        // keeps offering the idle-time actions until the run completes.
+        broadcastIdleState()
       }
 
       stay()
