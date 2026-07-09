@@ -311,8 +311,11 @@ class DatasetMappingRepo(datasetDir: File) {
     )
 
     // Check if this hash already exists - if so, don't create a new version
+    // but DO make it current: a re-save of known content expresses "use
+    // this one" (the early return used to leave the pointer elsewhere).
     if (existingInfo.versions.exists(_.hash == hash)) {
-      logger.info(s"Mapping with hash $hash already exists for dataset $spec, skipping save")
+      logger.info(s"Mapping with hash $hash already exists for dataset $spec — setting current")
+      saveMetadata(existingInfo.copy(currentVersion = Some(hash)))
       return existingInfo.versions.find(_.hash == hash).get
     }
 

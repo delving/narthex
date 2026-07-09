@@ -390,15 +390,22 @@ class DefaultMappingRepo(orgRoot: File) {
       NamedMapping(prefix = prefix, name = name, displayName = name, versions = List.empty, currentVersion = None)
     )
 
-    // Check if this hash already exists
+    // Check if this hash already exists — still make it CURRENT: a re-save
+    // of known content expresses "use this one" (the early return used to
+    // leave the pointer elsewhere, so 'latest' silently stayed stale).
     if (existingInfo.versions.exists(_.hash == hash)) {
-      logger.info(s"Mapping with hash $hash already exists for $prefix/$name")
+      logger.info(s"Mapping with hash $hash already exists for $prefix/$name — setting current")
+      saveMetadata(prefix, name, existingInfo.copy(currentVersion = Some(hash)))
       return existingInfo.versions.find(_.hash == hash).get
     }
 
     val updatedInfo = existingInfo.copy(
       versions = existingInfo.versions :+ newVersion,
-      currentVersion = existingInfo.currentVersion.orElse(Some(hash))  // Set as current if first version
+      // A new version IS the new current: 'latest' resolves through this
+      // pointer, and leaving it on the old version made every default
+      // update invisible to the datasets tracking it (the historic
+      // 'updated the default but nothing changed' bug).
+      currentVersion = Some(hash)
     )
 
     saveMetadata(prefix, name, updatedInfo)
