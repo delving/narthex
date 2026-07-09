@@ -52,10 +52,25 @@ object GenerateSipStage extends PipelineStage {
       case Some(sourceRepo) =>
         val pocketFile = datasetContext.pocketFile
         pocketFile.getParentFile.mkdirs()
-        val pocketOutput = new FileOutputStream(pocketFile)
         val idFilter = dsInfo.getIdFilter
-        val pocketCount =
-          sourceRepo.generatePockets(pocketOutput, idFilter, ctx.progressReporter)
+        // Pocket generation streams the whole accumulated source — skip it
+        // when the manifest proves the existing pockets match the current
+        // inputs (plan §2.6). The SIP zip below is still rebuilt every time
+        // (the mapping may have changed).
+        val manifestFile = PocketManifest.manifestFileFor(pocketFile)
+        val currentInputs = PocketManifest.inputs(datasetContext.sourceDir, idFilter)
+        val pocketCount = PocketManifest.cachedCount(manifestFile, currentInputs, pocketFile) match {
+          case Some(count) =>
+            logger.info(s"Dataset $spec: pockets unchanged (manifest match) — skipping regeneration ($count records)")
+            count
+          case None =>
+            val pocketOutput = new FileOutputStream(pocketFile)
+            val count =
+              try sourceRepo.generatePockets(pocketOutput, idFilter, ctx.progressReporter)
+              finally pocketOutput.close()
+            PocketManifest.write(manifestFile, currentInputs, count, pocketFile)
+            count
+        }
 
         val recDefVersionHashOpt = dsInfo.getRecDefVersionHash
         val targetPrefix = SipGenerationFacts(dsInfo).prefix
@@ -140,7 +155,6 @@ object GenerateSipStage extends PipelineStage {
             val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping =>
               datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix, recDefVersionHashOpt))
             val sipFile = datasetContext.createSipFile
-            pocketOutput.close()
             try {
               latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo), effectiveMappingXml)
               Right(sipFile)
@@ -155,8 +169,7 @@ object GenerateSipStage extends PipelineStage {
             datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix, recDefVersionHashOpt) match {
               case Some(prefixRepo) =>
                 val sipFile = datasetContext.createSipFile
-                pocketOutput.close()
-                try {
+                    try {
                   prefixRepo.initiateSipZip(sipFile, pocketFile, facts, effectiveMappingXml)
                   Right(sipFile)
                 } catch {
@@ -165,8 +178,7 @@ object GenerateSipStage extends PipelineStage {
                     throw e
                 }
               case None =>
-                pocketOutput.close()
-                Left("Unable to build sip for download")
+                    Left("Unable to build sip for download")
             }
         }
 
@@ -179,6 +191,7 @@ object GenerateSipStage extends PipelineStage {
             } else {
               sipFile.delete()
               deleteQuietly(datasetContext.pocketFile)
+              deleteQuietly(manifestFile)
               StageFailed(
                 "Zero pockets generated. You probably forgot te set the record root and unique identifier.")
             }

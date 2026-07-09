@@ -1129,7 +1129,7 @@ define(["angular"], function () {
             } else if (state === 'stateProcessable') {
                 steps = ["Process", "Save"];
             } else if (state === 'stateSourced') {
-                steps = ["Make SIP", "Process", "Save"];
+                steps = ["Prepare records", "Process", "Save"];
             } else {
                 console.log("Dataset not in valid state for fast save");
                 modalAlert.error("Error", "Dataset not ready for fast save");
