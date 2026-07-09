@@ -896,7 +896,9 @@ private[services] class SpecRegistry(val datasetDir: File) {
   def latestProcessOutput(): Option[(Long, String, String)] = synchronized {
     val ps = conn.prepareStatement(
       """SELECT s.run_id, s.completed_at, s.output FROM run_stages s
+          JOIN runs r ON r.run_id = s.run_id
           WHERE s.stage = 'process' AND s.status = 'completed' AND s.output IS NOT NULL
+            AND r.kind = 'full'
           ORDER BY s.run_id DESC LIMIT 1""")
     try {
       val rs = ps.executeQuery()

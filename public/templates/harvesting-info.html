@@ -38,7 +38,7 @@
         <tr title="Registry view of the index: confirmed sent + still pending">
             <td>Indexed</td>
             <td class="text-right">
-                <strong>{{ dataset.counts.indexed.sent || '-' }}</strong> sent
+                <strong>{{ dataset.counts.indexed.current || '-' }}</strong> current
                 <span data-ng-if="dataset.counts.indexed.pendingIndex > 0" class="text-warning">
                     ({{ dataset.counts.indexed.pendingIndex }} pending)</span>
                 <span data-ng-if="dataset.counts.indexed.pendingDrops > 0" class="text-warning">

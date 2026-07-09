@@ -217,7 +217,10 @@ object DatasetStatusDoc {
 
     val pending = reg.pendingCounts(spec)
     val indexed = Json.obj(
-      "sent" -> seen.map(s => math.max(0, s - pending.pendingIndex)),
+      // records whose CURRENT content is confirmed in Hub3; pendingIndex =
+      // content newer than what Hub3 holds (e.g. reprocessed under a new
+      // mapping but not saved since)
+      "current" -> seen.map(s => math.max(0, s - pending.pendingIndex)),
       "pendingIndex" -> pending.pendingIndex,
       "pendingDrops" -> pending.pendingDrops
     )
