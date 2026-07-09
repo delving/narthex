@@ -98,26 +98,7 @@ object GenerateSipStage extends PipelineStage {
         // 2) Default mode: materialize the selected default into the folder
         //    when current differs — generation never reads the default store
         //    directly, so folder history records every default update.
-        if (dsInfo.usesDefaultMapping) {
-          (for {
-            prefix <- dsInfo.getDefaultMappingPrefix
-            name <- dsInfo.getDefaultMappingName
-            version = dsInfo.getDefaultMappingVersion.getOrElse("latest")
-            xml <- new DefaultMappingRepo(datasetContext.orgContext.orgRoot).getXml(prefix, name, version)
-          } yield (prefix, name, version, xml)) match {
-            case Some((prefix, name, version, xml)) if prefix == targetPrefix =>
-              val hash = DefaultMappingRepo.computeHash(xml)
-              if (!repo.getCurrentVersionHash.contains(hash)) {
-                if (repo.hasVersion(hash)) repo.setCurrentVersion(hash)
-                else repo.saveFromDefault(xml, prefix, version, Some(s"Materialized default $prefix/$name@$version at generation"))
-                logger.info(s"Dataset $spec: default mapping $prefix/$name@$version is now folder-current")
-              }
-            case Some((prefix, _, _, _)) =>
-              logger.warn(s"Dataset $spec: default mapping prefix '$prefix' does not match target '$targetPrefix' — ignored")
-            case None =>
-              logger.warn(s"Dataset $spec configured for default mapping but the default was not found")
-          }
-        }
+        MappingHeal.materializeSelectedDefault(datasetContext, targetPrefix)
 
         // Single read path: folder-current for the target prefix, or nothing.
         // A cross-prefix folder ("Cannot find dyn-opt path ..." class) or an

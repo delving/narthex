@@ -61,6 +61,12 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
   val progressState: ProgressState = ProgressState.PROCESSING
 
   def run(ctx: StageContext): StageResult = {
+    // A dataset tracking a shared default picks up updates here too — a
+    // bare "start processing" without a preceding make-sip must not run
+    // with a stale folder copy.
+    MappingHeal.materializeSelectedDefault(
+      ctx.datasetContext,
+      SipGenerationFacts(ctx.datasetContext.dsInfo).prefix)
     val datasetContext = ctx.datasetContext
     val orgContext = ctx.orgContext
     val dsInfo = datasetContext.dsInfo

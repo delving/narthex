@@ -1850,27 +1850,42 @@ class AppController @Inject() (
       // dataset's mapping repo — previously this wrote only a preference
       // prop, so the repo's "current" and the actually-generated mapping
       // silently diverged.
-      if (source == "default") {
-        for (p <- prefix; n <- name) {
+      val problemOpt: Option[String] = if (source == "default") {
+        (for (p <- prefix; n <- name) yield {
           val v = version.getOrElse("latest")
-          val defaultMappingRepo = new mapping.DefaultMappingRepo(orgContext.orgRoot)
-          defaultMappingRepo.getXml(p, n, v) match {
-            case Some(xml) =>
-              orgContext.datasetContext(spec).datasetMappingRepo
-                .saveFromDefault(xml, p, v, Some(s"Materialized default $p/$n@$v"))
-              logger.info(s"Materialized default mapping $p/$n@$v into repo for $spec")
-            case None =>
-              logger.warn(s"Default mapping $p/$n@$v not found — repo not updated for $spec")
+          // A cross-prefix default would archive the dataset's own mapping
+          // and install one its rec-def cannot resolve (dyn-opt errors,
+          // skeleton SIPs). Reject at selection time.
+          val targetPrefix = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetMapToPrefix)
+          if (targetPrefix.exists(_ != p)) {
+            Some(s"Default mapping is for prefix '$p' but dataset $spec targets '${targetPrefix.get}'")
+          } else {
+            new mapping.DefaultMappingRepo(orgContext.orgRoot).getXml(p, n, v) match {
+              case Some(xml) =>
+                orgContext.datasetContext(spec).datasetMappingRepo
+                  .saveFromDefault(xml, p, v, Some(s"Materialized default $p/$n@$v"))
+                logger.info(s"Materialized default mapping $p/$n@$v into repo for $spec")
+                None
+              case None =>
+                Some(s"Default mapping $p/$n@$v not found — nothing materialized")
+            }
           }
-        }
+        }).getOrElse(Some("Default mapping selection requires prefix and name"))
+      } else None
+
+      problemOpt match {
+        case Some(problem) =>
+          logger.warn(s"setDatasetMappingSource($spec): $problem")
+          BadRequest(Json.obj("success" -> false, "error" -> problem))
+        case None =>
+          Ok(Json.obj(
+            "success" -> true,
+            "mappingSource" -> dsInfo.getMappingSource,
+            "defaultMappingPrefix" -> dsInfo.getDefaultMappingPrefix,
+            "defaultMappingName" -> dsInfo.getDefaultMappingName,
+            "defaultMappingVersion" -> dsInfo.getDefaultMappingVersion
+          ))
       }
-      Ok(Json.obj(
-        "success" -> true,
-        "mappingSource" -> dsInfo.getMappingSource,
-        "defaultMappingPrefix" -> dsInfo.getDefaultMappingPrefix,
-        "defaultMappingName" -> dsInfo.getDefaultMappingName,
-        "defaultMappingVersion" -> dsInfo.getDefaultMappingVersion
-      ))
     }
   }
 
