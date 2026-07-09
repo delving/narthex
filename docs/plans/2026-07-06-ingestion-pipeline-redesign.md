@@ -460,9 +460,17 @@ status from day one); then Fuseki is never read again.
   panel), trends list/header, activity + completion stats (populate
   recordCount from runs), index stats valid-vs-Hub3 from registry.
   Normalize acquisitionMethod. Decide Δ-badge + trend-source semantics.
-- **D4 — the bonfire.** Delete SKOS subsystem (death list), TripleStore/
-  Sparql/healthcheck/bindings/config, deploy files; decommission the
-  Fuseki service on datahub (brabantcloud at its next major deploy).
+- **D4 — the bonfire (scoped 2026-07-10).** Delete the SKOS subsystem
+  (death list), all SPARQL write paths, the Fuseki healthcheck, the query
+  bulk of Sparql.scala, and the deploy files — but KEEP a ~200-line
+  migration slice: FusekiMigration + a minimal read-only client (list
+  specs, fetch one graph) with the triple-store config keys made
+  OPTIONAL. No config → migration skips silently. Per server: Fuseki
+  stays up until the first deploy of the new build logs "Fuseki
+  migration complete: N datasets", then the service is stopped and its
+  config keys removed. datahub can stop Fuseki immediately after D4.
+- **D4b — final pass** after the last org (brabantcloud) has migrated:
+  delete the migration slice itself; zero Fuseki code remains.
 
 ## 5. What NOT to rebuild
 
