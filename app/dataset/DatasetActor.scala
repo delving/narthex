@@ -1280,7 +1280,8 @@ class DatasetActor(val datasetContext: DatasetContext,
   // allows one active job per dataset, so no run id needs threading here.
   private def failOpenRegistryRuns(message: String): Unit = {
     scala.util.Try {
-      val failed = orgContext.recordRegistry.failOpenRuns(dsInfo.spec, message.take(500))
+      val safeMessage = Option(message).getOrElse("(no message)")
+      val failed = orgContext.recordRegistry.failOpenRuns(dsInfo.spec, safeMessage.take(500))
       if (failed > 0) log.info(s"Registry: marked $failed open run(s) failed for ${dsInfo.spec}")
     }.recover { case ex: Throwable =>
       log.warning(s"Registry: failOpenRuns failed for ${dsInfo.spec}: ${ex.getMessage}")

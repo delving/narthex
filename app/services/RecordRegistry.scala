@@ -21,6 +21,10 @@ object RecordRegistry {
   val RUN_RUNNING   = "running"
   val RUN_COMPLETED = "completed"
   val RUN_FAILED    = "failed"
+  // Housekeeping close of a stale open run when new work begins — NOT an
+  // error: a 'failed' latest run drives phase=error, and a dataset whose
+  // quiet ticks discard their runs would scream error indefinitely over it.
+  val RUN_SUPERSEDED = "superseded"
 
   val KIND_FULL      = "full"
   val KIND_INCREMENT = "incremental"
@@ -438,8 +442,8 @@ private[services] class SpecRegistry(val datasetDir: File) {
       // Self-heal: a run still 'running' at this point was orphaned by a
       // crash or an unclosed failure path — only one run per dataset can be
       // active. Mark it failed so run history stays trustworthy.
-      val healed = markOpenRunsFailed("stale: superseded by new run")
-      if (healed > 0) logger.warn(s"beginRun: marked $healed stale running run(s) failed in $dbFile")
+      val healed = markOpenRunsFailed("stale: superseded by new run", RUN_SUPERSEDED)
+      if (healed > 0) logger.warn(s"beginRun: marked $healed stale running run(s) superseded in $dbFile")
 
       val sql = "INSERT INTO runs (kind, run_trigger, plan, started_at, status) VALUES (?, ?, ?, ?, ?)"
       val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
@@ -780,7 +784,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
   }
 
   // Caller must hold the lock and be inside commitTx.
-  private def markOpenRunsFailed(note: String): Int = {
+  private def markOpenRunsFailed(note: String, runStatus: String = RUN_FAILED): Int = {
     // Fail the open stage rows of the dying runs too, so the audit trail
     // never shows a 'running' stage inside a failed run.
     val psStages = conn.prepareStatement(
@@ -800,7 +804,7 @@ private[services] class SpecRegistry(val datasetDir: File) {
     val ps = conn.prepareStatement(sql)
     try {
       ps.setString(1, nowIso())
-      ps.setString(2, RUN_FAILED)
+      ps.setString(2, runStatus)
       ps.setString(3, note)
       ps.setString(4, RUN_RUNNING)
       ps.executeUpdate()
