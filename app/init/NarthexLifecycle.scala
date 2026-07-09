@@ -27,6 +27,9 @@ class NarthexLifecycle @Inject() (
   // Initialize workflow database
   GlobalWorkflowDatabase.init(narthexConfig)
 
+  // Phase D2: one-shot Fuseki -> datasets.db migration (no-op once populated)
+  services.FusekiMigration.runIfNeeded(orgContext)(ec, orgContext.ts)
+
   // Test that new string metrics library produces same values as previous library
   // on https://github.com/rockymadden/stringmetric
   //val ro = new RatcliffObershelp

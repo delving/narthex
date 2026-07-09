@@ -93,10 +93,15 @@ object DsInfo {
                         edmType: String)
 
   implicit val dsInfoWrites: Writes[DsInfo] = new Writes[DsInfo] {
+    // Phase D2 (decision 2026-07-10): flat JSON straight from the props
+    // row — the JSON-LD/Jena serialization is gone with Fuseki.
     def writes(dsInfo: DsInfo): JsValue = {
-      val out = new StringWriter()
-      RDFDataMgr.write(out, dsInfo.getModel, RDFFormat.JSONLD_FLAT)
-      Json.parse(out.toString)
+      import play.api.libs.json.{JsObject => PJsObject, JsString => PJsString}
+      val props = dsInfo.orgContext.datasetsDb.props(dsInfo.spec)
+      PJsObject(
+        List("datasetSpec" -> PJsString(dsInfo.spec), "uri" -> PJsString(dsInfo.uri)) ++
+          props.toList.sortBy(_._1).map { case (k, v) => k -> (PJsString(v): JsValue) }
+      )
     }
   }
 
@@ -429,21 +434,6 @@ object DsInfo {
   /**
    * List datasets in retry mode with lightweight data.
    */
-  def listRetryStatus()(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[Map[String, RetryStatus]] = {
-    ts.query(selectDatasetsInRetryQ).map { results =>
-      results.map { row =>
-        val spec = row("spec").text
-        spec -> RetryStatus(
-          spec = spec,
-          retryCount = row.get("retryCount").map(_.text.toInt),
-          lastRetryTime = row.get("lastRetryTime").map(_.text),
-          retryMessage = row.get("retryMessage").map(_.text)
-        )
-      }.toMap
-    }
-  }
 
   /**
    * List all datasets with minimal data for initial page load.
@@ -451,50 +441,63 @@ object DsInfo {
    */
   def listDsInfoLight(orgContext: OrgContext)(
       implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfoLight]] = {
-    ts.query(selectDatasetsLightQ).map { results =>
-      results.map { row =>
-        DsInfoLight(
-          spec = row("spec").text,
-          name = row.get("name").map(_.text),
-          processedValid = row.get("processedValid").map(_.text.toInt),
-          processedInvalid = row.get("processedInvalid").map(_.text.toInt),
-          recordCount = row.get("recordCount").map(_.text.toInt),
-          // Acquisition tracking fields
-          acquiredRecordCount = row.get("acquiredRecordCount").map(_.text.toInt),
-          deletedRecordCount = row.get("deletedRecordCount").map(_.text.toInt),
-          sourceRecordCount = row.get("sourceRecordCount").map(_.text.toInt),
-          acquisitionMethod = row.get("acquisitionMethod").map(_.text),
-          // State fields
-          stateDisabled = row.get("stateDisabled").map(_.text),
-          stateRaw = row.get("stateRaw").map(_.text),
-          stateRawAnalyzed = row.get("stateRawAnalyzed").map(_.text),
-          stateSourced = row.get("stateSourced").map(_.text),
-          stateMappable = row.get("stateMappable").map(_.text),
-          stateProcessable = row.get("stateProcessable").map(_.text),
-          stateAnalyzed = row.get("stateAnalyzed").map(_.text),
-          stateProcessed = row.get("stateProcessed").map(_.text),
-          stateSaved = row.get("stateSaved").map(_.text),
-          stateIncrementalSaved = row.get("stateIncrementalSaved").map(_.text),
-          currentOperation = row.get("currentOperation").map(_.text),
-          operationStatus = row.get("operationStatus").map(_.text),
-          errorMessage = row.get("errorMessage").map(_.text),
-          errorTime = row.get("errorTime").map(_.text),
-          harvestType = row.get("harvestType").map(_.text),
-          harvestDownloadURL = row.get("harvestDownloadURL").map(_.text),
-          harvestIncrementalMode = row.get("harvestIncrementalMode").map(_.text),
-          processedIncrementalValid = row.get("processedIncrementalValid").map(_.text.toInt),
-          processedIncrementalInvalid = row.get("processedIncrementalInvalid").map(_.text.toInt),
-          delimitersSet = row.get("delimitersSet").map(_.text),
-          recordRootValue = row.get("recordRoot").map(_.text),
-          uniqueIdValue = row.get("uniqueId").map(_.text),
-          mappingSource = row.get("mappingSource").map(_.text),
-          harvestUsername = row.get("harvestUsername").map(_.text),
-          harvestPasswordSet = row.get("harvestPasswordSet").map(_.text.toBoolean),
-          harvestApiKeySet = row.get("harvestApiKeySet").map(_.text.toBoolean),
-          mapToPrefix = row.get("mapToPrefix").map(_.text)
+      ts: TripleStore): Future[List[DsInfoLight]] = Future.successful {
+    import triplestore.GraphProperties._
+    orgContext.datasetsDb.allProps().toList.sortBy(_._1).map { case (spec, p) =>
+      def s(prop: NXProp): Option[String] = p.get(prop.name)
+      def i(prop: NXProp): Option[Int] = p.get(prop.name).flatMap(v => scala.util.Try(v.toInt).toOption)
+      DsInfoLight(
+        spec = spec,
+        name = s(datasetName),
+        processedValid = i(processedValid),
+        processedInvalid = i(processedInvalid),
+        recordCount = i(datasetRecordCount),
+        acquiredRecordCount = i(acquiredRecordCount),
+        deletedRecordCount = i(deletedRecordCount),
+        sourceRecordCount = i(sourceRecordCount),
+        acquisitionMethod = s(acquisitionMethod),
+        stateDisabled = s(stateDisabled),
+        stateRaw = s(stateRaw),
+        stateRawAnalyzed = s(stateRawAnalyzed),
+        stateSourced = s(stateSourced),
+        stateMappable = s(stateMappable),
+        stateProcessable = s(stateProcessable),
+        stateAnalyzed = s(stateAnalyzed),
+        stateProcessed = s(stateProcessed),
+        stateSaved = s(stateSaved),
+        stateIncrementalSaved = s(stateIncrementalSaved),
+        currentOperation = s(datasetCurrentOperation),
+        operationStatus = s(datasetOperationStatus),
+        errorMessage = s(datasetErrorMessage),
+        errorTime = s(datasetErrorTime),
+        harvestType = s(harvestType),
+        harvestDownloadURL = s(harvestDownloadURL),
+        harvestIncrementalMode = s(harvestIncrementalMode),
+        processedIncrementalValid = i(processedIncrementalValid),
+        processedIncrementalInvalid = i(processedIncrementalInvalid),
+        delimitersSet = s(delimitersSet),
+        recordRootValue = s(recordRoot),
+        uniqueIdValue = s(uniqueId),
+        mappingSource = s(datasetMappingSource),
+        harvestUsername = s(harvestUsername),
+        harvestPasswordSet = p.get(harvestPassword.name).map(_.nonEmpty),
+        harvestApiKeySet = p.get(harvestApiKey.name).map(_.nonEmpty),
+        mapToPrefix = s(datasetMapToPrefix)
+      )
+    }
+  }
+
+  def listRetryStatus(orgContext: OrgContext)(
+      implicit ec: ExecutionContext): Future[Map[String, RetryStatus]] = Future.successful {
+    import triplestore.GraphProperties._
+    orgContext.datasetsDb.allProps().collect {
+      case (spec, p) if p.get(harvestInRetry.name).contains("true") && !p.contains(stateDisabled.name) =>
+        spec -> RetryStatus(
+          spec = spec,
+          retryCount = p.get(harvestRetryCount.name).flatMap(v => scala.util.Try(v.toInt).toOption),
+          lastRetryTime = p.get(harvestLastRetryTime.name),
+          retryMessage = p.get(harvestRetryMessage.name)
         )
-      }
     }
   }
 
@@ -507,7 +510,7 @@ object DsInfo {
       ts: TripleStore): Future[List[JsValue]] = {
     for {
       datasets <- listDsInfoLight(orgContext)
-      retryStatus <- listRetryStatus()
+      retryStatus <- listRetryStatus(orgContext)
     } yield {
       datasets.map { ds =>
         // Phase A4b: lifecycle state comes from the projector (disk +
@@ -580,21 +583,11 @@ object DsInfo {
    */
   def listDsInfoInRetry(orgContext: OrgContext)(
       implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = {
-
-    ts.query(selectDatasetsInRetryQ).map { list =>
-      list.map { entry =>
-        val spec = entry("spec").text
-        new DsInfo(
-          spec,
-          orgContext.appConfig.nxUriPrefix,
-          orgContext.appConfig.naveApiAuthToken,
-          orgContext.appConfig.naveApiUrl,
-          orgContext,
-          orgContext.appConfig.mockBulkApi
-        )
-      }
-    }
+      ts: TripleStore): Future[List[DsInfo]] = Future.successful {
+    orgContext.datasetsDb.allProps().collect {
+      case (spec, props) if props.get(harvestInRetry.name).contains("true") &&
+        !props.contains(stateDisabled.name) => getDsInfo(spec, orgContext)
+    }.toList
   }
 
   /**
@@ -602,67 +595,19 @@ object DsInfo {
    */
   def listDsInfoWithIncompleteOperations(orgContext: OrgContext)(
       implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = {
-
-    ts.query(selectDatasetsWithIncompleteOperationsQ).map { list =>
-      list.map { entry =>
-        val spec = entry("spec").text
-        new DsInfo(
-          spec,
-          orgContext.appConfig.nxUriPrefix,
-          orgContext.appConfig.naveApiAuthToken,
-          orgContext.appConfig.naveApiUrl,
-          orgContext,
-          orgContext.appConfig.mockBulkApi
-        )
-      }
-    }
+      ts: TripleStore): Future[List[DsInfo]] = Future.successful {
+    orgContext.datasetsDb.allProps().collect {
+      case (spec, props) if props.contains(datasetCurrentOperation.name) =>
+        getDsInfo(spec, orgContext)
+    }.toList
   }
 
   def listDsInfoWithStateFilter(orgContext: OrgContext, allowedStates: List[String])(
       implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = {
-    val query = if (allowedStates.nonEmpty) {
-      ts.query(selectDatasetSpecsWithStateFilterQ(allowedStates))
-    } else {
-      ts.query(selectDatasetSpecsQ)
-    }
-    
-    query.flatMap { list =>
-      val specs = list.map(entry => entry("spec").text)
-      
-      // Batch check existence for filtered datasets only - prevents error dataset timestamp updates
-      val graphUris = specs.map(spec => getGraphName(spec, orgContext.appConfig.nxUriPrefix))
-      
-      ts.batchCheckGraphExistence(graphUris).map { existenceMap =>
-        // Store batch results in Play cache for future DsInfo instances to use
-        existenceMap.foreach { case (graphUri, exists) =>
-          val spec = specs.find(s => getGraphName(s, orgContext.appConfig.nxUriPrefix) == graphUri)
-          spec.foreach { s =>
-            val cacheKey = s"dataset_existence_$s"
-            orgContext.cacheApi.set(cacheKey, exists, 30.seconds) // Shorter cache for more responsive updates
-          }
-        }
-
-        specs.map { spec =>
-          val graphUri = getGraphName(spec, orgContext.appConfig.nxUriPrefix)
-          val dataExists = existenceMap.getOrElse(graphUri, false)
-
-          val dsInfo = new DsInfo(
-            spec,
-            orgContext.appConfig.nxUriPrefix,
-            orgContext.appConfig.naveApiAuthToken,
-            orgContext.appConfig.naveApiUrl,
-            orgContext,
-            orgContext.appConfig.mockBulkApi
-          )
-
-          // Cache the existence result to avoid individual dataGet() calls
-          dsInfo.cacheDataExists(dataExists)
-          dsInfo
-        }
-      }
-    }
+      ts: TripleStore): Future[List[DsInfo]] = Future.successful {
+    // D2: lifecycle state is projected, not stored — the filter arg is
+    // legacy (all live callers pass an empty list).
+    orgContext.datasetsDb.allSpecs().map(spec => getDsInfo(spec, orgContext)).toList
   }
 
   def getDsInfoUri(spec: String, uriPrefix: String) =
@@ -679,90 +624,27 @@ object DsInfo {
                    mapToPrefix: String,
                    orgContext: OrgContext)(implicit ec: ExecutionContext,
                                            ts: TripleStore): Future[DsInfo] = {
-    val m = ModelFactory.createDefaultModel()
-    val subject =
-      m.getResource(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix))
-    m.add(subject, m.getProperty(rdfType), m.getResource(datasetEntity))
-    m.add(subject, m.getProperty(datasetSpec.uri), m.createLiteral(spec))
-    m.add(subject,
-          m.getProperty(orgId.uri),
-          m.createLiteral(orgContext.appConfig.orgId))
-    m.add(subject,
-          m.getProperty(datasetCharacter.uri),
-          m.createLiteral(character.name))
-    val trueLiteral = m.createLiteral("true")
-    m.add(subject, m.getProperty(publishOAIPMH.uri), trueLiteral)
-    m.add(subject, m.getProperty(publishIndex.uri), trueLiteral)
-    m.add(subject, m.getProperty(publishLOD.uri), trueLiteral)
-    if (mapToPrefix != "-")
-      m.add(subject,
-            m.getProperty(datasetMapToPrefix.uri),
-            m.createLiteral(mapToPrefix))
-    ts.up
-      .dataPost(getGraphName(spec, orgContext.appConfig.nxUriPrefix), m)
-      .map { ok =>
-        val cacheName = getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)
-        val dsInfo = new DsInfo(
-          spec,
-          orgContext.appConfig.nxUriPrefix,
-          orgContext.appConfig.naveApiAuthToken,
-          orgContext.appConfig.naveApiUrl,
-          orgContext,
-          orgContext.appConfig.mockBulkApi
-        )
-        orgContext.cacheApi.set(cacheName, dsInfo, cacheTime)
-        dsInfo
-      }
+    val db = orgContext.datasetsDb
+    db.createDataset(spec)
+    val base = List(
+      datasetSpec.name -> spec,
+      orgId.name -> orgContext.appConfig.orgId,
+      datasetCharacter.name -> character.name,
+      publishOAIPMH.name -> "true",
+      publishIndex.name -> "true",
+      publishLOD.name -> "true"
+    ) ++ (if (mapToPrefix != "-") List(datasetMapToPrefix.name -> mapToPrefix) else Nil)
+    db.setProps(spec, base: _*)
+    Future.successful(getDsInfo(spec, orgContext))
   }
 
   def freshDsInfo(spec: String, orgContext: OrgContext)(
       implicit ec: ExecutionContext,
       ts: TripleStore): Future[Option[DsInfo]] = {
-
-    // Check if we have cached existence result first to avoid expensive ASK query
-    val cacheKey = s"dataset_existence_$spec"
-    orgContext.cacheApi.get[Boolean](cacheKey) match {
-      case Some(exists) =>
-        logger.debug(s"Using cached existence result for $spec: $exists")
-        if (exists) {
-          val dsInfo = new DsInfo(
-            spec,
-            orgContext.appConfig.nxUriPrefix,
-            orgContext.appConfig.naveApiAuthToken,
-            orgContext.appConfig.naveApiUrl,
-            orgContext,
-            orgContext.appConfig.mockBulkApi
-          )
-          dsInfo.cacheDataExists(exists)
-          Future.successful(Some(dsInfo))
-        } else {
-          Future.successful(None)
-        }
-
-      case None =>
-        // Fallback to original ASK query if no cache available
-        logger.debug(s"No cached existence for $spec, using ASK query")
-        ts.ask(askIfDatasetExistsQ(getDsInfoUri(spec, orgContext.appConfig.nxUriPrefix)))
-          .map { answer =>
-            if (answer) {
-              val dsInfo = new DsInfo(
-                spec,
-                orgContext.appConfig.nxUriPrefix,
-                orgContext.appConfig.naveApiAuthToken,
-                orgContext.appConfig.naveApiUrl,
-                orgContext,
-                orgContext.appConfig.mockBulkApi
-              )
-              // Cache this result for future use
-              orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
-              dsInfo.cacheDataExists(answer)
-              Some(dsInfo)
-            } else {
-              orgContext.cacheApi.set(cacheKey, answer, 30.seconds)
-              None
-            }
-          }
-    }
+    if (orgContext.datasetsDb.exists(spec))
+      Future.successful(Some(getDsInfo(spec, orgContext)))
+    else
+      Future.successful(None)
   }
 
   def withDsInfo[T](spec: String, orgContext: OrgContext)(
@@ -812,78 +694,15 @@ class DsInfo(
 
   val skosGraphName = getSkosGraphName(uri)
 
-  // Caching to avoid repeated expensive dataGet() calls
-  private var cachedDataExists: Option[Boolean] = None
-  private var cachedModel: Option[Model] = None
+  // Phase D2: props live in datasets.db — no Jena model, no existence caching.
 
-  // Check for cached existence result on creation
-  private def loadCachedExistence(): Unit = {
-    if (cachedDataExists.isEmpty) {
-      val cacheKey = s"dataset_existence_$spec"
-      cachedDataExists = orgContext.cacheApi.get[Boolean](cacheKey)
-      if (cachedDataExists.isDefined) {
-        logger.debug(s"Loaded cached existence result for dataset $spec: ${cachedDataExists.get}")
-      }
-    }
-  }
+  def cacheDataExists(exists: Boolean): Unit = () // D2: existence = row exists
 
-  def cacheDataExists(exists: Boolean): Unit = {
-    cachedDataExists = Some(exists)
-  }
+  def invalidateCachedModel(): Unit = () // D2: nothing cached
 
-  /** Invalidate the cached model to force fresh data to be read from triplestore.
-    * This should be called when properties are changed externally.
-    */
-  def invalidateCachedModel(): Unit = {
-    cachedModel = None
-    logger.debug(s"Invalidated cached model for dataset $spec")
-  }
 
-  // Initialize cache on construction
-  loadCachedExistence()
-  
-  def futureModel: Future[Model] = {
-    cachedDataExists match {
-      case Some(false) =>
-        // We know data doesn't exist - return empty model immediately
-        logger.debug(s"Using cached 'no data' result for dataset $spec")
-        Future.successful(ModelFactory.createDefaultModel())
-        
-      case Some(true) =>
-        // We know data exists - fetch it (but could also cache the model)
-        cachedModel match {
-          case Some(model) =>
-            Future.successful(model)
-          case None =>
-            logger.debug(s"Fetching data for dataset $spec (existence confirmed)")
-            val future = ts.dataGet(graphName)
-            future.onComplete {
-              case Success(model) => cachedModel = Some(model)
-              case Failure(e) => logger.warn(s"Failed to fetch data for dataset $spec", e)
-            }
-            future
-        }
-        
-      case None =>
-        // No cache - use original logic (fallback)
-        logger.warn(s"CACHE MISS: No cache available for dataset $spec - using expensive dataGet call. This indicates caching is not working properly.")
-        val future = ts.dataGet(graphName)
-        future.onComplete {
-          case Success(_) => ()
-          case Failure(e) => logger.warn(s"No data found for dataset $spec", e)
-        }
-        future
-    }
-  }
-
-  def getModel = Await.result(futureModel, patience)
-
-  def getLiteralProp(prop: NXProp): Option[String] = {
-    val m = getModel
-    val res = m.getResource(uri)
-    val objects = m.listObjectsOfProperty(res, m.getProperty(prop.uri))
-    if (objects.hasNext) Some(objects.next().asLiteral().getString) else None
-  }
+  def getLiteralProp(prop: NXProp): Option[String] =
+    orgContext.datasetsDb.getProp(spec, prop.name)
 
   def getTimeProp(prop: NXProp): Option[DateTime] =
     getLiteralProp(prop).map(stringToTime)
@@ -899,36 +718,11 @@ class DsInfo(
     nullVals.foreach { case (prop, _) =>
       logger.warn(s"setSingularLiteralProps: ignoring NULL value for '${prop.name}' on $spec — caller bug worth chasing")
     }
-    val sparqlPerPropQ =
-      validVals.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2)).toList
-    val withSynced = updateSyncedFalseQ(graphName, uri) :: sparqlPerPropQ
-    val sparql = withSynced.mkString(";\n")
-    val futureUpdate = ts.up.sparqlUpdate(sparql)
-    try {
-      Await.result(futureUpdate, patience)
-    } catch {
-      case e: Exception =>
-        val propNames = propVals.map(_._1.name).mkString(", ")
-        logger.error(s"Failed to update properties [$propNames] for $spec: ${e.getMessage}", e)
-        throw e
-    }
-    // Invalidate cached model so next read gets fresh data with updated properties
-    cachedModel = None
+    orgContext.datasetsDb.setProps(spec, validVals.map(pv => pv._1.name -> pv._2): _*)
   }
 
-  def removeLiteralProp(prop: NXProp): Unit = {
-    val futureUpdate =
-      ts.up.sparqlUpdate(removeLiteralPropertyQ(graphName, uri, prop))
-    try {
-      Await.result(futureUpdate, patience)
-    } catch {
-      case e: Exception =>
-        logger.error(s"Failed to remove property ${prop.name} for $spec: ${e.getMessage}", e)
-        throw e
-    }
-    // Invalidate cached model so next read gets fresh data
-    cachedModel = None
-  }
+  def removeLiteralProp(prop: NXProp): Unit =
+    orgContext.datasetsDb.removeProp(spec, prop.name)
 
   /**
    * Store indexing results received from Hub3 webhook notification.
@@ -968,46 +762,27 @@ class DsInfo(
     setSingularLiteralProps(allProps: _*)
   }
 
-  def getLiteralPropList(prop: NXProp): List[String] = {
-    val m = getModel
-    m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri)).asScala
-      .map(_.asLiteral().toString)
-      .toList
-  }
+  def getLiteralPropList(prop: NXProp): List[String] =
+    orgContext.datasetsDb.listValues(spec, prop.name)
 
-  def addLiteralPropToList(prop: NXProp, uriValueString: String): Unit = {
-    val futureUpdate = ts.up.sparqlUpdate(
-      addLiteralPropertyToListQ(graphName, uri, prop, uriValueString))
-    Await.ready(futureUpdate, patience)
-    // Invalidate cached model so next read gets fresh data
-    cachedModel = None
-  }
+  def addLiteralPropToList(prop: NXProp, uriValueString: String): Unit =
+    orgContext.datasetsDb.addListValue(spec, prop.name, uriValueString)
 
-  def removeLiteralPropFromList(prop: NXProp, uriValueString: String): Unit = {
-    val futureUpdate = ts.up.sparqlUpdate(
-      deleteLiteralPropertyFromListQ(graphName, uri, prop, uriValueString))
-    Await.ready(futureUpdate, patience)
-    // Invalidate cached model so next read gets fresh data
-    cachedModel = None
-  }
+  def removeLiteralPropFromList(prop: NXProp, uriValueString: String): Unit =
+    orgContext.datasetsDb.removeListValue(spec, prop.name, uriValueString)
 
-  def getUriProp(prop: NXProp): Option[String] = {
-    val m = getModel
-    m.listObjectsOfProperty(m.getResource(uri), m.getProperty(prop.uri))
-      .toList.asScala
-      .headOption
-      .map(_.asResource().toString)
-  }
+  def getUriProp(prop: NXProp): Option[String] =
+    orgContext.datasetsDb.getProp(spec, prop.name)
 
   def dropDataset = {
     removeNaveDataSet()
-    ts.up
-      .sparqlUpdate(deleteDatasetQ(graphName, uri, skosGraphName))
-      .map(ok => true)
+    orgContext.datasetsDb.deleteDataset(spec)
+    Future.successful(true)
   }
 
   def dropDatasetRecords = {
-    ts.up.sparqlUpdate(deleteDatasetRecordsQ(uri)).map(ok => true)
+    // Record graphs left Fuseki long ago; nothing to delete anymore.
+    Future.successful(true)
   }
 
   def dropDatasetIndex = {
@@ -1082,18 +857,6 @@ class DsInfo(
   def setState(state: DsState.Value) = {
     setSingularLiteralProps(
       NXProp(state.toString, GraphProperties.timeProp) -> now)
-
-    // Update existence cache immediately with new state - don't just invalidate
-    val cacheKey = s"dataset_existence_$spec"
-    // Note: DISABLED datasets still have metadata in triplestore - only EMPTY means no data
-    // Bug fix: Previously DISABLED was treated as non-existent, which broke property lookups
-    val dataExists = state match {
-      case DsState.EMPTY => false // Only truly empty datasets don't exist
-      case _ => true // DISABLED and all other states still have metadata that needs to be readable
-    }
-    orgContext.cacheApi.set(cacheKey, dataExists, 30.seconds)
-    cachedDataExists = Some(dataExists)
-    logger.debug(s"Updated existence cache for $spec due to state change to $state (dataExists: $dataExists)")
   }
 
   def setHarvestIncrementalMode(enabled: Boolean = false) = {
@@ -1556,11 +1319,8 @@ class DsInfo(
 
   def createMessage(payload: AnyRef) = DatasetMessage(spec, payload)
 
-  def toTurtle = {
-    val sw = new StringWriter()
-    getModel.write(sw, "TURTLE")
-    sw.toString
-  }
+  def toTurtle: String =
+    orgContext.datasetsDb.props(spec).map { case (k, v) => s"# $k: $v" }.mkString("\n")
 
   lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 

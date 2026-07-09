@@ -220,6 +220,14 @@ class RecordRegistry(datasetsDir: File) {
   def latestRunOutcome(specName: String): Option[RunOutcome] =
     if (dbFileExists(specName)) spec(specName).latestRunOutcome() else None
 
+  /**
+   * Migration-only (Phase D2): insert a completed synthetic run so a
+   * dataset saved in the pre-registry era projects saved from cutover
+   * day one. Stages process/save/reconcile completed at the given time.
+   */
+  def seedBaselineRun(specName: String, atIso: String): Unit =
+    spec(specName).seedBaselineRun(atIso)
+
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
 
@@ -785,6 +793,32 @@ private[services] class SpecRegistry(val datasetDir: File) {
   // Fail every run still 'running' for this dataset. Failure paths (actor
   // WorkFailure) don't know the run id, and the FSM allows only one active
   // job per dataset, so "all open runs" is exactly "the run that just died".
+  def seedBaselineRun(atIso: String): Unit = synchronized {
+    commitTx {
+      val ps = conn.prepareStatement(
+        """INSERT INTO runs (kind, run_trigger, status, started_at, completed_at, note,
+                              seen_count, changed_count, deleted_count, added_count, sent_count)
+           VALUES (?, 'migration', ?, ?, ?, 'migrated baseline', 0, 0, 0, 0, 0)""")
+      val runId = try {
+        ps.setString(1, KIND_FULL); ps.setString(2, RUN_COMPLETED)
+        ps.setString(3, atIso); ps.setString(4, atIso)
+        ps.executeUpdate()
+        val rs = conn.prepareStatement("SELECT last_insert_rowid()").executeQuery()
+        try { rs.next(); rs.getLong(1) } finally rs.close()
+      } finally ps.close()
+      Seq("process", "save", "reconcile").foreach { stage =>
+        val sps = conn.prepareStatement(
+          """INSERT INTO run_stages (run_id, stage, status, started_at, completed_at)
+             VALUES (?, ?, 'completed', ?, ?)""")
+        try {
+          sps.setLong(1, runId); sps.setString(2, stage)
+          sps.setString(3, atIso); sps.setString(4, atIso)
+          sps.executeUpdate()
+        } finally sps.close()
+      }
+    }
+  }
+
   def failOpenRuns(note: String): Int = synchronized {
     commitTx {
       markOpenRunsFailed(note)

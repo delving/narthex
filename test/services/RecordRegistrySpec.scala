@@ -584,4 +584,10 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.completeRun(spec, newerAux)
     registry.latestCompletedFullRunId(spec) shouldBe Some(producing)
   }
+  it should "seed a migrated baseline run that satisfies the saved and producing signals" in {
+    registry.seedBaselineRun(spec, "2026-05-01T00:00:00Z")
+    registry.latestSavedRunCompletion(spec, KIND_FULL) shouldBe Some("2026-05-01T00:00:00Z")
+    registry.latestCompletedFullRunId(spec) shouldBe defined
+    registry.listRuns(spec, 36500).head.baseline shouldBe false // note is 'migrated baseline'
+  }
 }

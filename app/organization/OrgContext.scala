@@ -68,6 +68,8 @@ class OrgContext @Inject() (
   val trendsSummaryFile = new File(orgRoot, "trends_summary.json")
   // Persistent job queue (queue.db): queued operations survive restarts
   lazy val jobQueue = new services.JobQueue(new File(orgRoot, "queue.db"))
+  // Phase D2: the dataset registry (datasets.db) — Fuseki's replacement
+  lazy val datasetsDb = new services.DatasetsDb(orgRoot)
   val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
 
   lazy val categoriesRepo = new CategoriesRepo(categoriesDir, narthexConfig.orgId)
