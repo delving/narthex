@@ -305,7 +305,11 @@ private[services] class SpecRegistry(val datasetDir: File) {
       s.executeUpdate("PRAGMA foreign_keys=ON")
       s.executeUpdate("PRAGMA busy_timeout=5000")
     } finally s.close()
-    c.setAutoCommit(false)
+    // Autocommit STAYS ON: with it off, every plain SELECT silently opened
+    // a transaction that never ended — the connection froze on a stale
+    // snapshot (external writes invisible forever, WAL checkpoints blocked).
+    // Multi-statement writes get explicit transaction demarcation in
+    // commitTx instead.
     migrate(c)
     c
   }
@@ -419,13 +423,14 @@ private[services] class SpecRegistry(val datasetDir: File) {
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_last_seen_run_id ON records(last_seen_run_id)")
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_first_seen_run_id ON records(first_seen_run_id)")
       s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_records_last_changed_run_id ON records(last_changed_run_id)")
-      c.commit()
+      // autocommit is on: each DDL statement committed itself
     } finally s.close()
   }
 
   // All writes share one autocommit-off connection; without rollback a
   // failed batch would silently ride along with the next successful commit.
-  private def commitTx[A](body: => A): A =
+  private def commitTx[A](body: => A): A = {
+    conn.setAutoCommit(false)
     try {
       val result = body
       conn.commit()
@@ -435,7 +440,10 @@ private[services] class SpecRegistry(val datasetDir: File) {
         try conn.rollback()
         catch { case re: Exception => logger.warn(s"rollback failed for $dbFile: ${re.getMessage}") }
         throw e
+    } finally {
+      conn.setAutoCommit(true)
     }
+  }
 
   def beginRun(kind: String, trigger: Option[String] = None, plan: Option[String] = None): Long = synchronized {
     commitTx {
