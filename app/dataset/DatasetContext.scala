@@ -43,7 +43,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   private val logger = Logger(getClass)
 
-  val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm")
+  val DATE_FORMAT = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss")
   val rootDir = new File(orgContext.datasetsDir, dsInfo.spec)
 
   val rawDir = new File(rootDir, "raw")
@@ -64,7 +64,19 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   // todo: maybe not put it in raw
   val pocketFile = new File(orgContext.rawDir, s"$dsInfo.xml")
 
-  def createSipFile = new File(orgContext.sipsDir, s"${dsInfo}__${DATE_FORMAT.format(new Date())}.sip.zip")
+  def createSipFile: File = {
+    // Uniqueness guard: two generations inside the old minute-resolution
+    // timestamp collided on the SAME filename — the new build truncated the
+    // prior SIP WHILE copyWithSourceTo was reading it as its reuse source
+    // ("ZipFile invalid LOC header"). Fast manifest-gated generations made
+    // same-minute repeats routine.
+    def candidate(suffix: String) =
+      new File(orgContext.sipsDir, s"${dsInfo}__${DATE_FORMAT.format(new Date())}$suffix.sip.zip")
+    var i = 0
+    var f = candidate("")
+    while (f.exists()) { i += 1; f = candidate(s"_$i") }
+    f
+  }
 
   // Match both timestamped Narthex-generated SIPs (`${spec}__YYYY_..sip.zip`) and
   // bare uploaded SIPs (`${spec}.sip.zip`) — direct file drops and old SIP-Creator
