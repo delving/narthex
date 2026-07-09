@@ -855,10 +855,18 @@ private[services] class SpecRegistry(val datasetDir: File) {
   }
 
   def latestCompletedFullRunId(): Option[Long] = synchronized {
+    // "The run that produced the processed output" — a completed process
+    // stage is REQUIRED. Legacy aux runs (analysis before KIND_TASK existed)
+    // are kind=full but never processed anything; adopting one for the
+    // missing-record sweep tombstoned 2808 live records (observed live).
     val ps = conn.prepareStatement(
-      """SELECT run_id FROM runs
-          WHERE status = ? AND kind = ?
-          ORDER BY run_id DESC LIMIT 1""")
+      """SELECT r.run_id FROM runs r
+          WHERE r.status = ? AND r.kind = ?
+            AND EXISTS (SELECT 1 FROM run_stages s
+                         WHERE s.run_id = r.run_id
+                           AND s.stage = 'process'
+                           AND s.status = 'completed')
+          ORDER BY r.run_id DESC LIMIT 1""")
     try {
       ps.setString(1, RUN_COMPLETED)
       ps.setString(2, KIND_FULL)

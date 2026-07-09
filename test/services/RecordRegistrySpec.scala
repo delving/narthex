@@ -291,15 +291,21 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
   it should "return the latest completed FULL run for manual-save adoption" in {
     registry.latestCompletedFullRunId(spec) shouldBe None   // no db yet
 
-    val full1 = registry.beginRun(spec, KIND_FULL)
-    registry.completeRun(spec, full1)
+    def fullProcessedRun(): Long = {
+      val id = registry.beginRun(spec, KIND_FULL)
+      registry.stageStarted(spec, id, "process")
+      registry.stageCompleted(spec, id, "process")
+      registry.completeRun(spec, id)
+      id
+    }
+    fullProcessedRun()
     val inc = registry.beginRun(spec, KIND_INCREMENT)
     registry.completeRun(spec, inc)
-    val full2 = registry.beginRun(spec, KIND_FULL)
-    registry.completeRun(spec, full2)
+    val full2 = fullProcessedRun()
     val open = registry.beginRun(spec, KIND_FULL)           // still running
 
-    // Latest completed FULL, never the incremental or the open run
+    // Latest completed FULL with a process stage, never the incremental
+    // or the open run
     registry.latestCompletedFullRunId(spec) shouldBe Some(full2)
     registry.runStatus(spec, open) shouldBe Some(RUN_RUNNING)
   }
@@ -553,5 +559,27 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.stageCompleted(spec, again, "process")
     registry.completeRun(spec, again)
     registry.latestRunOutcome(spec).map(_.status) shouldBe Some("completed")
+  }
+  it should "only treat runs with a completed process stage as producing runs" in {
+    // Legacy aux run: kind=full but never processed anything (pre-KIND_TASK
+    // analyze run). Adopting it for the sweep tombstoned live records.
+    val legacyAux = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, legacyAux, "analyze")
+    registry.stageCompleted(spec, legacyAux, "analyze")
+    registry.completeRun(spec, legacyAux)
+    registry.latestCompletedFullRunId(spec) shouldBe None
+
+    val producing = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, producing, "process")
+    registry.stageCompleted(spec, producing, "process")
+    registry.completeRun(spec, producing)
+    registry.latestCompletedFullRunId(spec) shouldBe Some(producing)
+
+    // A newer legacy aux run must not displace the producing run
+    val newerAux = registry.beginRun(spec, KIND_FULL)
+    registry.stageStarted(spec, newerAux, "generate_sip")
+    registry.stageCompleted(spec, newerAux, "generate_sip")
+    registry.completeRun(spec, newerAux)
+    registry.latestCompletedFullRunId(spec) shouldBe Some(producing)
   }
 }
