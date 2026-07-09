@@ -6,10 +6,9 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import play.api.inject.ApplicationLifecycle
 import play.api.Logging
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorSystem
 import harvest.PeriodicHarvest
 import organization.OrgContext
-import mapping.PeriodicSkosifyCheck
 import services.GlobalWorkflowDatabase
 import init.NarthexConfig
 
@@ -43,12 +42,6 @@ class NarthexLifecycle @Inject() (
     1.minute,
     periodicHarvest,
     PeriodicHarvest.ScanForHarvests
-  )
-
-  // This doesn't seem to be used
-  val periodicSkosifyCheck: ActorRef = actorSystem.actorOf(
-    PeriodicSkosifyCheck.props(orgContext),
-    "PeriodicSkosifyCheck"
   )
 
   // Shut-down hook

@@ -55,8 +55,6 @@ POST        /narthex/app/dataset/:spec/upload-processed                      con
 + nocsrf
 POST        /narthex/app/dataset/:spec/set-properties                        controllers.AppController.setDatasetProperties(spec)
 + nocsrf
-POST        /narthex/app/dataset/:spec/toggle-skos                           controllers.AppController.toggleSkosifiedField(spec)
-+ nocsrf
 POST        /narthex/app/dataset/:spec/set-delimiter                         controllers.AppController.setRecordDelimiter(spec)
 GET         /narthex/app/dataset/:spec/index                                 controllers.AppController.index(spec)
 GET         /narthex/app/dataset/:spec/info                                  controllers.AppController.datasetInfo(spec)
@@ -84,33 +82,6 @@ GET         /narthex/app/dataset/:spec/quality-comparison                    con
 GET         /narthex/app/dataset/:spec/records-by-value                      controllers.AppController.recordsByValue(spec, value: String, limit: Int ?= 100)
 GET         /narthex/app/dataset/:spec/record-count-by-value                 controllers.AppController.recordCountByValue(spec, value: String)
 GET         /narthex/app/dataset/:spec/export-problem-records                controllers.AppController.exportProblemRecords(spec, value: String, violationType: String ?= "", format: String ?= "json")
-
-GET         /narthex/app/dataset/:spec/term/vocab                            controllers.AppController.getTermVocabulary(spec)
-GET         /narthex/app/dataset/:spec/term/get-mappings                     controllers.AppController.getTermMappings(spec)
-+ nocsrf
-POST        /narthex/app/dataset/:spec/term/:vocabSpec/toggle-mapping        controllers.AppController.toggleTermMapping(spec, vocabSpec)
-GET         /narthex/app/dataset/:spec/category/get-mappings                 controllers.AppController.getCategoryMappings(spec)
-
-GET         /narthex/app/skos/list                                           controllers.AppController.listVocabularies
-GET         /narthex/app/skos/:spec/create                                   controllers.AppController.createVocabulary(spec)
-GET         /narthex/app/skos/:spec/delete                                   controllers.AppController.deleteVocabulary(spec)
-+ nocsrf
-POST        /narthex/app/skos/:spec/upload                                   controllers.AppController.uploadVocabulary(spec)
-+ nocsrf
-POST        /narthex/app/skos/:spec/set-properties                           controllers.AppController.setVocabularyProperties(spec)
-GET         /narthex/app/skos/:spec/info                                     controllers.AppController.vocabularyInfo(spec)
-GET         /narthex/app/skos/:spec/statistics                               controllers.AppController.vocabularyStatistics(spec)
-GET         /narthex/app/skos/:spec/languages                                controllers.AppController.getVocabularyLanguages(spec)
-GET         /narthex/app/skos/:spec/search/:sought/:language                 controllers.AppController.searchVocabulary(spec, sought, language)
-GET         /narthex/app/skos/:specA/:specB/get-mappings                     controllers.AppController.getSkosMappings(specA, specB)
-+ nocsrf
-POST        /narthex/app/skos/:specA/:specB/toggle-mapping                   controllers.AppController.toggleSkosMapping(specA, specB)
-
-
-GET         /narthex/app/category-list                                       controllers.AppController.getCategoryList
-GET         /narthex/app/sheets-list                                         controllers.AppController.listSheets
-GET         /narthex/app/sheet/:spec                                         controllers.AppController.sheet(spec)
-GET         /narthex/app/categories/gather-counts                            controllers.AppController.gatherCategoryCounts
 
 # Rec-Def (Record Definition) for mapping editor
 GET         /narthex/app/rec-def/:prefix                                     controllers.AppController.getRecDef(prefix)

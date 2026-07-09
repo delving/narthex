@@ -46,6 +46,10 @@ object FusekiMigration {
       logger.info("datasets.db populated — Fuseki migration not needed")
       return
     }
+    if (orgContext.narthexConfig.tripleStoreUrl.isEmpty) {
+      logger.info("no triple-store configured — starting with an empty dataset registry (migration slice inert)")
+      return
+    }
     logger.info("datasets.db is EMPTY — one-shot migration from Fuseki starting")
     val prefix = orgContext.appConfig.nxUriPrefix
     val specs =

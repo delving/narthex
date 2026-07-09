@@ -18,9 +18,7 @@ package organization
 
 import akka.actor._
 import dataset.DatasetActor._
-import mapping.CategoriesSpreadsheet.CategoryCount
 import record.SourceProcessor.AdoptSource
-import mapping.CategoryCounter.CategoryCountComplete
 import organization.OrgActor._
 import play.api.libs.json._
 
@@ -37,8 +35,6 @@ import scala.util.{Success, Failure}
 object OrgActor {
 
   case class DatasetMessage(spec: String, message: AnyRef)
-
-  case class DatasetsCountCategories(datasets: Seq[String])
 
   case object GetActiveDatasets
 
@@ -103,8 +99,6 @@ class OrgActor (
 ) extends Actor with ActorLogging {
 
   val harvestingExecutionContext = actorSystem.dispatchers.lookup("contexts.dataset-harvesting-execution-context")
-
-  var results = Map.empty[String, Option[List[CategoryCount]]]
 
   // Track which datasets are currently active (not in Idle state)
   var activeDatasets = Set.empty[String]
@@ -313,7 +307,7 @@ class OrgActor (
     case _: AdoptSource => true  // File uploads need semaphore control
     case Command(cmd) =>
       // Only heavy operations need semaphore control
-      // Analysis, skosification, and category counting are quick local operations
+      // Analysis is a quick local operation
       val heavyCommands = Set(
         "start sample harvest",
         "start first harvest",
@@ -363,19 +357,6 @@ class OrgActor (
     case EnqueueOperation(spec, message, trigger) =>
       // Explicit queue request with specific trigger type
       enqueueOrExecute(spec, message, trigger)
-
-    case DatasetsCountCategories(datasets) =>
-      results = datasets.map(name => (name, None)).toMap
-      datasets.foreach(name => self ! DatasetMessage(name, StartCategoryCounting))
-
-    case CategoryCountComplete(dataset, categoryCounts) =>
-      results += dataset -> Some(categoryCounts)
-      log.info(s"Category counting complete, counts: $results")
-      val finishedCountLists = results.values.flatten.toList
-      if (finishedCountLists.size == results.size) {
-        orgContext.categoriesRepo.createSheet(finishedCountLists.flatten)
-        results = Map.empty[String, Option[List[CategoryCount]]]
-      }
 
     case DatasetBecameActive(spec) =>
       log.info(s"Dataset $spec became active")

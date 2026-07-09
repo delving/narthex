@@ -22,7 +22,6 @@ import com.github.luben.zstd.ZstdInputStream
 
 import dataset.SourceRepo.{IdFilter, VERBATIM_FILTER}
 import harvest.Harvesting.{HarvestCron, HarvestType}
-import mapping.{SkosVocabulary, TermMappingStore, VocabInfo}
 import organization.OrgActor.DatasetMessage
 import org.apache.jena.rdf.model._
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
@@ -36,7 +35,7 @@ import services.Temporal._
 import services.TrendTrackingService
 import triplestore.GraphProperties._
 import triplestore.Sparql._
-import triplestore.{GraphProperties, SkosGraph, TripleStore}
+import triplestore.{GraphProperties, TripleStore}
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent._
@@ -615,9 +614,6 @@ object DsInfo {
   def getGraphName(spec: String, uriPrefix: String) =
     createGraphName(getDsInfoUri(spec, uriPrefix))
 
-  def getSkosGraphName(datasetUri: String) =
-    createGraphName(s"$datasetUri/skos")
-
   def createDsInfo(spec: String,
                    character: DsCharacter,
                    mapToPrefix: String,
@@ -676,8 +672,7 @@ class DsInfo(
     val naveApiAuthToken: String,
     val naveApiUrl: String,
     val orgContext: OrgContext,
-    val mockBulkApi: Boolean)(implicit ec: ExecutionContext, ts: TripleStore)
-    extends SkosGraph {
+    val mockBulkApi: Boolean)(implicit ec: ExecutionContext, ts: TripleStore) {
 
   import dataset.DsInfo._
 
@@ -688,10 +683,6 @@ class DsInfo(
   val uri = getDsInfoUri(spec, nxUriPrefix)
 
   val graphName = getGraphName(spec, nxUriPrefix)
-
-  val skosified = true
-
-  val skosGraphName = getSkosGraphName(uri)
 
   // Phase D2: props live in datasets.db — no Jena model, no existence caching.
 
@@ -883,15 +874,6 @@ class DsInfo(
     }
     removeLiteralProp(datasetRecordsInSync)
     setSingularLiteralProps(datasetRecordsInSync -> syncState)
-  }
-
-  def setProxyResourcesSync(state: Boolean = false) = {
-    val syncState = state match {
-      case true  => "true"
-      case false => "false"
-    }
-    removeLiteralProp(datasetResourcePropertiesInSync)
-    setSingularLiteralProps(datasetResourcePropertiesInSync -> syncState)
   }
 
   def removeState(state: DsState.Value) =
@@ -1233,26 +1215,6 @@ class DsInfo(
     edmType -> metadata.edmType
   )
 
-  def toggleNaveSkosField(datasetUri: String,
-                          propertyUri: String,
-                          delete: Boolean = false) = {
-
-    val skosFieldApi = s"${naveApiUrl}/api/index/narthex/toggle/proxyfield/"
-    val request = orgContext.wsApi
-      .url(s"$skosFieldApi")
-      .withHttpHeaders(
-        "Content-Type" -> "application/json; charset=utf-8",
-        "Accept" -> "application/json",
-        "Authorization" -> s"Token ${naveApiAuthToken}"
-      )
-    val json = Json.obj(
-      "dataset_uri" -> datasetUri,
-      "property_uri" -> propertyUri,
-      "delete" -> delete
-    )
-    request.post(json) // .map(checkUpdateResponse(_, json))
-  }
-
   def hasPreviousTime() = getLiteralProp(harvestPreviousTime).getOrElse("") != ""
 
   def getPreviousHarvestTime() = {
@@ -1300,28 +1262,12 @@ class DsInfo(
     }
   }
 
-  def termCategoryMap(
-      categoryVocabularyInfo: VocabInfo): Map[String, List[String]] = {
-    val mappingStore = new TermMappingStore(this, orgContext, orgContext.wsApi)
-    val mappings =
-      Await.result(mappingStore.getMappings(categories = true), 1.minute)
-    val uriLabelMap = categoryVocabularyInfo.vocabulary.uriLabelMap
-    val termUriLabels = mappings.flatMap { mapping =>
-      val termUri = mapping.head
-      val categoryUri = mapping(1)
-      uriLabelMap.get(categoryUri).map(label => (termUri, label))
-    }
-    termUriLabels.groupBy(_._1).map(group => group._1 -> group._2.map(_._2))
-  }
-
   // for actors
 
   def createMessage(payload: AnyRef) = DatasetMessage(spec, payload)
 
   def toTurtle: String =
     orgContext.datasetsDb.props(spec).map { case (k, v) => s"# $k: $v" }.mkString("\n")
-
-  lazy val vocabulary = new SkosVocabulary(spec, skosGraphName)
 
   def orUnknown(nxProp: NXProp) = getLiteralProp(nxProp).getOrElse("Unknown")
 

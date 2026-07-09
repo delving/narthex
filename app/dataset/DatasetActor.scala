@@ -31,9 +31,6 @@ import harvest.Harvester
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestJSON, HarvestPMH, HarvestDownloadLink}
 import harvest.Harvesting.{JsonHarvestConfig, HarvestType}
 import harvest.Harvesting.HarvestType._
-import mapping.CategoryCounter.{CategoryCountComplete, CountCategories}
-import mapping.Skosifier.SkosificationComplete
-import mapping.{CategoryCounter, Skosifier}
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
 import organization.WorkflowPersistenceActor._
@@ -48,7 +45,6 @@ import services.ProgressReporter.ProgressType._
 import services.ProgressReporter.{ProgressState, ProgressType}
 import services.{ActivityLogger, CredentialEncryption, MailService, ProgressReporter, RecordRegistry, TrendTrackingService}
 import triplestore.GraphProperties._
-import triplestore.Sparql.SkosifiedField
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
@@ -76,10 +72,6 @@ object DatasetActor {
   case object Processing extends DatasetActorState
 
   case object Saving extends DatasetActorState
-
-  case object Skosifying extends DatasetActorState
-
-  case object Categorizing extends DatasetActorState
 
   trait DatasetActorData
 
@@ -157,10 +149,6 @@ object DatasetActor {
   case class StartProcessing(scheduledOpt: Option[Scheduled])
 
   case class StartSaving(scheduledOpt: Option[Scheduled])
-
-  case class StartSkosification(skosifiedField: SkosifiedField)
-
-  case object StartCategoryCounting
 
   /** Save+reconcile finished (Phase A3c-3: emitted by the engine for GraphsSaved). */
   case object GraphSaveComplete
@@ -433,7 +421,7 @@ class DatasetActor(val datasetContext: DatasetContext,
   private def ensureWorkflowTracking(trigger: String): String = {
     currentWorkflowId.getOrElse {
       val workflowId = java.util.UUID.randomUUID().toString
-      val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving", "Skosifying", "Categorizing")
+      val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving")
       orgContext.workflowActor ! Started(
         spec = dsInfo.spec,
         trigger = trigger,
@@ -685,10 +673,6 @@ class DatasetActor(val datasetContext: DatasetContext,
                 s"Dataset not ready for fast process (current state: $currentState)"
             }
 
-          case "start skosification" =>
-            self ! StartSkosification
-            "skosification started"
-
           case "refresh" =>
             log.info("refresh")
             // Invalidate cached model to ensure fresh data is read from triplestore
@@ -717,8 +701,6 @@ class DatasetActor(val datasetContext: DatasetContext,
             val rows = orgContext.recordRegistry.resetSentState(dsInfo.spec)
             log.info(s"Registry sync state reset for ${dsInfo.spec}: $rows rows")
             s"registry sync reset for $rows records; next save re-sends everything"
-
-          // todo: category counting?
 
           case "clear error" =>
             log.info(s"Clearing stale error for ${dsInfo.spec}")
@@ -881,32 +863,6 @@ class DatasetActor(val datasetContext: DatasetContext,
         orgContext.narthexConfig.registryEnabled,
         orgContext.narthexConfig.registryKeepRevisionSweep))))
       goto(Saving) using Active(dsInfo.spec, None, SAVING)
-
-    case Event(StartSkosification(skosifiedField), Dormant) =>
-      // Auto-enable: remove disabled state when starting any workflow
-      dsInfo.removeState(DISABLED)
-      val skosifier = createChildActor(
-        Skosifier.props(dsInfo, orgContext), "skosifier")
-      skosifier ! skosifiedField
-      goto(Skosifying) using Active(dsInfo.spec, Some(skosifier), SKOSIFYING)
-
-    case Event(StartCategoryCounting, Dormant) =>
-      // Auto-enable: remove disabled state when starting any workflow
-      dsInfo.removeState(DISABLED)
-      if (datasetContext.processedRepo.nonEmpty) {
-        implicit val ts = orgContext.ts
-        val categoryCounter = createChildActor(
-          CategoryCounter.props(dsInfo,
-                               datasetContext.processedRepo,
-                               orgContext),
-                          "category-counter")
-        categoryCounter ! CountCategories
-        goto(Categorizing) using Active(dsInfo.spec,
-                                        Some(categoryCounter),
-                                        CATEGORIZING)
-      } else {
-        stay() using InError(s"No source file for categorizing $datasetContext")
-      }
 
   }
 
@@ -1341,27 +1297,6 @@ class DatasetActor(val datasetContext: DatasetContext,
 
   }
 
-  when(Skosifying) {
-
-    case Event(SkosificationComplete(skosifiedField), active: Active) =>
-      log.info(s"Skosification complete: $skosifiedField")
-      dsInfo.setProxyResourcesSync(false)
-      dsInfo.setRecordsSync(false)
-      active.childOpt.foreach(_ ! PoisonPill)
-      goto(Idle) using Dormant
-
-  }
-
-  when(Categorizing) {
-
-    case Event(CategoryCountComplete(spec, categoryCounts), active: Active) =>
-      log.info(s"Category counting complete: $spec")
-      context.parent ! CategoryCountComplete(spec, categoryCounts)
-      active.childOpt.foreach(_ ! PoisonPill)
-      goto(Idle) using Dormant
-
-  }
-
   // Handlers for InRetry state
   when(Idle) {
 
@@ -1544,11 +1479,6 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       // Broadcast updated state to WebSocket clients
       broadcastIdleState()
-      stay()
-
-    // this is because PeriodicSkosifyCheck may send multiple for us.  he'll be back
-    case Event(StartSkosification(skosifiedField), active: Active) =>
-      log.info(s"Ignoring skosification work for now: $skosifiedField")
       stay()
 
     case Event(tick: ProgressTick, active: Active) =>

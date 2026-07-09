@@ -168,8 +168,11 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(List())
   logger.info(s"emailReportsTo: ${emailReportsTo.asJava}")
 
-  def tripleStoreUrl: String = configStringNoSlash("triple-store")
-  logger.info(s"triple-store: $tripleStoreUrl")
+  // Phase D4: optional — only the one-shot Fuseki migration reads it.
+  // Absent (post-migration servers) => migration skips silently.
+  def tripleStoreUrl: String =
+    configuration.getOptional[String]("triple-store").map(_.replaceAll("\\/$", "")).getOrElse("")
+  logger.info(s"triple-store: ${if (tripleStoreUrl.isEmpty) "(not configured — migration slice inert)" else tripleStoreUrl}")
   def tripleStoreLog = configFlag("triple-store-log")
   logger.info(s"triple-store-log: $tripleStoreLog")
   def sparqlQueryPath: String = configStringNoSlash("sparql-query-path")

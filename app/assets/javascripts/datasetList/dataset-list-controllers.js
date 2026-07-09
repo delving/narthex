@@ -1837,9 +1837,6 @@ define(["angular"], function () {
             window.open($scope.sparqlPath, "_blank")
         };
 
-        $scope.goToTerms = function () {
-            $location.path("/terms/" + $scope.dataset.datasetSpec);
-        };
 
         $scope.goToCategories = function () {
             $location.path("/categories/" + $scope.dataset.datasetSpec);
@@ -2517,9 +2514,6 @@ define(["angular"], function () {
                     else {
                         $location.path('/');
                     }
-                    break;
-                case 'skos':
-                    $location.path('/skos');
                     break;
                 case 'stats':
                     $location.path('/stats');

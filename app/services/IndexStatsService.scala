@@ -22,7 +22,6 @@ import play.api.Logging
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import triplestore.TripleStore
-import triplestore.Sparql.selectIndexStatsQ
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -171,53 +170,27 @@ class IndexStatsService @Inject()(
       }
   }
 
-  /**
-   * Fetch dataset metadata from SPARQL triplestore
-   * @return List of dataset stats from Narthex
-   */
-  def fetchNarthexDatasets(): Future[List[DatasetIndexStats]] = {
-    ts.query(selectIndexStatsQ).map { results =>
-      results.map { row =>
-        // Parse state timestamps to detect "stale disabled" datasets
-        // A dataset is considered re-enabled if any workflow state is >1 day newer than stateDisabled
-        val stateDisabledOpt = row.get("stateDisabled").map(_.text).filter(_.nonEmpty)
-        val stateSavedOpt = row.get("stateSaved").map(_.text).filter(_.nonEmpty)
-        val stateProcessedOpt = row.get("stateProcessed").map(_.text).filter(_.nonEmpty)
-        val stateAnalyzedOpt = row.get("stateAnalyzed").map(_.text).filter(_.nonEmpty)
-        val stateIncrementalSavedOpt = row.get("stateIncrementalSaved").map(_.text).filter(_.nonEmpty)
+  // Phase D4: dataset metadata from datasets.db (its own connection —
+  // OrgContext injects this service, so no circular DI).
+  private lazy val datasetsDb = new DatasetsDb(
+    new java.io.File(narthexConfig.narthexDataDir, narthexConfig.orgId))
 
-        val isDisabled = stateDisabledOpt.exists { disabledTime =>
-          val disabledMillis = parseTimestamp(disabledTime)
-          val oneDayMs = 24 * 60 * 60 * 1000L
-
-          // Check if any other state is >1 day newer than disabled
-          val otherStates = List(stateSavedOpt, stateProcessedOpt, stateAnalyzedOpt, stateIncrementalSavedOpt).flatten
-          val isStaleDisabled = otherStates.exists { stateTime =>
-            parseTimestamp(stateTime) > (disabledMillis + oneDayMs)
-          }
-
-          !isStaleDisabled  // Only disabled if NOT stale
-        }
-
-        DatasetIndexStats(
-          spec = row("spec").text,
-          recordCount = row.get("recordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          processedValid = row.get("processedValid").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          processedInvalid = row.get("processedInvalid").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          // Acquisition tracking fields
-          acquiredRecordCount = row.get("acquiredRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          deletedRecordCount = row.get("deletedRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          sourceRecordCount = row.get("sourceRecordCount").flatMap(v => scala.util.Try(v.text.toInt).toOption),
-          acquisitionMethod = row.get("acquisitionMethod").map(_.text),
-          indexCount = 0, // Will be filled in later
-          deleted = row.get("deleted").exists(_.text == "true"),
-          disabled = isDisabled
-        )
-      }
-    }.recover {
-      case e: Exception =>
-        logger.error(s"Failed to fetch Narthex datasets: ${e.getMessage}", e)
-        List.empty
+  def fetchNarthexDatasets(): Future[List[DatasetIndexStats]] = Future.successful {
+    datasetsDb.allProps().toList.sortBy(_._1).map { case (spec, p) =>
+      def i(k: String): Option[Int] = p.get(k).flatMap(v => scala.util.Try(v.toInt).toOption)
+      DatasetIndexStats(
+        spec = spec,
+        recordCount = i("datasetRecordCount"),
+        processedValid = i("processedValid"),
+        processedInvalid = i("processedInvalid"),
+        acquiredRecordCount = i("acquiredRecordCount"),
+        deletedRecordCount = i("deletedRecordCount"),
+        sourceRecordCount = i("sourceRecordCount"),
+        acquisitionMethod = p.get("acquisitionMethod"),
+        indexCount = 0, // Will be filled in later
+        deleted = p.get("deleted").contains("true"),
+        disabled = p.contains("stateDisabled")
+      )
     }
   }
 

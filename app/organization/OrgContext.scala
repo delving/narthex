@@ -27,8 +27,6 @@ import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import init.NarthexConfig
-import mapping._
-import organization.OrgActor.DatasetsCountCategories
 import organization.WorkflowPersistenceActor
 import play.api.cache.SyncCacheApi
 import play.api.libs.ws.WSClient
@@ -61,7 +59,6 @@ class OrgContext @Inject() (
   val root = narthexConfig.narthexDataDir
   val orgRoot = new File(root, narthexConfig.orgId)
   val factoryDir = new File(orgRoot, "factory")
-  val categoriesDir = new File(orgRoot, "categories")
   val datasetsDir = new File(orgRoot, "datasets")
   val rawDir = new File(orgRoot, "raw")
   val sipsDir = new File(orgRoot, "sips")
@@ -72,7 +69,6 @@ class OrgContext @Inject() (
   lazy val datasetsDb = new services.DatasetsDb(orgRoot)
   val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
 
-  lazy val categoriesRepo = new CategoriesRepo(categoriesDir, narthexConfig.orgId)
   lazy val sipFactory = new SipFactory(factoryDir, orgRoot, narthexConfig.rdfBaseUrl, wsApi, narthexConfig.orgId)
 
   orgRoot.mkdirs()
@@ -238,21 +234,6 @@ class OrgContext @Inject() (
 
   def datasetContext(spec: String): DatasetContext = withDsInfo(spec, this)(dsInfo => new DatasetContext(this, dsInfo))
 
-  def vocabMappingStore(specA: String, specB: String): VocabMappingStore = {
-    val futureStore = for {
-      infoA <- VocabInfo.freshVocabInfo(specA, this)
-      infoB <- VocabInfo.freshVocabInfo(specB, this)
-    } yield (infoA, infoB) match {
-        case (Some(a), Some(b)) => new VocabMappingStore(a, b, this)
-        case _ => throw new RuntimeException(s"No vocabulary mapping found for $specA, $specB")
-      }
-    Await.result(futureStore, 15.seconds)
-  }
-
-  def termMappingStore(spec: String): TermMappingStore = {
-    withDsInfo(spec, this)(dsInfo => new TermMappingStore(dsInfo, this, this.wsApi))
-  }
-
   // Group by dataset and keep newest per group so the sip-app listing never shows
   // two SIPs for the same dataset (timestamped Narthex-generated form vs bare
   // direct-drop / legacy SIP-Creator upload form).
@@ -290,13 +271,6 @@ class OrgContext @Inject() (
   )
 
   def workflowActor: ActorRef = workflowActorRef
-
-  def startCategoryCounts() = {
-    val catDatasets = DsInfo.listDsInfo(this).map(_.filter(_.getBooleanProp(categoriesInclude)))
-    catDatasets.map { dsList =>
-      orgActorRef ! DatasetsCountCategories(dsList.map(_.spec))
-    }
-  }
 
   def appConfig: NarthexConfig = narthexConfig
 
