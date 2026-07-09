@@ -50,6 +50,10 @@ object DatasetStatusProjector {
 
   private val logger = play.api.Logger(getClass)
 
+  // spec -> (latest sip zip mtime, target prefix, processable-at millis)
+  private val zipProcessableCache =
+    new java.util.concurrent.ConcurrentHashMap[String, (Long, String, Option[Long])]()
+
   case class ProjectedStatus(
     raw: Option[DateTime],
     rawAnalyzed: Option[DateTime],
@@ -183,15 +187,26 @@ object DatasetStatusProjector {
       folderMapping.orElse {
         // sipMappingOpt parses the zip's mapping and THROWS on one that does
         // not resolve against its rec-def — one broken dataset must not take
-        // down the whole list projection.
-        scala.util.Try {
-          new SipRepo(orgContext.sipsDir, spec, orgContext.appConfig.rdfBaseUrl).latestSipOpt
-            .filter(_.sipMappingOpt.map(_.prefix).contains(targetPrefix))
-            .map(sip => new DateTime(sip.file.lastModified()))
-        }.recover { case e =>
-          logger.warn(s"Projector: unreadable zip mapping for $spec — not processable: ${e.getMessage}")
-          None
-        }.get
+        // down the whole list projection. The result is cached per zip
+        // mtime: this runs on every list render/websocket push, and a
+        // broken zip would otherwise be re-parsed (and re-warned, 5k+/day)
+        // each time.
+        val zipMtime = sipFiles.map(_.lastModified()).foldLeft(0L)(math.max)
+        val cached = zipProcessableCache.get(spec)
+        if (cached != null && cached._1 == zipMtime && cached._2 == targetPrefix) {
+          cached._3.map(new DateTime(_))
+        } else {
+          val computed = scala.util.Try {
+            new SipRepo(orgContext.sipsDir, spec, orgContext.appConfig.rdfBaseUrl).latestSipOpt
+              .filter(_.sipMappingOpt.map(_.prefix).contains(targetPrefix))
+              .map(sip => new DateTime(sip.file.lastModified()))
+          }.recover { case e =>
+            logger.warn(s"Projector: unreadable zip mapping for $spec — not processable: ${e.getMessage}")
+            None
+          }.get
+          zipProcessableCache.put(spec, (zipMtime, targetPrefix, computed.map(_.getMillis)))
+          computed
+        }
       }
     }
 

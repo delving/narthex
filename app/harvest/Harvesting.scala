@@ -76,8 +76,12 @@ object Harvesting {
     def isLast = current + pageItems >= totalItems
 
     def percentComplete: Int = {
-      val pc = (100 * current) / totalItems
-      if (pc < 1) 1 else pc
+      // AdLib can report totalItems=0 (empty search / server hiccup)
+      if (totalItems <= 0) 1
+      else {
+        val pc = (100 * current) / totalItems
+        if (pc < 1) 1 else pc
+      }
     }
   }
 

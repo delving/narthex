@@ -109,6 +109,10 @@
   define('moment', [], function () { return undefined; });
 
   requirejs.onError = function (err) {
+    // Chart.js probes for 'moment' synchronously before our stub loads;
+    // the app works regardless — this specific notloaded is known-benign
+    // noise that has repeatedly misled debugging sessions.
+    if (String(err).indexOf('"moment"') >= 0) return;
     console.log(err);
   };
 

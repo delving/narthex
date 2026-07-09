@@ -892,8 +892,15 @@ class DsInfo(
     getLiteralProp(prop).exists(_ == "true")
 
   def setSingularLiteralProps(propVals: (NXProp, String)*): Unit = {
+    // A null value NPEs deep in the SPARQL escaper and takes the whole
+    // pipeline step down (seen live from a harvest completion). Drop it,
+    // name the prop, keep the rest of the update.
+    val (nullVals, validVals) = propVals.partition(_._2 == null)
+    nullVals.foreach { case (prop, _) =>
+      logger.warn(s"setSingularLiteralProps: ignoring NULL value for '${prop.name}' on $spec — caller bug worth chasing")
+    }
     val sparqlPerPropQ =
-      propVals.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2)).toList
+      validVals.map(pv => updatePropertyQ(graphName, uri, pv._1, pv._2)).toList
     val withSynced = updateSyncedFalseQ(graphName, uri) :: sparqlPerPropQ
     val sparql = withSynced.mkString(";\n")
     val futureUpdate = ts.up.sparqlUpdate(sparql)
