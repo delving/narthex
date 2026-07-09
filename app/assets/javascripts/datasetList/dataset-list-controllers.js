@@ -531,6 +531,29 @@ define(["angular"], function () {
          * affordance function offers the action. Tolerant of payloads from
          * before C1 (no actions field -> old behavior, button shows).
          */
+        /**
+         * A state block is shown only up to the current pipeline position:
+         * during a run that's the running stage's output, otherwise the
+         * lastStep. Downstream blocks describe artifacts about to be
+         * superseded (or stale) and would offer nothing actionable.
+         */
+        var stepRank = {raw: 0, raw_analyzed: 1, sourced: 2, source_analyzed: 3, sip: 4,
+            mapping: 5, processed: 6, analyzed: 7, saved: 8, incremental_saved: 8};
+        var blockRank = {stateRaw: 0, stateRawAnalyzed: 1, stateSourced: 2, stateSourceAnalyzed: 3,
+            stateMappable: 4, stateProcessable: 5, stateProcessed: 6, stateAnalyzed: 7,
+            stateSaved: 8, stateIncrementalSaved: 8};
+        var stageRank = {harvest: 2, generate_sip: 4, process: 6, analyze: 7, save: 8, reconcile: 8};
+        $scope.showBlock = function (dataset, blockName) {
+            if (!dataset[blockName]) return false;
+            var pos;
+            if ((dataset.phase === 'running' || dataset.isActive) && dataset.run && dataset.run.stage) {
+                pos = stageRank[dataset.run.stage];
+            }
+            if (pos === undefined && dataset.lastStep) pos = stepRank[dataset.lastStep];
+            if (pos === undefined) return true; // no info: old behavior
+            return blockRank[blockName] <= pos;
+        };
+
         $scope.hasAction = function (dataset, action) {
             // While a run is active or queued, only cancel makes sense —
             // covers the window where the actions array is stale.

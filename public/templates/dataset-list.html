@@ -453,7 +453,7 @@
                     data-ng-class="{ 'closed': !expanded, 'expanded': expanded }">
                     <div class="dataset-states col-md-3">
                         <ul class="list-group states">
-                            <li data-ng-show="dataset.stateRaw" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateRaw')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateRaw') }">
                                 <h4 class="list-group-item-heading">
                                     Raw
@@ -467,7 +467,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateRawAnalyzed" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateRawAnalyzed')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateRawAnalyzed') }">
                                 <h4 class="list-group-item-heading">
                                     Raw Analyzed
@@ -501,7 +501,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateSourced" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateSourced')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateSourced') }">
                                 <h4 class="list-group-item-heading">
                                     Sourced
@@ -523,7 +523,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateSourceAnalyzed" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateSourceAnalyzed')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateSourceAnalyzed') }">
                                 <h4 class="list-group-item-heading">
                                     Source Analyzed
@@ -541,7 +541,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateMappable" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateMappable')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateMappable') }">
                                 <h4 class="list-group-item-heading">
                                     Mappable
@@ -555,7 +555,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateProcessable" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateProcessable')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateProcessable') }">
                                 <h4 class="list-group-item-heading">
                                     Processable
@@ -573,7 +573,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateIncrementalSaved && dataset.harvestIncrementalMode"
+                            <li data-ng-show="showBlock(dataset, 'stateIncrementalSaved') && dataset.harvestIncrementalMode"
                                 class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateIncrementalSaved') }">
                                 <h4 class="list-group-item-heading">
@@ -590,7 +590,7 @@
                                 </div>
                             </li>
                             <!-- todo add incremental mode back && !dataset.harvestIncrementalMode   -->
-                            <li data-ng-show="dataset.stateProcessed" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateProcessed')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateProcessed') }">
                                 <h4 class="list-group-item-heading">
                                     Processed
@@ -608,7 +608,7 @@
                                     </a>
                                 </div>
                             </li>
-                            <li data-ng-show="dataset.stateAnalyzed " class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateAnalyzed')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateAnalyzed') }">
                                 <h4 class="list-group-item-heading">
                                     Analyzed
@@ -640,7 +640,7 @@
                                 </div>
                             </li>
                             <!--todo: hide this when bulk is enabled -->
-                            <li data-ng-show="dataset.stateSaved" class="ds-state list-group-item"
+                            <li data-ng-show="showBlock(dataset, 'stateSaved')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateSaved') }">
                                 <h4 class="list-group-item-heading">
                                     Saved
