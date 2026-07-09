@@ -437,6 +437,18 @@ graph → INSERT rows; seed a synthetic baseline run in records.db for
 datasets with prior stateSaved but no registry history (honest saved
 status from day one); then Fuseki is never read again.
 
+### D1 decisions (2026-07-10, with Sjoerd)
+
+1. **Δ badge = registry diffs**: added(+) / changed(~, content-hash
+   differs) / deleted(−) of the last incremental run — one vocabulary
+   across badge, runs table and trends.
+2. **24h trend split**: source-side from registry dailyRunDiffs;
+   indexed-side keeps the nightly Hub3 snapshot (Hub3 has no history API).
+3. **Migration seeds baseline runs** for datasets with prior stateSaved
+   but no registry history.
+4. **Single-dataset endpoint flattened** to plain JSON — the last
+   JSON-LD/getModel consumer dies.
+
 ### Phasing
 
 - **D2 — datasets.db + DsInfo strangler.** Table + row-backed prop
