@@ -75,14 +75,6 @@ define(["angular", "common"], function (angular) {
                         rejection
                     );
                 },
-                toggleSkosifiedField: function (spec, payload) {
-                    return app.toggleSkosifiedField(spec).post(payload).then(
-                        function (response) {
-                            return response.data.action;
-                        },
-                        rejection
-                    );
-                },
                 sample: function (spec, path, size) {
                     return app.sample(spec, path, size).get().then(
                         function (response) {

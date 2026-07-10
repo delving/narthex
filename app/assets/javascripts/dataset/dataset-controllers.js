@@ -177,7 +177,6 @@ define(["angular"], function () {
                         var recordContainerLength = $scope.recordRoot.lastIndexOf('/');
                         var sourcePathExtension = node.path.substring(recordContainerLength);
                         node.sourcePath = SOURCE_URI_PREFIX + sourcePathExtension;
-//                      node.uri = checkSkosField(node.uri);
                     }
                     for (var index = 0; index < node.kids.length; index++) {
                         setDelimiterNodes(node.kids[index]);
@@ -220,20 +219,6 @@ define(["angular"], function () {
         }
 
         fetchInfo(fetchTree);
-
-        $scope.toggleSkosifiedField = function(uri, tag, included) {
-            var path = $scope.selectedNode ? $scope.selectedNode.path : $routeParams.path;
-            var payload = {
-                "histogramPath": path,
-                "skosFieldTag": tag,
-                "skosFieldUri": uri,
-                "included": included
-            };
-            datasetService.toggleSkosifiedField($scope.spec, payload).then(function(reply) {
-                fetchInfo($scope.fetchHistogram);
-                console.log("toggle reply: "+ reply);
-            });
-        };
 
         $scope.goToPage = function (page) {
             $location.path("/" + page + "/" + $scope.spec);
@@ -492,16 +477,6 @@ define(["angular"], function () {
             return baseUrl + params;
         };
 
-        function checkSkosField(uri) {
-            if (!$scope.info) return false;
-            if (_.isArray($scope.info.skosField)) {
-                return _.indexOf($scope.info.skosField, uri) >= 0;
-            }
-            else {
-                return $scope.info.skosField == uri;
-            }
-        }
-
         function isHistogramUniqueEnough(histogram, uniqueCount) {
             if (!histogram[0]) return false;
             var firstChunk = uniqueCount / 20; // 5%
@@ -522,7 +497,6 @@ define(["angular"], function () {
                 $scope.sample = undefined;
                 $scope.histogramUniqueEnough = isHistogramUniqueEnough(data.histogram, $scope.status.uniqueCount);
                 $scope.histogramVocabulary = (!$scope.histogramUnique) && ($scope.status.uniqueCount < MAX_FOR_VOCABULARY);
-                $scope.histogramSkosField = checkSkosField($scope.histogram.tag + "=" +$scope.histogram.uri);
             });
             setActiveView("histogram");
         };

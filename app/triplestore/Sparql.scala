@@ -35,18 +35,6 @@ object Sparql {
 
   private def escape(value: String): String = value.map(c => SPARQL_ESCAPE.getOrElse(c, c.toString)).mkString
 
-  // todo: the following is a way to make the string interpolation type-aware
-  implicit class QueryStringContext(stringContext: StringContext) {
-    def Q(args: Any*) = stringContext.s(args.map {
-      case nxProp: NXProp => "<" + nxProp.uri + ">"
-      case string: String => "'" + escape(string) + "'"
-        // todo: other cases
-    })
-  }
-  val x = "4"
-  val y = Q"gumby $x"
-  // todo: ---------------------------------------
-
   private def literalExpression(value: String, languageOpt: Option[String]) = languageOpt.map { language =>
     s"'${escape(value)}'@$language"
   } getOrElse {

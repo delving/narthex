@@ -166,19 +166,6 @@ class AppController @Inject() (
   }
 
   /**
-   * Get index statistics comparing Narthex datasets with Hub3 search index
-   */
-  def indexStats = Action.async { request =>
-    indexStatsService.getIndexStats().map { stats =>
-      Ok(Json.toJson(stats))
-    }.recover {
-      case e: Exception =>
-        logger.error(s"Failed to fetch index stats: ${e.getMessage}", e)
-        InternalServerError(Json.obj("error" -> "Failed to fetch index statistics"))
-    }
-  }
-
-  /**
    * Lightweight endpoint to get counts of datasets with index issues.
    * Used for polling to show badge on Index Stats button.
    */
@@ -1886,36 +1873,6 @@ $nodeMappingsXml
   }
 
   // ====== Mapping Editor Preview Endpoints =====
-
-  /**
-   * Get sample records for the mapping editor preview.
-   * Returns records as XML strings suitable for preview display.
-   */
-  def previewSampleRecords(spec: String, count: Int) = Action { request =>
-    val datasetContext = orgContext.datasetContext(spec)
-
-    datasetContext.sourceRepoOpt match {
-      case None =>
-        NotFound(Json.obj("error" -> "No source repository found for dataset"))
-      case Some(sourceRepo) =>
-        val idFilter = datasetContext.dsInfo.getIdFilter
-        val samplePockets = sourceRepo.getSampleRecords(count, idFilter)
-
-        val records = samplePockets.zipWithIndex.map { case (pocket, index) =>
-          Json.obj(
-            "index" -> index,
-            "id" -> pocket.id,
-            "xml" -> pocket.text
-          )
-        }
-
-        Ok(Json.obj(
-          "spec" -> spec,
-          "totalRecords" -> samplePockets.size,
-          "records" -> Json.toJson(records)
-        ))
-    }
-  }
 
   /**
    * Execute mapping on a sample record and return the transformed output.

@@ -33,7 +33,6 @@ import harvest.Harvesting.{JsonHarvestConfig, HarvestType}
 import harvest.Harvesting.HarvestType._
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
-import organization.WorkflowPersistenceActor._
 import org.apache.commons.io.FileUtils._
 import org.joda.time.DateTime
 import play.api.Logger
@@ -421,13 +420,6 @@ class DatasetActor(val datasetContext: DatasetContext,
   private def ensureWorkflowTracking(trigger: String): String = {
     currentWorkflowId.getOrElse {
       val workflowId = java.util.UUID.randomUUID().toString
-      val steps = List("Harvesting", "Analyzing", "Generating", "Processing", "Saving")
-      orgContext.workflowActor ! Started(
-        spec = dsInfo.spec,
-        trigger = trigger,
-        steps = steps,
-        workflowId = workflowId
-      )
       currentWorkflowId = Some(workflowId)
       workflowId
     }

@@ -1133,31 +1133,6 @@
             >
                 <ul class="list-group">
                     <li
-                        data-ng-show="!histogramSkosField"
-                        class="list-group-item"
-                    >
-                        <!-- Skosify button -->
-                        <a
-                            href
-                            data-ng-click="toggleSkosifiedField(histogram.uri, histogram.tag, true)"
-                            class="btn btn-success btn-block btn-xs"
-                        >
-                            Skosify ({{ histogram.tag }})
-                        </a>
-                    </li>
-                    <li
-                        data-ng-show="analyzedState && histogramSkosField && activeView == 'histogram'"
-                        class="list-group-item"
-                    >
-                        <div
-                            href
-                            data-ng-click="toggleSkosifiedField(histogram.uri, histogram.tag, false)"
-                            class="btn btn-success btn-block btn-xs"
-                        >
-                            Skosified ({{ histogram.tag }}) Press to revert.
-                        </div>
-                    </li>
-                    <li
                         data-ng-repeat="count in histogram.histogram | filter:filterText"
                         class="list-group-item clearfix"
                     >

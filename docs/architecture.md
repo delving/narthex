@@ -108,7 +108,7 @@ hardcoded fetches, the Svelte editor bundle, SIP-Creator's
 - **Hub3** (EXTERNAL): `POST /narthex/webhook/indexing`.
 - **Infra**: SPA/assets/jsRoutes/websocket/monitoring endpoints.
 
-## Known cruft (identified 2026-07-10, pending removal decision)
+## Known cruft (identified 2026-07-10; items 1,2,4–8 removed same day — only item 3 remains, deliberately, until D4b)
 
 1. **Workflow-persistence machinery** — `WorkflowPersistenceActor`,
    `WorkflowEvent`, `WorkflowDatabase`/`GlobalWorkflowDatabase` (+ spec):

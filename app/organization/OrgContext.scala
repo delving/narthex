@@ -27,7 +27,6 @@ import dataset.DsInfo.withDsInfo
 import dataset.SipRepo.{AvailableSip, SIP_EXTENSION}
 import dataset._
 import init.NarthexConfig
-import organization.WorkflowPersistenceActor
 import play.api.cache.SyncCacheApi
 import play.api.libs.ws.WSClient
 import play.api.Logging
@@ -261,16 +260,6 @@ class OrgContext @Inject() (
   lazy val orgActorRef: ActorRef = actorSystem.actorOf(Props(orgActorInst), narthexConfig.orgId)
 
   def orgActor: ActorRef = orgActorRef
-
-  // Workflow persistence actor
-  lazy val workflowActorInst = new WorkflowPersistenceActor()
-
-  lazy val workflowActorRef: ActorRef = actorSystem.actorOf(
-    Props(workflowActorInst),
-    s"${narthexConfig.orgId}-workflow"
-  )
-
-  def workflowActor: ActorRef = workflowActorRef
 
   def appConfig: NarthexConfig = narthexConfig
 

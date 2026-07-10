@@ -30,10 +30,8 @@ define(["angular"], function () {
         'state-generating': "Generating",
         'state-splitting': "Splitting",
         'state-collating': "Collating",
-        'state-categorizing': "Categorizing",
         'state-processing': "Processing",
         'state-saving': "Saving",
-        'state-skosifying': "Skosifying",
         'state-error': "Error"
     };
 
@@ -587,7 +585,6 @@ define(["angular"], function () {
             dataset.datasetName = dataset.name;
             dataset.datasetRecordCount = dataset.recordCount;
 
-            dataset.apiMappings = $scope.apiPrefix + dataset.spec + '/mappings';
             dataset.states = [];
             dataset.isLight = true; // Flag to indicate this is lightweight data
             dataset.fullDataLoaded = false;
@@ -760,7 +757,6 @@ define(["angular"], function () {
 
             dataset.edit = angular.copy(dataset);
 
-            dataset.apiMappings = $scope.apiPrefix + dataset.datasetSpec + '/mappings';
             dataset.states = [];
             dataset.fullDataLoaded = true; // Mark as having full data
 //            if (dataset.character) dataset.prefix = info.character.prefix;
@@ -1840,10 +1836,6 @@ define(["angular"], function () {
         };
 
 
-        $scope.goToCategories = function () {
-            $location.path("/categories/" + $scope.dataset.datasetSpec);
-        };
-
         function command(command, areYouSure, after) {
             function executeCommand() {
                 datasetListService.command($scope.dataset.datasetSpec, command).then(function (reply) {
@@ -2525,12 +2517,6 @@ define(["angular"], function () {
                     break;
                 case 'trends':
                     $location.path('/trends');
-                    break;
-                case 'categories':
-                    $location.path('/categories');
-                    break;
-                case 'thesaurus':
-                    $location.path('/thesaurus');
                     break;
                 case 'default-mappings':
                     $location.path('/default-mappings');

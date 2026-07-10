@@ -35,7 +35,7 @@ import services.Temporal._
 import services.TrendTrackingService
 import triplestore.GraphProperties._
 import triplestore.Sparql._
-import triplestore.{GraphProperties, TripleStore}
+import triplestore.GraphProperties
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent._
@@ -439,8 +439,7 @@ object DsInfo {
    * Only fetches ~10 essential fields instead of full RDF models.
    */
   def listDsInfoLight(orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfoLight]] = Future.successful {
+      implicit ec: ExecutionContext): Future[List[DsInfoLight]] = Future.successful {
     import triplestore.GraphProperties._
     orgContext.datasetsDb.allProps().toList.sortBy(_._1).map { case (spec, p) =>
       def s(prop: NXProp): Option[String] = p.get(prop.name)
@@ -505,8 +504,7 @@ object DsInfo {
    * Runs both queries in parallel and merges results.
    */
   def listDsInfoLightWithRetry(orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[JsValue]] = {
+      implicit ec: ExecutionContext): Future[List[JsValue]] = {
     for {
       datasets <- listDsInfoLight(orgContext)
       retryStatus <- listRetryStatus(orgContext)
@@ -571,8 +569,7 @@ object DsInfo {
   }
 
   def listDsInfo(orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = {
+      implicit ec: ExecutionContext): Future[List[DsInfo]] = {
     listDsInfoWithStateFilter(orgContext, List.empty)
   }
 
@@ -580,8 +577,7 @@ object DsInfo {
    * List all datasets currently in retry mode.
    */
   def listDsInfoInRetry(orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = Future.successful {
+      implicit ec: ExecutionContext): Future[List[DsInfo]] = Future.successful {
     orgContext.datasetsDb.allProps().collect {
       case (spec, props) if props.get(harvestInRetry.name).contains("true") &&
         !props.contains(stateDisabled.name) => getDsInfo(spec, orgContext)
@@ -592,8 +588,7 @@ object DsInfo {
    * List all datasets with incomplete operations (for restart recovery).
    */
   def listDsInfoWithIncompleteOperations(orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = Future.successful {
+      implicit ec: ExecutionContext): Future[List[DsInfo]] = Future.successful {
     orgContext.datasetsDb.allProps().collect {
       case (spec, props) if props.contains(datasetCurrentOperation.name) =>
         getDsInfo(spec, orgContext)
@@ -601,8 +596,7 @@ object DsInfo {
   }
 
   def listDsInfoWithStateFilter(orgContext: OrgContext, allowedStates: List[String])(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[List[DsInfo]] = Future.successful {
+      implicit ec: ExecutionContext): Future[List[DsInfo]] = Future.successful {
     // D2: lifecycle state is projected, not stored — the filter arg is
     // legacy (all live callers pass an empty list).
     orgContext.datasetsDb.allSpecs().map(spec => getDsInfo(spec, orgContext)).toList
@@ -617,8 +611,7 @@ object DsInfo {
   def createDsInfo(spec: String,
                    character: DsCharacter,
                    mapToPrefix: String,
-                   orgContext: OrgContext)(implicit ec: ExecutionContext,
-                                           ts: TripleStore): Future[DsInfo] = {
+                   orgContext: OrgContext)(implicit ec: ExecutionContext): Future[DsInfo] = {
     val db = orgContext.datasetsDb
     db.createDataset(spec)
     val base = List(
@@ -634,8 +627,7 @@ object DsInfo {
   }
 
   def freshDsInfo(spec: String, orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore): Future[Option[DsInfo]] = {
+      implicit ec: ExecutionContext): Future[Option[DsInfo]] = {
     if (orgContext.datasetsDb.exists(spec))
       Future.successful(Some(getDsInfo(spec, orgContext)))
     else
@@ -643,7 +635,7 @@ object DsInfo {
   }
 
   def withDsInfo[T](spec: String, orgContext: OrgContext)(
-      block: DsInfo => T)(implicit ec: ExecutionContext, ts: TripleStore) = {
+      block: DsInfo => T)(implicit ec: ExecutionContext) = {
     // Cache removed to fix harvest storm bug and ensure fresh data
     val dsInfo = Await
       .result(freshDsInfo(spec, orgContext: OrgContext), 30.seconds)
@@ -653,8 +645,7 @@ object DsInfo {
     block(dsInfo)
   }
   def getDsInfo(spec: String, orgContext: OrgContext)(
-      implicit ec: ExecutionContext,
-      ts: TripleStore) = {
+      implicit ec: ExecutionContext) = {
     new DsInfo(
       spec,
       orgContext.appConfig.nxUriPrefix,
@@ -672,7 +663,7 @@ class DsInfo(
     val naveApiAuthToken: String,
     val naveApiUrl: String,
     val orgContext: OrgContext,
-    val mockBulkApi: Boolean)(implicit ec: ExecutionContext, ts: TripleStore) {
+    val mockBulkApi: Boolean)(implicit ec: ExecutionContext) {
 
   import dataset.DsInfo._
 

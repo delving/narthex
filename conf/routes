@@ -2,17 +2,7 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-#->          /webjars                                                         webjars.Routes
 ->          /narthex/webjars                                                 webjars.Routes
-
-#GET         /assets/*file                                controllers.Assets.at(file)
-#GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
-#GET         /assets/*file                                                    controllers.Assets.at(file)
-#GET         /assets/*file                                                    controllers.Assets.versioned(path="/public", file: Asset)
-#GET         /assets/javascripts/*file                                        controllers.Assets.versioned(path="/public", file: Asset)
-#GET         /narthex/assets/*file                                            controllers.Assets.versioned(file)
-#GET         /webjars/*file                                                   org.webjars.play.WebJarAssets.at(file)
-#GET     /narthex/assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
 
 # Home page
 GET         /                                                                controllers.MainController.root
@@ -33,7 +23,6 @@ GET         /narthex/app/dataset-list-light                                  con
 GET         /narthex/app/active-datasets                                     controllers.AppController.listActiveDatasets
 + nocsrf
 POST        /narthex/app/cancel-queue/:spec                                  controllers.AppController.cancelQueuedOperation(spec)
-GET         /narthex/app/index-stats                                         controllers.AppController.indexStats
 GET         /narthex/app/index-stats/wrong-count                             controllers.AppController.indexStatsWrongCount
 GET         /narthex/app/index-stats-with-trends                             controllers.AppController.indexStatsWithTrends
 # Memory monitoring
@@ -129,7 +118,6 @@ GET         /narthex/app/dataset/:spec/mapping-xml/:version                  con
 GET         /narthex/app/dataset/:spec/mappings-json                         controllers.AppController.getMappingsJson(spec)
 
 # Mapping Editor Preview
-GET         /narthex/app/dataset/:spec/preview-samples/:count                controllers.AppController.previewSampleRecords(spec, count: Int)
 GET         /narthex/app/dataset/:spec/preview-mapping/:index                controllers.AppController.previewMappingExecution(spec, index: Int)
 GET         /narthex/app/dataset/:spec/preview-mapping-by-id/:recordId       controllers.AppController.previewMappingById(spec, recordId)
 GET         /narthex/app/dataset/:spec/search-records                       controllers.AppController.searchRecordsByContent(spec, query: String, limit: Int ?= 50)
@@ -194,8 +182,6 @@ GET         /narthex/api/:spec/unique/*path                                  con
 GET         /narthex/api/:spec/histogram/*path                               controllers.APIController.histogramText(spec, path)
 
 # Static
-#GET         /narthex/webjars/*file                                           controllers.WebJarAssets.at(file)
-#GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
 GET         /narthex/webjars/*file                                           org.webjars.play.WebJarAssets.at(file)
 GET         /narthex/assets/*file                                            controllers.Assets.versioned(path="/public", file: Asset)
 

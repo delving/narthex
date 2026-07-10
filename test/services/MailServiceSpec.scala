@@ -17,7 +17,7 @@ class MailServiceSpec extends AnyFlatSpec with should.Matchers with MockitoSugar
     val narthexConfig = new NarthexConfig(Configuration.load(Environment.simple()))
     val mailerMock = mock[MailerClient]
     val mailService = new PlayMailService(mailerMock, narthexConfig) (scala.concurrent.ExecutionContext.global)
-    mailService.sendProcessingCompleteMessage("foo", "bar", "foobar")
+    mailService.sendProcessingErrorMessage("foo", "bar", None)
 
     verifyNoInteractions(mailerMock)
   }
@@ -28,7 +28,7 @@ class MailServiceSpec extends AnyFlatSpec with should.Matchers with MockitoSugar
     val mailerMock = mock[MailerClient]
     val mailService = new PlayMailService(mailerMock, narthexConfig) (scala.concurrent.ExecutionContext.global)
     when(mailerMock.send(any[Email])).thenReturn("msgId")
-    mailService.sendProcessingCompleteMessage("foo", "bar", "foobar")
+    mailService.sendProcessingErrorMessage("foo", "bar", None)
 
     verify(mailerMock, times(1)).send(any[Email])
   }

@@ -9,7 +9,6 @@ import play.api.Logging
 import akka.actor.ActorSystem
 import harvest.PeriodicHarvest
 import organization.OrgContext
-import services.GlobalWorkflowDatabase
 import init.NarthexConfig
 
 @Singleton
@@ -22,9 +21,6 @@ class NarthexLifecycle @Inject() (
     extends Logging {
 
   logger.info("Narthex starting up...")
-
-  // Initialize workflow database
-  GlobalWorkflowDatabase.init(narthexConfig)
 
   // Phase D2: one-shot Fuseki -> datasets.db migration (no-op once populated)
   services.FusekiMigration.runIfNeeded(orgContext)(ec, orgContext.ts)
@@ -49,7 +45,6 @@ class NarthexLifecycle @Inject() (
     logger.info("Narthex shutting down, cleaning up active threads...")
 
     harvestTicker.cancel()
-    GlobalWorkflowDatabase.close()
     orgContext.recordRegistry.close()
     orgContext.jobQueue.close()
 

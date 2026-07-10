@@ -13,10 +13,6 @@ import init.NarthexConfig
 
 trait MailService {
 
-  def sendProcessingCompleteMessage(spec: String,
-                              validString: String,
-                              invalidString: String): Unit
-
   def sendProcessingErrorMessage(spec: String,
                                  message: String,
                                  throwableOpt: Option[Throwable]): Unit
@@ -31,12 +27,6 @@ class PlayMailService @Inject() (val mailerClient: MailerClient, narthexConfig: 
   val adminEmails: List[String] = narthexConfig.emailReportsTo
 
   val fromNarthex = "Narthex <narthex@delving.eu>"
-
-  override def sendProcessingCompleteMessage(spec: String, validString: String, invalidString: String) = {
-    val subject = s"Processing Complete: $spec"
-    val html = views.html.email.processingComplete.render(spec, validString, invalidString).body
-    sendMail(subject, html)
-  }
 
   override def sendProcessingErrorMessage(spec: String, message: String, throwableOpt: Option[Throwable]) = {
     def exceptionString = throwableOpt.map { throwable =>
