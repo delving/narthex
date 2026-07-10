@@ -53,27 +53,17 @@ orgId = "brabantcloud"
 thesaurus = true
 categories = false
 
-# Fuseki
-triple-store = "http://127.0.0.1:3033/"
+# triple-store: OPTIONAL — only used by the one-shot Fuseki->datasets.db migration; remove after migration
+#triple-store = "http://127.0.0.1:3033/"
+#fuseki-username = "admin"
+#fuseki-password = "pw123"
+
+# NOTE: the sparql-*/graph-store-* keys below are only used by the one-shot Fuseki
+# migration, but NarthexConfig still requires them at startup — keep them present.
 sparql-query-path = "/query"
 sparql-update-path = "/update"
 graph-store-path = "/data"
 graph-store-param = "graph"
-
-# Fuseki Authentication (for Fuseki 4.x+ with access control)
-# Leave blank for no authentication (Fuseki 2.x style)
-fuseki-username = "admin"
-fuseki-password = "pw123"
-
-# Fuseki connection pool settings
-fuseki {
-  # Connection pool settings for better performance - increased limits for concurrent dataset processing
-  maxConnectionsPerHost = 100
-  maxConnectionsTotal = 200
-  connectionTimeoutMs = 10000
-  requestTimeoutMs = 60000
-  readTimeoutMs = 120000
-}
 
 enableIncrementalHarvest = true
 
@@ -90,13 +80,6 @@ narthex.quality {
   # no whitespace issues (15%), reasonable lengths (10%), no empty values (10%)
   showFieldScores = true
 }
-
-# GraphDB
-#triple-store = "http://127.0.0.1:7200/repositories"
-#sparql-query-path = ""
-#sparql-update-path = "/statements"
-#graph-store-path = "/rdf-graphs/service"
-#graph-store-param = "graph"
 
 rdfBaseUrl = "http://data.brabantcloud.nl"
 
@@ -168,10 +151,6 @@ datadog {
   statsdHost = "localhost"
   statsdPort = 8125
   reportingIntervalInSeconds = 10
-}
-
-healthchecks {
-  fuseki.timeoutMillis = 100
 }
 
 # the address[es] that receive a notification when dataset processing succeeds or fails

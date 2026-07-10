@@ -1,6 +1,6 @@
 # Narthex User Guide
 
-Narthex is a cultural heritage data aggregation platform that harvests metadata from OAI-PMH endpoints, transforms it using configurable mappings, and publishes it to a triple store. This guide covers the features for discovering and onboarding new datasets at scale.
+Narthex is a cultural heritage data aggregation platform that harvests metadata from OAI-PMH endpoints, transforms it using configurable mappings, and publishes it to Hub3 via the bulk API. This guide covers the features for discovering and onboarding new datasets at scale.
 
 ## Guides
 

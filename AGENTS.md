@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Primary Play code lives in `app/` with `controllers/`, `services/`, and domain packages (`harvest/`, `mapping/`, `triplestore/`).
+- Primary Play code lives in `app/` with `controllers/`, `services/`, and domain packages (`harvest/`, `mapping/`, `dataset/`, `record/`). `triplestore/` is legacy code kept only for the one-shot Fuseki migration.
 - Views reside in `app/views/`; client assets are in `app/assets/` and compile to `public/`.
 - Configuration and routing stay under `conf/` (notably `application.conf` and `routes`).
 - Tests mirror runtime packages in `test/`; shared fixtures belong in `test/resources/`.
@@ -31,4 +31,4 @@
 - Use Conventional Commits (e.g., `feat:`, `fix:`, `chore:`) with subjects under 72 characters.
 - PRs should summarise changes, list tests run or fixtures added, and link the relevant ticket.
 - Include screenshots or curl snippets for HTTP endpoint or UI changes when helpful.
-- Ensure CI is green before requesting review; coordinate schema updates with the data team when altering `app/triplestore/` resources.
+- Ensure CI is green before requesting review; coordinate schema updates with the data team when altering the SQLite schemas (`app/services/DatasetsDb.scala`, `RecordRegistry.scala`, `JobQueue.scala`).

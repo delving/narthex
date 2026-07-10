@@ -10,7 +10,7 @@ This project uses OpenWolf for context management. Read and follow .wolf/OPENWOL
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
-Narthex is a Scala-based cultural heritage data aggregation and mapping platform built with Play Framework 2.8.20. It processes XML data, manages SKOS vocabulary mappings, and integrates with RDF triple stores for museum and archive data management.
+Narthex is a Scala-based cultural heritage data aggregation and mapping platform built with Play Framework 2.8.20. It processes XML data, maps it to RDF/XML target schemas via SIP-Creator mappings, and pushes the processed records to Hub3 via its bulk API. All state lives on the filesystem and in embedded SQLite databases (no external triple store).
 
 ## Build and Development Commands
 
@@ -40,17 +40,14 @@ sbt package
 
 ### Development Setup
 1. Install prerequisites: `brew install sbt`
-2. Start Fuseki triple store:
-   ```bash
-   cd [fuseki_homedir]
-   ./fuseki-server --config=[/full/path_to_narthex]/fuseki.ttl
-   ```
-3. Initialize file system:
+2. Initialize file system:
    ```bash
    mkdir -p ~/NarthexFiles/devorg/factory/edm
    cp docs/files/edm* ~/NarthexFiles/devorg/factory/edm
    ```
-4. Run app: `sbt run` (available at http://localhost:9000)
+3. Run app: `sbt run` (available at http://localhost:9000)
+
+No Fuseki or other external database is needed: the SQLite databases (org-level `datasets.db`, per-dataset `records.db`, and `queue.db`) are created automatically on first run.
 
 ## Architecture
 
@@ -64,15 +61,15 @@ The application uses Akka actors for concurrent data processing. Key actor conte
 - `app/controllers/` - HTTP endpoints (MainController, AppController, ApiController)
 - `app/dataset/` - Dataset processing actors and state management
 - `app/harvest/` - OAI-PMH harvesting implementation
-- `app/mapping/` - SKOS vocabulary mapping functionality
+- `app/mapping/` - SIP mapping repositories (record definitions, default mappings)
 - `app/record/` - XML record parsing and processing
-- `app/triplestore/` - RDF/SPARQL integration with Fuseki
-- `app/services/` - Core services (FileHandling, MailService, etc.)
+- `app/triplestore/` - legacy RDF/SPARQL code, only used by the one-shot Fuseki migration
+- `app/services/` - Core services (DatasetsDb, RecordRegistry, JobQueue, FileHandling, MailService, etc.)
 - `app/analysis/` - Data analysis components
 
 ### Key Technologies
 - **Dependency Injection**: Google Guice
-- **Triple Store**: Apache Fuseki for RDF persistence
+- **Persistence**: embedded SQLite (org-level `datasets.db`, per-dataset `records.db`, `queue.db`) plus the filesystem
 - **Testing**: ScalaTest with Mockito
 - **Frontend**: AngularJS 1.3.17 (legacy)
 - **WebSockets**: Real-time updates for dataset processing
@@ -86,18 +83,19 @@ The application uses Akka actors for concurrent data processing. Key actor conte
 ### Configuration
 - Main config: `conf/application.conf`
 - Override with `-Dconfig.file=path/to/custom.conf`
-- Key settings: triple store URL, organization ID, auth tokens, mail server
+- Key settings: organization ID, Hub3 bulk API URL (`naveApiUrl`) and auth token, mail server. The `triple-store` key is OPTIONAL and only used by the one-shot Fuseki->datasets.db migration.
 
 ### Data Flow
 1. XML data uploaded or harvested via OAI-PMH
 2. Analyzed and stored in tree structure on filesystem
-3. Processed into RDF triples
-4. Stored in Fuseki triple store
-5. Available via API and downloadable as SIP files
+3. Processed into RDF/XML records via the SIP-Creator mapping engine
+4. Records registered in the per-dataset `records.db` and pushed to Hub3 via the bulk API
+5. Dataset state/props/counts projected from SQLite (`datasets.db`) plus disk; available via API and downloadable as SIP files
 
 ## Important Files
-- `app/triplestore/GraphProperties.scala` - All URIs used by Narthex
-- `app/triplestore/Sparql.scala` - All SPARQL queries
+- `app/services/DatasetsDb.scala` - org-level SQLite store for dataset props
+- `app/services/RecordRegistry.scala` - per-dataset SQLite store for records/runs
+- `app/services/FusekiMigration.scala` - one-shot Fuseki->datasets.db startup migration (legacy)
 - `app/init/NarthexBindings.scala` - Dependency injection configuration
 - `app/dataset/DatasetActor.scala` - Core dataset processing logic
 

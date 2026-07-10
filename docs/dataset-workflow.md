@@ -2,7 +2,7 @@
 
 ![Workflow](images/dataset-workflow.jpg)
 
-An empty dataset is created by just giving it a short name, and whenever it progresses through a subsequent state, the time is recorded in the triple store and shows in the browser with a button to initiate the next step.
+An empty dataset is created by just giving it a short name, and whenever it progresses through a subsequent state, the time is recorded in the org-level `datasets.db` (SQLite) and shows in the browser with a button to initiate the next step.
 
 ### RAW
 
@@ -34,11 +34,11 @@ When the data has been mapped and validated using the SIP-Creator mapping engine
 
 ### ANALYZED
 
-Once the processing of a dataset is completed, Narthex can perform its "analysis" process on the result, where the values from each individual field or path within the source data is separated from the rest, sorted, collated, and counted.  The result of this analysis provides the user with a view of all the values that have ever appeared in a given field, which is the basis for both terminology mapping and category mapping.  These values appear in the form of an alphanumerically sorted list of unique values, and a histogram of value counts from the highest to the lowest.
+Once the processing of a dataset is completed, Narthex can perform its "analysis" process on the result, where the values from each individual field or path within the source data is separated from the rest, sorted, collated, and counted.  The result of this analysis provides the user with a view of all the values that have ever appeared in a given field.  These values appear in the form of an alphanumerically sorted list of unique values, and a histogram of value counts from the highest to the lowest.
 
 ### SAVED
 
-Narthex saves the processed RDF data to the associated triple store. Initially this is done in one bulk operation for a dataset, but after a periodic fetch of changed records, only the changed ones need to be saved.  Either way, the timestamp associated with this state is updated.
+Narthex registers the processed records in the per-dataset `records.db` and pushes them to Hub3 via the bulk API. Initially this is done in one bulk operation for a dataset, but after a periodic fetch of changed records, only the changed ones need to be saved.  Either way, the timestamp associated with this state is updated.
 
 ---
 

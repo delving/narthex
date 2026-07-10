@@ -10,7 +10,7 @@ A **[Narthex](http://en.wikipedia.org/wiki/Narthex)** is a place which separates
 |![](images/narthex-tour.jpg)
 |Watch: [http://youtu.be/uu4lNtXtgCA](http://youtu.be/uu4lNtXtgCA)
 
-Narthex is an ingestion tool for cultural heritage metadata which has features for transforming the incoming data into target formats expressed in RDF/XML, as well as mapping terminology to given [SKOS](http://www.w3.org/2004/02/skos/) vocabularies. Vocabularies can also be mapped together and there is a system for categorizing records and generating spreadsheets with the category counts. Narthex stores the results in a triple store, and uses the file system for persisting the remainder of the information.
+Narthex is an ingestion tool for cultural heritage metadata which has features for transforming the incoming data into target formats expressed in RDF/XML. Narthex keeps its state in embedded SQLite databases (an org-level `datasets.db` for dataset properties, a per-dataset `records.db` for processed records, and a `queue.db` for background jobs), uses the file system for persisting the source and processed data, and pushes the processed records to the Hub3 LoD server via its bulk API.
 
 Technologies: 
 
@@ -18,7 +18,8 @@ Technologies:
 * [RequireJS](http://requirejs.org/) - javascript organization
 * [Play Framework](https://playframework.com/) - web server
 * [Akka](http://akka.io/) - internal processing with actors
-* [Jena/Fuseki](http://jena.apache.org/documentation/serving_data/) - triple store / rdf persistence
+* [SQLite](https://www.sqlite.org/) - embedded persistence for dataset state, records, and job queue
+* [Hub3](https://github.com/delving/hub3) - the LoD server that receives processed records via the bulk API
 
 ## Ingest, Map, and Improve
 
@@ -28,11 +29,9 @@ Narthex performs a rigorous analysis of the data it receives, separating it into
 
 The task of mapping the potentially arbitrary XML structure of the incoming data to the desired target RDF/XML formats is delegated to another piece of software called [SIP-Creator](https://github.com/delving/sip-creator), which is a specialized version (referred to as "Pocket Mapper") of the software already used to build and execute very many such mappings.  It was originally developed in the context of the [Europeana](http://europeana.eu/) project, starting in 2009.  Ultimately this kind of mapping should be done in the Narthex browser interface, but in the meantime we will use this standalone Java application.
 
-Once a mapping has been built, uploaded and executed, the resulting data can be improved further through the process of terminology mapping. This is an interactive online process where the terms used in the source data in particular fields is mapped to values from shared SKOS vocabularies.  This enables integrated data querying of many sources which where originally different terminology has been used. Before a field of terminology can be mapped to SKOS, it is first turned into a SKOS vocabulary itself, with the addition of the occurrence frequencies collected in the Narthex analysis for prioritization.
+Once a mapping has been built, uploaded and executed, the resulting RDF/XML records are registered in the per-dataset `records.db` and pushed to Hub3 via the bulk API, where they are indexed for search and navigation.
 
-The resulting mapping connections are stored alongside the other data in the triple store, so the enrichment links made can be followed when querying.  All mappings are assigned provenance based on the user who is logged in when they are made.  With terms mapped to a common vocabulary, aggregated data can be properly searched and navigated, or indexed for search.
-
-The category spreadsheet feature enables partitioning of records according to terms used in particular fields, and then scans all included datasets to generate an [Excel](http://en.wikipedia.org/wiki/Microsoft_Excel) spreadsheet containing the counts of all the various categories or category combinations.  This allows organizations to develop a clearer picture of the kinds of records that their datasets contain.
+Earlier versions of Narthex also included SKOS terminology mapping, vocabulary mapping, and category-statistics features backed by a triple store; these subsystems have been removed.
 
 ## Background
 
@@ -47,9 +46,6 @@ Further development funding will be provided by the Swedish Arts Council and Lä
 * [Actor Hierarchy](actor-hierarchy.md) - users
 * [Dataset Workflow](dataset-workflow.md) - how a dataset progresses through the system
 * [SIP-Creator Integration](sip-creator-integration.md) - how the tool integrates
-* [Terminology Mapping](terminology-mapping.md) - terminology "skosification" and mapping to SKOS
-* [Vocabulary Mapping](vocabulary-mapping.md) - building skos:exactMatch links between pairs of vocabularies
-* [Category Statistics](category-statistics.md) - mapping terminology to categories and generating spreadsheets
 * [Development and Deployment](development-deployment.md) - how to build and distribute
 * [Future Work](future-work.md) - where to go from here
 

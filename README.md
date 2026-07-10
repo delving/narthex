@@ -11,20 +11,11 @@ Narthex is based on Playframework, which uses [sbt](http://www.scala-sbt.org) as
 
 Convince yourself you can run tests and that sbt works: `sbt test`.
 
-Narthex uses 'fuseki' for persistence, here's how to get it up and running:
+Narthex persists its state in embedded SQLite databases, so no external triple store or other database server is needed. The databases are created automatically on first run:
 
- - Download and install [Fuseki 2.4.x](https://jena.apache.org/download/index.cgi)
- - Startup fuseki from this project's root-dir:
-
-```bash
-cd [fuseki_homedir]
-
-./fuseki-server --config=[/full/path_to_nathex_project_dir]/fuseki.ttl
-```
-
-Don't use the '~' character for your homedir, Fuseki runs inside the JVM and won't replace that with the path to your homedir.
-
-You will notice that it creates a `./fuseki_data` directory which is in .gitignore. To start with a fresh database, stop fuseki and delete the data-directory.
+ - `datasets.db` — org-level dataset properties (tables `datasets`, `dataset_props`, `dataset_prop_lists`)
+ - `records.db` — per-dataset processed records and processing runs
+ - `queue.db` — background job queue
 
  - Narthex uses your local filesystem for persistence, and we must initialize it. Perform the following steps from the project root-dir.
     
@@ -66,12 +57,15 @@ All of the files and directories which Narthex uses are to be found within the d
 	* **/sips** - the downloadable SIP-Zip files (SIP-App)
 
 
-## Structure of the Narthex Triple-Store
+## How Narthex persists its data
 
-Narthex persists all of its information on the file system and in the triple store, and the code responsible for this is carefully gathered together so that an overview is possible.
+Narthex persists all of its information on the file system and in embedded SQLite databases:
 
-* [GraphProperties.scala](https://github.com/delving/narthex/blob/master/app/triplestore/GraphProperties.scala) - all of the URIs that Narthex creates and uses
-* [Sparql.scala](https://github.com/delving/narthex/blob/master/app/triplestore/Sparql.scala) all of the SPARQL used to interact with the triple store
+* `datasets.db` (org-level) — dataset properties, managed by `app/services/DatasetsDb.scala`
+* `records.db` (per dataset) — processed records and runs, managed by `app/services/RecordRegistry.scala`
+* `queue.db` — background jobs, managed by `app/services/JobQueue.scala`
+
+The legacy Fuseki triple store has been removed. The only remaining Fuseki code is a one-shot startup migration (`app/services/FusekiMigration.scala`) that runs when `datasets.db` is empty and the optional `triple-store` config key is set; after migration the key should be removed and Fuseki decommissioned.
 
 ## Running using docker
 
@@ -79,8 +73,6 @@ To do this, we need to take care of a couple of things:
 
 1. A mount of the app-config file containing overrides of the defaults in [application.conf](../conf/application.conf) which resides on the host
 2. A docker 'named data container' for the Narthex data directory
-3. Access to the tripleStore running on the host-machine (this part isn't dockerized). Execute `$ docker-machine inspect | grep HostOnlyCIDR`. 
-In our case the address was `192.168.99.1` and we need it for the contents of the override-conf file below
 
 The contents of the override-file must look like this.
 *Note* the include statement is required or defaults won't load:
@@ -88,7 +80,6 @@ The contents of the override-file must look like this.
 ```
 include "application.conf"
 narthexHome = "/opt/docker/narthexdata"
-triple-store = "http://192.168.99.1:3030/devorg"
 ```
 
 Create your 'dev' shared volume on top of the empty one (which is [maintained elsewhere](https://github.com/delving/narthex-datadir-docker)):
@@ -118,9 +109,9 @@ To create a new local image: `sbt docker:publishLocal`
 
 Run `docker images` and see that 'narthex' was added to your local images.
 
-## The "Nave" LoD server
+## The "Nave"/Hub3 LoD server
 
-The public-facing server which is the counterpart to Narthex is referred to as "Nave" (yes, another part of the church).  It gets its data from the triple store, so the triple store is the point of transfer between the two systems.  Nave must periodically query for changes and then act on them.  It must be able to interpret the stored triples, and follow links created by the terminology mapping and vocabulary mapping to build its index and to display the results properly in good LoD tradition.
+The public-facing server which is the counterpart to Narthex is referred to as "Nave" (yes, another part of the church), nowadays implemented by Hub3.  Narthex pushes processed records to it via the Hub3 bulk API (`naveApiUrl` / `naveAuthToken` in the configuration), which is the point of transfer between the two systems.  Hub3 indexes the records and displays the results in good LoD tradition.
 
 ---
 

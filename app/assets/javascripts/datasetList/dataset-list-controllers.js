@@ -554,6 +554,22 @@ define(["angular"], function () {
             return blockRank[blockName] <= pos;
         };
 
+        /**
+         * C2b: activity flags derived from the status document. Called from
+         * both decorates (websocket pushes) and the header poll.
+         */
+        function applyActivityFlags(ds) {
+            var stage = ds.run && ds.run.stage;
+            ds.isSaving = ds.phase === 'running' && (stage === 'save' || stage === 'reconcile');
+            ds.isProcessing = ds.phase === 'running' && !ds.isSaving;
+            ds.isQueued = ds.phase === 'queued';
+            ds.isActive = ds.phase === 'running';
+            if (ds.isProcessing) { ds.activityStatus = 'processing'; }
+            else if (ds.isSaving) { ds.activityStatus = 'saving'; }
+            else if (ds.isQueued) { ds.activityStatus = 'queued'; }
+            else { ds.activityStatus = null; ds.activityTrigger = null; }
+        }
+
         $scope.hasAction = function (dataset, action) {
             // The backend curates actions for every phase — including
             // during runs (linear model: upstream/redo actions stay, only
@@ -610,6 +626,7 @@ define(["angular"], function () {
             }
 
             dataset.stateCurrent = pickCurrentState(dataset.states);
+            applyActivityFlags(dataset);
 
             // Check if delimiters are valid (set after the latest analysis)
             // States that indicate delimiters have been set (you can't reach these without valid delimiters)
@@ -775,6 +792,7 @@ define(["angular"], function () {
                 dataset.empty = true;
             };
             dataset.stateCurrent = pickCurrentState(dataset.states);
+            applyActivityFlags(dataset);
 
             // Check if delimiters are valid (set after the latest analysis)
             // States that indicate delimiters have been set (you can't reach these without valid delimiters)
@@ -965,32 +983,15 @@ define(["angular"], function () {
                     queuedMap[q.spec] = { trigger: q.trigger, position: q.position };
                 });
 
-                // Update each dataset with status info
+                // C2b: per-row activity comes from the STATUS DOCUMENT
+                // (phase + run.stage), not this endpoint — the endpoint only
+                // enriches queued rows with their trigger.
                 _.forEach($scope.datasets, function (ds) {
                     var spec = ds.datasetSpec;
-                    ds.isProcessing = !!processingSet[spec];
-                    ds.isSaving = !!savingSet[spec];
-                    ds.isQueued = !!queuedMap[spec];
-                    ds.queueInfo = queuedMap[spec] || null;
-                    ds.isActive = ds.isProcessing || ds.isSaving;
-
-                    // Set activity status for display
-                    if (ds.isProcessing) {
-                        ds.activityStatus = 'processing';
-                        ds.activityTrigger = null;
-                        ds.queuePosition = null;
-                    } else if (ds.isSaving) {
-                        ds.activityStatus = 'saving';
-                        ds.activityTrigger = null;
-                        ds.queuePosition = null;
-                    } else if (ds.isQueued) {
-                        ds.activityStatus = 'queued';
-                        ds.activityTrigger = ds.queueInfo.trigger;
-                        ds.queuePosition = ds.queueInfo.position;
-                    } else {
-                        ds.activityStatus = null;
-                        ds.activityTrigger = null;
-                        ds.queuePosition = null;
+                    applyActivityFlags(ds);
+                    if (ds.isQueued && queuedMap[spec]) {
+                        ds.activityTrigger = queuedMap[spec].trigger;
+                        if (!ds.queuePosition) ds.queuePosition = queuedMap[spec].position;
                     }
 
                     // If dataset is active or queued, override stateCurrent for filtering

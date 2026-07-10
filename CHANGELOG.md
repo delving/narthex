@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   history of changes: see https://github.com/delving/narthex/compare/v0.8.0...main
 
+## v0.8.9.29 – v0.8.9.49 (2026-07)
+
+### Changed
+
+-   Fuseki triple store fully removed: dataset properties now live in the org-level SQLite `datasets.db` (tables `datasets`, `dataset_props`, `dataset_prop_lists`), processed records and runs in a per-dataset `records.db`, and background jobs in `queue.db`
+-   Dataset status, available actions, and record counts are now projected from SQLite plus the on-disk state instead of triple store queries
+-   All pipeline stages (harvest, source, process, save/index) complete against the new SQLite-backed state
+-   The only remaining Fuseki code is a one-shot startup migration (`services/FusekiMigration.scala`) that runs when `datasets.db` is empty and the optional `triple-store` config key is set; after migration the key should be removed and Fuseki decommissioned
+
+### Removed
+
+-   SKOS subsystem removed entirely: terminology mapping, vocabulary mapping, and category statistics
+
 ## v0.8.0 (2025-11-18)
 
 ### Added

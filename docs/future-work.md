@@ -24,7 +24,7 @@ The combination of normalization code and validation code with the list of all v
 
 ### Transformation to RDF using X3ML Engine
 
-Combined with another element of the CultureBrokers project called the [X3ML Engine](https://github.com/delving/x3ml), a mapping to RDF can be built, and the source data could be presented as meaningful RDF, according to an ontology such as the [CIDOC-CRM](http://www.cidoc-crm.org/), and a triple store could be filled and exposed for querying.  The X3ML Engine works on the basis of X3ML files (XML syntax) which currently have to be built by hand.
+Combined with another element of the CultureBrokers project called the [X3ML Engine](https://github.com/delving/x3ml), a mapping to RDF can be built, and the source data could be presented as meaningful RDF, according to an ontology such as the [CIDOC-CRM](http://www.cidoc-crm.org/), which could then be exposed for querying.  The X3ML Engine works on the basis of X3ML files (XML syntax) which currently have to be built by hand.
 
 The Narthex user interface or something like it will also probably be the best starting point for building an interactive multi-user tool for building X3ML files.  The choices of Domain, Path, and Range should take place in something like the tree that Narthex displays.  While building an X3ML mapping from XML to RDF, it would be possible to have a running visualization of all of the triples that have changed (disappeared:red or appeared:green) as a result of a change made to the mapping.
 

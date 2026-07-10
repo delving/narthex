@@ -175,14 +175,13 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   logger.info(s"triple-store: ${if (tripleStoreUrl.isEmpty) "(not configured — migration slice inert)" else tripleStoreUrl}")
   def tripleStoreLog = configFlag("triple-store-log")
   logger.info(s"triple-store-log: $tripleStoreLog")
-  def sparqlQueryPath: String = configStringNoSlash("sparql-query-path")
-  logger.info(s"sparql-query-path: $sparqlQueryPath")
-  def sparqlUpdatePath: String = configStringNoSlash("sparql-update-path")
-  logger.info(s"sparql-update-path: $sparqlUpdatePath")
-  def graphStorePath: String = configStringNoSlash("graph-store-path")
-  logger.info(s"graph-store-path: $graphStorePath")
-  def graphStoreParam: String = configStringNoSlash("graph-store-param")
-  logger.info(s"graph-store-param: $graphStoreParam")
+  // Optional since D4 — only the one-shot Fuseki migration uses them.
+  private def optionalPath(name: String, default: String): String =
+    configuration.getOptional[String](name).map(_.replaceAll("\\/$", "")).getOrElse(default)
+  def sparqlQueryPath: String = optionalPath("sparql-query-path", "/query")
+  def sparqlUpdatePath: String = optionalPath("sparql-update-path", "/update")
+  def graphStorePath: String = optionalPath("graph-store-path", "/data")
+  def graphStoreParam: String = optionalPath("graph-store-param", "graph")
 
   // Fuseki connection pool settings
   def fusekiMaxConnectionsPerHost: Int = configuration.getOptional[Int]("fuseki.maxConnectionsPerHost").getOrElse(10)
