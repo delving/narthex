@@ -113,7 +113,6 @@ define(["angular"], function () {
 
             socket.onmessage = function (messageReturned) {
                 var message = JSON.parse(messageReturned.data);
-                console.log("Received websocket msg: " + message);
                 var callback = $scope.socketSubscribers[message.datasetSpec];
                 if (callback) {
                     // Dataset is expanded - use its specific callback
@@ -868,7 +867,9 @@ define(["angular"], function () {
         };
 
         $scope.fetchDatasetList = function () {
-            $scope.specOrNameFilter = "";
+            // Deep-link (?dataset=spec): filter to it so the row is visible,
+            // expanded (DatasetEntryCtrl checks $routeParams) and on screen.
+            $scope.specOrNameFilter = $routeParams.dataset || "";
             // Use lightweight endpoint for faster initial load
             datasetListService.listDatasetsLight().then(function (array) {
                 _.forEach(array, $scope.decorateDatasetLight);

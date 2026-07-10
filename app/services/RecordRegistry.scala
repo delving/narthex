@@ -228,6 +228,14 @@ class RecordRegistry(datasetsDir: File) {
   def seedBaselineRun(specName: String, atIso: String): Unit =
     spec(specName).seedBaselineRun(atIso)
 
+  /**
+   * "Clear error" under errors-as-runs: mark the LATEST failed run
+   * dismissed so phase=error clears without waiting for a successful run.
+   * The row keeps its note for the audit trail.
+   */
+  def dismissLatestFailedRun(specName: String): Boolean =
+    if (dbFileExists(specName)) spec(specName).dismissLatestFailedRun() else false
+
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
 
@@ -829,6 +837,14 @@ private[services] class SpecRegistry(val datasetDir: File) {
         } finally sps.close()
       }
     }
+  }
+
+  def dismissLatestFailedRun(): Boolean = synchronized {
+    val ps = conn.prepareStatement(
+      """UPDATE runs SET status = 'dismissed'
+          WHERE run_id = (SELECT run_id FROM runs ORDER BY run_id DESC LIMIT 1)
+            AND status = ?""")
+    try { ps.setString(1, RUN_FAILED); ps.executeUpdate() > 0 } finally ps.close()
   }
 
   def failOpenRuns(note: String): Int = synchronized {

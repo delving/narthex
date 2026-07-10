@@ -706,6 +706,10 @@ class DatasetActor(val datasetContext: DatasetContext,
             log.info(s"Clearing stale error for ${dsInfo.spec}")
             dsInfo.clearError()
             dsInfo.clearRetryState()
+            // errors-as-runs: also dismiss the latest failed run, else the
+            // phase stays error until some later run succeeds
+            if (orgContext.recordRegistry.dismissLatestFailedRun(dsInfo.spec))
+              log.info(s"Dismissed latest failed run for ${dsInfo.spec}")
             broadcastIdleState()
             "error cleared"
 
@@ -934,10 +938,12 @@ class DatasetActor(val datasetContext: DatasetContext,
       }
       strategy match {
         case Sample =>
-          // Sample harvests bypass the lease, nothing to free. RAW is now
-          // projected from the downloaded raw file itself; a sample harvest
-          // that returned nothing simply projects no state.
-          ()
+          // Sample harvests bypass the lease, nothing to free. RAW is
+          // projected from the downloaded raw file; a zero-record sample
+          // leaves no artifact, so surface it as an explicit error (the
+          // old stateRaw+count==0 modal heuristic died with stored states).
+          if (noRecordsMatch)
+            dsInfo.setError("Sample harvest returned 0 records — check the harvest URL, set/spec and credentials")
         case FromScratch(autoProcess) =>
           if (noRecordsMatch) {
             // Full harvest returned no records - all records depublished

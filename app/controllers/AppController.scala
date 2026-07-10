@@ -212,11 +212,16 @@ class AppController @Inject() (
           val trendSummary = TrendTrackingService.getDatasetTrendSummaryFromDaily(dailyLog, trendsLog, ds.spec)
           val baseJson = Json.toJson(ds).as[JsObject]
 
+          // Source delta from the registry's exact per-run diffs (decision
+          // 2026-07-10); indexed keeps the nightly Hub3 snapshot.
+          val regSource24h = scala.util.Try(
+            orgContext.recordRegistry.dailyRunDiffs(ds.spec, 1).map(d => d.added - d.deleted).sum
+          ).getOrElse(0)
           trendSummary match {
             case Some(summary) =>
               baseJson ++ Json.obj(
                 "delta24h" -> Json.obj(
-                  "source" -> summary.delta24h.source,
+                  "source" -> regSource24h,
                   "valid" -> summary.delta24h.valid,
                   "indexed" -> summary.delta24h.indexed
                 )
@@ -224,7 +229,7 @@ class AppController @Inject() (
             case None =>
               baseJson ++ Json.obj(
                 "delta24h" -> Json.obj(
-                  "source" -> 0,
+                  "source" -> regSource24h,
                   "valid" -> 0,
                   "indexed" -> 0
                 )
