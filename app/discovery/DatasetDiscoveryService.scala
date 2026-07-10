@@ -286,25 +286,11 @@ class DatasetDiscoveryService @Inject()(
    * Get existing harvestDataset values to detect duplicates.
    * This prevents importing a set that's already configured under a different spec.
    */
-  private def getExistingHarvestDatasets(): Future[Set[String]] = {
-    val query = s"""
-      |PREFIX nx: <${triplestore.GraphProperties.NX_NAMESPACE}>
-      |SELECT DISTINCT ?harvestDataset
-      |WHERE {
-      |  GRAPH ?g {
-      |    ?s nx:datasetSpec ?spec .
-      |    ?s nx:harvestDataset ?harvestDataset .
-      |  }
-      |}
-    """.stripMargin
-
-    ts.query(query).map { results =>
-      results.flatMap(_.get("harvestDataset").map(_.text)).toSet
-    }.recover {
-      case e: Exception =>
-        logger.warn(s"Failed to query existing harvestDatasets: ${e.getMessage}")
-        Set.empty[String]
-    }
+  private def getExistingHarvestDatasets(): Future[Set[String]] = Future.successful {
+    // D4: from datasets.db (the Fuseki graph is gone/dark)
+    orgContext.datasetsDb.allProps().values
+      .flatMap(_.get("harvestDataset"))
+      .toSet
   }
 
   /**
