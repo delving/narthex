@@ -733,7 +733,14 @@ class AppController @Inject() (
           dataset.DatasetStatusDoc.fields(orgContext, spec, projected, docFacts)
       )
       Json.toJson(dsInfo) match {
-        case obj: JsObject => Ok(obj ++ stateJson)
+        case obj: JsObject =>
+          // The projector OMITS absent states, so stale stored state props in
+          // the legacy serialization would survive a plain overlay (seen:
+          // stateSourced from July with zero source zips on disk — the UI
+          // then rendered state blocks whose actions were rightly withheld).
+          // Strip ALL state* keys first; the projector is the only source.
+          val withoutStaleStates = JsObject(obj.value.filterNot(_._1.startsWith("state")).toSeq)
+          Ok(withoutStaleStates ++ stateJson)
         case other => Ok(other)
       }
     }
