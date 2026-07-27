@@ -948,6 +948,11 @@ class DatasetActor(val datasetContext: DatasetContext,
             // Reset counts to 0 to reflect current state
             log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
             dsInfo.setRecordCount(0)
+            // acquiredRecordCount is what the UI/counts read; setRecordCount
+            // only writes the legacy datasetRecordCount, which left a stale
+            // acquired count after every empty harvest (e.g. a fully
+            // depublished set kept showing 1 record forever).
+            dsInfo.setAcquisitionCounts(0, 0, 0, "harvest")
             dsInfo.setProcessedRecordCounts(0, 0)
             completeHarvestRun()   // rare and significant — keep the audit row
           } else {
