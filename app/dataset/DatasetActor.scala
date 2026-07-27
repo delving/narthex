@@ -943,18 +943,33 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.setError("Sample harvest returned 0 records — check the harvest URL, set/spec and credentials")
         case FromScratch(autoProcess) =>
           if (noRecordsMatch) {
-            // Full harvest returned no records - all records depublished
-            // Keep SAVED state so dataset stays in harvest cycle for auto-recovery
-            // Reset counts to 0 to reflect current state
-            log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} - resetting counts to 0")
+            // Full depublication: the endpoint EXPLICITLY declared the set
+            // empty (noRecordsMatch / completeListSize=0 — not a transport
+            // failure, which surfaces as a harvest error instead). Drop
+            // everything derived — Hub3 index, registry mirror, local source/
+            // processed/tree/sip artifacts — keeping only configuration and
+            // the mapping folder. The dataset stays in the harvest cycle; if
+            // the set comes back upstream, the next harvest reruns the
+            // normal pipeline from scratch.
+            log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} — full depublication: dropping index + derived artifacts (config and mapping kept)")
+            completeHarvestRun()
+            scala.util.Try(Await.ready(datasetContext.dropIndex, 2.minutes))
+              .recover { case ex: Throwable =>
+                log.warning(s"Depublication: index drop failed for ${dsInfo.spec} (stale index entries remain): ${ex.getMessage}")
+              }
+            scala.util.Try(orgContext.recordRegistry.dropDatasetDb(dsInfo.spec))
+              .recover { case ex: Throwable =>
+                log.warning(s"Depublication: registry drop failed for ${dsInfo.spec}: ${ex.getMessage}")
+              }
+            datasetContext.dropRaw()       // raw + source + processed + tree + SIP zips
+            datasetContext.dropSourceTree()
             dsInfo.setRecordCount(0)
-            // acquiredRecordCount is what the UI/counts read; setRecordCount
-            // only writes the legacy datasetRecordCount, which left a stale
-            // acquired count after every empty harvest (e.g. a fully
-            // depublished set kept showing 1 record forever).
             dsInfo.setAcquisitionCounts(0, 0, 0, "harvest")
             dsInfo.setProcessedRecordCounts(0, 0)
-            completeHarvestRun()   // rare and significant — keep the audit row
+            // Legacy stored fallbacks — without this, saved state would
+            // survive the projection even though every artifact is gone.
+            dsInfo.removeState(SAVED)
+            dsInfo.removeState(INCREMENTAL_SAVED)
           } else {
             dsInfo.setLastHarvestTime(incremental = false)
 
