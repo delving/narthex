@@ -190,7 +190,12 @@ object DatasetStatusDoc {
     }
 
     val seen = reg.countIfExists(spec, "seen").filter(_ > 0)
-    val acquiredRecords = seen.orElse(actSum)
+    // Acquired is SOURCE truth. With no source zips at all (e.g. a fully
+    // depublished set after an empty full harvest) it is 0 — the registry's
+    // "seen" mirrors the index side and must not resurrect a count here.
+    val sourceZipCount = Option(sourceDir.listFiles())
+      .map(_.count(_.getName.endsWith(".zip"))).getOrElse(0)
+    val acquiredRecords = if (sourceZipCount == 0) Some(0) else seen.orElse(actSum)
     val deleted = reg.countIfExists(spec, "deleted").filter(_ > 0).orElse(deletedIdsCount)
     val methodRaw = orgContext.datasetsDb.getProp(spec, "acquisitionMethod")
     val method = methodRaw.map {
