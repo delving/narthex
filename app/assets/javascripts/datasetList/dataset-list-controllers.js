@@ -35,6 +35,19 @@ define(["angular"], function () {
         'state-error': "Error"
     };
 
+    // WebSocket callbacks fire outside Angular; with many datasets they also
+    // land while a digest is already running — a raw $apply then throws
+    // $rootScope:inprog and the update is silently dropped (UI freezes on a
+    // stale state). Apply only when no digest is in progress.
+    function safeApply(scope, fn) {
+        var phase = scope.$root && scope.$root.$$phase;
+        if (phase === '$apply' || phase === '$digest') {
+            fn();
+        } else {
+            scope.$apply(fn);
+        }
+    }
+
     var DatasetListCtrl = function ($rootScope, $scope, datasetListService, $location, pageScroll, modalAlert, $timeout, $routeParams) {
 
         $scope.apiPrefix = "/narthex/api/"
@@ -96,7 +109,7 @@ define(["angular"], function () {
 
                 startHeartbeat();
 
-                $scope.$apply(function() {
+                safeApply($scope, function() {
                     $scope.websocketConnected = true;
                     $scope.websocketError = null;
                 });
@@ -118,7 +131,7 @@ define(["angular"], function () {
                 } else {
                     // Dataset is not expanded - handle update globally
                     console.debug("Handling update for collapsed dataset: " + message.datasetSpec);
-                    $scope.$apply(function() {
+                    safeApply($scope, function() {
                         // Find the dataset in the list
                         var datasetIndex = _.findIndex($scope.datasets, function(ds) {
                             return ds.datasetSpec === message.datasetSpec || ds.spec === message.datasetSpec;
@@ -243,7 +256,7 @@ define(["angular"], function () {
 
             socket.onerror = function (error) {
                 console.error("WebSocket error:", error);
-                $scope.$apply(function() {
+                safeApply($scope, function() {
                     $scope.websocketConnected = false;
                 });
             };
@@ -252,7 +265,7 @@ define(["angular"], function () {
                 console.log("WebSocket closed:", event.code, event.reason);
                 stopHeartbeat();
 
-                $scope.$apply(function() {
+                safeApply($scope, function() {
                     $scope.websocketConnected = false;
                 });
 
@@ -272,7 +285,7 @@ define(["angular"], function () {
                     }, delay);
                 } else {
                     console.error("Max reconnection attempts reached");
-                    $scope.$apply(function() {
+                    safeApply($scope, function() {
                         $scope.websocketError = "Connection lost. Please refresh the page.";
                     });
                 }
@@ -1423,7 +1436,7 @@ define(["angular"], function () {
             $scope.datasetBusy = false;
             $scope.dataset.commandPending = null;
 
-            $scope.$apply(function () {
+            safeApply($scope, function () {
                 if (message.progressState) {
                     $scope.dataset.progress = addProgressMessage({
                         state: message.progressState,
