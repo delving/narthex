@@ -995,14 +995,29 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         case FromScratchIncremental =>
           if (noRecordsMatch) {
-            // Full harvest returned no records - all records depublished
-            // Keep SAVED state so dataset stays in harvest cycle for auto-recovery
-            // Reset counts to 0 to reflect current state
-            log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} - resetting counts and disabling index.")
-            dsInfo.setRecordCount(0)
-            dsInfo.setProcessedRecordCounts(0, 0)
-            dsInfo.disableInNaveIndex()
+            // Full depublication — same policy as FromScratch: this strategy
+            // also carries no from/until, so an empty answer (explicit
+            // noRecordsMatch or an empty list, which the harvester coerces
+            // to it) means the set itself is empty. Incremental harvests
+            // (ModifiedAfter) never take this path — their noRecordsMatch is
+            // routine "no changes since".
+            log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} — full depublication: dropping index + derived artifacts (config and mapping kept)")
             completeHarvestRun()
+            scala.util.Try(Await.ready(datasetContext.dropIndex, 2.minutes))
+              .recover { case ex: Throwable =>
+                log.warning(s"Depublication: index drop failed for ${dsInfo.spec} (stale index entries remain): ${ex.getMessage}")
+              }
+            scala.util.Try(orgContext.recordRegistry.dropDatasetDb(dsInfo.spec))
+              .recover { case ex: Throwable =>
+                log.warning(s"Depublication: registry drop failed for ${dsInfo.spec}: ${ex.getMessage}")
+              }
+            datasetContext.dropRaw()
+            datasetContext.dropSourceTree()
+            dsInfo.setRecordCount(0)
+            dsInfo.setAcquisitionCounts(0, 0, 0, "harvest")
+            dsInfo.setProcessedRecordCounts(0, 0)
+            dsInfo.removeState(SAVED)
+            dsInfo.removeState(INCREMENTAL_SAVED)
           } else {
             processIncremental(fileOpt, noRecordsMatch, None)
             dsInfo.updatedSpecCountFromFile(dsInfo.spec,

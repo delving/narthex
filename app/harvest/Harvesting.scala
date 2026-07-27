@@ -366,7 +366,20 @@ trait Harvesting {
               } else ""
             } else ""
             if (errorNode.nonEmpty || records.isEmpty || faultyEmptyResponse.nonEmpty) {
-              val errorCode = if (errorNode.nonEmpty) (errorNode \ "@code").text else "noRecordsMatch"
+              // completeListSize="0" is the endpoint's EXPLICIT attestation
+              // that the set is empty — a stronger signal than the OAI
+              // noRecordsMatch error (which the spec ties to from/until
+              // filtering and which some endpoints, e.g. Memorix, never
+              // send). Only an attested-empty or explicit noRecordsMatch
+              // becomes our internal noRecordsMatch signal (full strategies
+              // treat it as full depublication); a bare empty page WITHOUT
+              // attestation is a suspicious response and errors out instead.
+              val attestedEmpty = tokenNode.nonEmpty &&
+                (tokenNode \ "@completeListSize").text.trim == "0"
+              val errorCode =
+                if (errorNode.nonEmpty) (errorNode \ "@code").text
+                else if (attestedEmpty) "noRecordsMatch"
+                else "unattestedEmptyResponse"
               if (faultyEmptyResponse.nonEmpty) {
                 logger.error(s"Faulty empty response from $sourceUri: $faultyEmptyResponse")
                 Some(HarvestError(faultyEmptyResponse, strategy))
@@ -378,6 +391,10 @@ trait Harvesting {
                 } else {
                   Some(HarvestError("noRecordsMatch", strategy))
                 }
+              }
+              else if ("unattestedEmptyResponse" == errorCode) {
+                logger.error(s"Empty response without completeListSize=0 attestation from $sourceUri — not treating as an empty set")
+                Some(HarvestError(s"Empty response without completeListSize attestation from $sourceUri", strategy))
               }
               else {
                 logger.error(s"OAI-PMH error from $sourceUri: ${errorNode.text}")
