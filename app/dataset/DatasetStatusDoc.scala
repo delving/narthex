@@ -40,7 +40,11 @@ object DatasetStatusDoc {
     delimitersSet: Option[String],
     errorMessage: Option[String],
     inRetry: Boolean,
-    errorTime: Option[String] = None
+    errorTime: Option[String] = None,
+    // pmh/adlib/json — harvest types carry their own record delimiters, so a
+    // configured harvest is startable without a stored delimitersSet (e.g.
+    // after full depublication wiped source_facts.txt).
+    harvestType: Option[String] = None
   )
 
   val PHASE_IDLE = "idle"
@@ -84,7 +88,7 @@ object DatasetStatusDoc {
     val b = Seq.newBuilder[String]
     if (p.raw.isDefined) b += "analyze_raw"
     if (p.raw.isDefined && p.rawAnalyzed.isDefined && !delimitersValid) b += "delimit"
-    if (delimitersValid && p.sourced.isEmpty) b += "first_harvest"
+    if ((delimitersValid || facts.harvestType.isDefined) && p.sourced.isEmpty) b += "first_harvest"
     if (p.sourced.isDefined) { b += "analyze_source"; b += "generate_sip"; b += "fast_save" }
     if (p.sourced.isDefined && p.processable.isDefined) b += "process"
     if (p.processed.isDefined) b += "analyze_processed"

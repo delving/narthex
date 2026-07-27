@@ -528,7 +528,8 @@ object DsInfo {
           delimitersSet = ds.delimitersSet,
           errorMessage = ds.errorMessage,
           inRetry = retryStatus.contains(ds.spec),
-          errorTime = ds.errorTime
+          errorTime = ds.errorTime,
+          harvestType = ds.harvestType
         )
         val baseJson = JsObject(
           (Json.toJson(ds).as[JsObject].value -- staleStateKeys).toSeq
@@ -1472,7 +1473,8 @@ class DsInfo(
         delimitersSet = getLiteralProp(triplestore.GraphProperties.delimitersSet),
         errorMessage = getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
         inRetry = isInRetry,
-        errorTime = getLiteralProp(triplestore.GraphProperties.datasetErrorTime)
+        errorTime = getLiteralProp(triplestore.GraphProperties.datasetErrorTime),
+        harvestType = getLiteralProp(triplestore.GraphProperties.harvestType)
       )
       projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }.toList ++
         DatasetStatusDoc.fields(orgContext, spec, projected, docFacts).toList
