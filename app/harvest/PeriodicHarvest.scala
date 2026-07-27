@@ -64,7 +64,14 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
             incrementalSavedFallback = ds.stateIncrementalSaved,
             disabledFallback = ds.stateDisabled
           ).currentState
-          PeriodicHarvest.harvestingAllowed.contains(state)
+          // Fully depublished datasets keep their harvest config and project
+          // PROCESSABLE (kept mapping) or EMPTY — they stay in the cycle so
+          // a set that reappears upstream is picked up automatically. The
+          // hasPreviousTime filter downstream still requires an actual
+          // schedule; DISABLED is projected and stays excluded.
+          val depublishedButConfigured = ds.harvestType.isDefined &&
+            (state == DsState.PROCESSABLE || state == DsState.EMPTY)
+          PeriodicHarvest.harvestingAllowed.contains(state) || depublishedButConfigured
         }.map(ds => DsInfo.getDsInfo(ds.spec, orgContext))
       }
       futureList.onComplete {
