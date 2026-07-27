@@ -557,12 +557,17 @@ define(["angular"], function () {
         $scope.showBlock = function (dataset, blockName) {
             if (!dataset[blockName]) return false;
             var pos;
-            if ((dataset.phase === 'running' || dataset.isActive) && dataset.run && dataset.run.stage) {
+            var running = (dataset.phase === 'running' || dataset.isActive) && dataset.run && dataset.run.stage;
+            if (running) {
                 pos = stageRank[dataset.run.stage];
             }
             if (pos === undefined && dataset.lastStep) pos = stepRank[dataset.lastStep];
             if (pos === undefined) return true; // no info: old behavior
-            return blockRank[blockName] <= pos;
+            // Idle: also show the NEXT pipeline block — it carries the action
+            // that advances the dataset (Processable's "process" right after
+            // make-sip). Capping at lastStep made advancing impossible.
+            var limit = running ? pos : pos + 1;
+            return blockRank[blockName] <= limit;
         };
 
         /**
