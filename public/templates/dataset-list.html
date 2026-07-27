@@ -425,6 +425,7 @@
                                             stateAnalyzed: 'analyzed',
                                             stateSaved:'saved',
                                             stateDisabled:'disabled',
+                                            stateDepublished:'empty',
                                             stateReadyToHarvest:'ready-to-harvest',
                                             '':'default'}[dataset.stateCurrent.name]">
                                     <span ng-switch-when="stateRaw">Raw source</span>
@@ -439,6 +440,7 @@
                                     <span ng-switch-when="stateAnalyzed">Analyzed</span>
                                     <span ng-switch-when="stateSaved">Saved</span>
                                     <span ng-switch-when="stateDisabled">Disabled</span>
+                                    <span ng-switch-when="stateDepublished">Empty (depublished)</span>
                                     <span ng-switch-when="stateReadyToHarvest">Ready to Harvest</span>
                                     <span ng-switch-default>Empty</span>
                                 </span>
@@ -464,6 +466,18 @@
                                     <a href data-ng-if="hasAction(dataset, 'enable')" data-ng-click="start('enable dataset')">
                                         <i class="fa fa-fw fa-toggle-on"></i>
                                         <span>Enable</span>
+                                    </a>
+                                </div>
+                            </li>
+                            <li data-ng-show="dataset.depublishedAt && !dataset.stateSourced" class="ds-state list-group-item later">
+                                <h4 class="list-group-item-heading">
+                                    Empty (depublished)
+                                    <small class="badge">{{ dataset.depublishedAt | limitTo:10 }}</small>
+                                </h4>
+                                <div class="btn-toolbar">
+                                    <a href data-ng-if="hasAction(dataset, 'first_harvest')" data-ng-click="start('start first harvest')">
+                                        <i class="fa fa-fw fa-cloud-download"></i>
+                                        <span>Harvest</span>
                                     </a>
                                 </div>
                             </li>

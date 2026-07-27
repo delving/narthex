@@ -871,6 +871,8 @@ class DatasetActor(val datasetContext: DatasetContext,
 
     case Event(HarvestComplete(strategy, fileOpt, noRecordsMatch),
                active: Active) =>
+      // Records arrived — a standing depublication marker no longer holds.
+      if (!noRecordsMatch && fileOpt.isDefined) dsInfo.clearDepublished()
       // The run opened at harvest start; Sample harvests have none.
       val harvestRunIdOpt: Option[Long] =
         if (strategy == Sample) None
@@ -952,6 +954,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             // the set comes back upstream, the next harvest reruns the
             // normal pipeline from scratch.
             log.info(s"Full harvest (FromScratch) returned noRecordsMatch for ${dsInfo.spec} — full depublication: dropping index + derived artifacts (config and mapping kept)")
+            dsInfo.markDepublished()
             completeHarvestRun()
             scala.util.Try(Await.ready(datasetContext.dropIndex, 2.minutes))
               .recover { case ex: Throwable =>
@@ -1002,6 +1005,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             // (ModifiedAfter) never take this path — their noRecordsMatch is
             // routine "no changes since".
             log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} — full depublication: dropping index + derived artifacts (config and mapping kept)")
+            dsInfo.markDepublished()
             completeHarvestRun()
             scala.util.Try(Await.ready(datasetContext.dropIndex, 2.minutes))
               .recover { case ex: Throwable =>

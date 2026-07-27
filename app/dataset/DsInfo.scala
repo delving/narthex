@@ -264,6 +264,7 @@ object DsInfo {
       // Operation status
       StringField("currentOperation", datasetCurrentOperation),
       StringField("operationStatus", datasetOperationStatus),
+      StringField("depublishedAt", depublishedAt),
       StringField("datasetErrorMessage", datasetErrorMessage),
 
       // Delimiters
@@ -975,6 +976,14 @@ class DsInfo(
     removeLiteralProp(datasetOperationTrigger)
     removeLiteralProp(datasetOperationStatus)
   }
+
+  /** Full depublication marker: a full harvest attested the set empty. */
+  def markDepublished(): Unit =
+    setSingularLiteralProps(depublishedAt -> now)
+
+  /** Records reappeared upstream — the depublication marker no longer holds. */
+  def clearDepublished(): Unit =
+    removeLiteralProp(depublishedAt)
 
   /**
    * Get current operation if any.

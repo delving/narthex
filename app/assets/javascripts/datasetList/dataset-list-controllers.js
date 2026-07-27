@@ -710,6 +710,13 @@ define(["angular"], function () {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
 
+            // Fully depublished (empty at source): clearer badge than the
+            // kept mapping's Processable. Cleared server-side when records
+            // reappear upstream.
+            if (dataset.depublishedAt && !dataset.stateSourced) {
+                dataset.stateCurrent = {"name": "stateDepublished", "date": Date.parse(dataset.depublishedAt)};
+            }
+
             // Disabled state takes precedence, BUT ignore stale disabled state
             // If any workflow state is >1 day newer than stateDisabled, consider it re-enabled
             if (dataset.stateDisabled) {
@@ -872,6 +879,13 @@ define(["angular"], function () {
             if (dataset.datasetErrorMessage || dataset.errorMessage) {
                 dataset.stateCurrent = {"name": "stateInError", "date": Date.now()};
             }
+            // Fully depublished (empty at source): clearer badge than the
+            // kept mapping's Processable. Cleared server-side when records
+            // reappear upstream.
+            if (dataset.depublishedAt && !dataset.stateSourced) {
+                dataset.stateCurrent = {"name": "stateDepublished", "date": Date.parse(dataset.depublishedAt)};
+            }
+
             // Disabled state takes precedence, BUT ignore stale disabled state
             // If any workflow state is >1 day newer than stateDisabled, consider it re-enabled
             if (dataset.stateDisabled) {

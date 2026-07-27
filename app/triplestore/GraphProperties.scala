@@ -164,6 +164,7 @@ object GraphProperties {
   val datasetOperationStartTime = NXProp("datasetOperationStartTime", timeProp)
   val datasetOperationTrigger = NXProp("datasetOperationTrigger")  // "automatic" or "manual"
   val datasetOperationStatus = NXProp("datasetOperationStatus")    // "in_progress", "completed", "interrupted"
+  val depublishedAt = NXProp("depublishedAt")    // full harvest attested the set empty; cleared when records reappear
 
   // Mapping source properties for default mappings feature
   val datasetMappingSource = NXProp("datasetMappingSource")                    // "manual" | "default"
