@@ -535,6 +535,10 @@ define(["angular"], function () {
          * (which actions are valid) use the backend's lattice instead.
          */
         function pickCurrentState(states) {
+            // Disabled trumps artifact recency — a disabled dataset must
+            // read Disabled, not whatever artifact happens to be newest.
+            var disabled = _.find(states, function (s) { return s.name === 'stateDisabled'; });
+            if (disabled) return disabled;
             var cur = _.max(states, function (state) { return state.date; });
             return (cur && cur.name) ? cur : undefined;
         }
@@ -558,6 +562,9 @@ define(["angular"], function () {
         var stageRank = {harvest: 2, generate_sip: 4, process: 6, analyze: 7, save: 8, reconcile: 8};
         $scope.showBlock = function (dataset, blockName) {
             if (!dataset[blockName]) return false;
+            // Disabled: pipeline blocks are dormant — only the Disabled
+            // block (rendered separately) with its Enable action applies.
+            if (dataset.stateDisabled) return false;
             var pos;
             var running = (dataset.phase === 'running' || dataset.isActive) && dataset.run && dataset.run.stage;
             if (running) {

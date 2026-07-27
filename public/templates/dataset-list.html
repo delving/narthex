@@ -454,6 +454,19 @@
                     data-ng-class="{ 'closed': !expanded, 'expanded': expanded }">
                     <div class="dataset-states col-md-3">
                         <ul class="list-group states">
+                            <li data-ng-show="dataset.stateDisabled" class="ds-state list-group-item later">
+                                <h4 class="list-group-item-heading">
+                                    Disabled
+                                    <small class="badge">{{ dataset.stateDisabled.d }} {{
+                                        dataset.stateDisabled.t }}</small>
+                                </h4>
+                                <div class="btn-toolbar">
+                                    <a href data-ng-if="hasAction(dataset, 'enable')" data-ng-click="start('enable dataset')">
+                                        <i class="fa fa-fw fa-toggle-on"></i>
+                                        <span>Enable</span>
+                                    </a>
+                                </div>
+                            </li>
                             <li data-ng-show="showBlock(dataset, 'stateRaw')" class="ds-state list-group-item"
                                 data-ng-class="{ 'later': isCurrent('stateRaw') }">
                                 <h4 class="list-group-item-heading">

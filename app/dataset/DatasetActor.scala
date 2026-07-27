@@ -513,6 +513,11 @@ class DatasetActor(val datasetContext: DatasetContext,
             broadcastIdleState()
             "disabled dataset"
 
+          case "enable dataset" =>
+            dsInfo.removeState(DISABLED)
+            broadcastIdleState()
+            "enabled dataset"
+
           case "remove raw" =>
             datasetContext.dropRaw()
             broadcastIdleState()
