@@ -39,6 +39,18 @@ define(["angular"], function () {
     // land while a digest is already running — a raw $apply then throws
     // $rootScope:inprog and the update is silently dropped (UI freezes on a
     // stale state). Apply only when no digest is in progress.
+    // Status docs carry every state field that is set; one absent from the
+    // message means the server removed it (enable, delete records, …).
+    // angular.extend never removes keys, so clear them explicitly.
+    var STATE_FIELDS = ['stateRaw', 'stateRawAnalyzed', 'stateSourced', 'stateSourceAnalyzed',
+        'stateMappable', 'stateProcessable', 'stateProcessed', 'stateAnalyzed',
+        'stateSaved', 'stateIncrementalSaved', 'stateDisabled'];
+    function clearAbsentStates(target, message) {
+        STATE_FIELDS.forEach(function (k) {
+            if (message[k] === undefined) target[k] = null;
+        });
+    }
+
     function safeApply(scope, fn) {
         var phase = scope.$root && scope.$root.$$phase;
         if (phase === '$apply' || phase === '$digest') {
@@ -206,6 +218,7 @@ define(["angular"], function () {
                                 if (!message.errorMessage) existingDataset.errorMessage = null;
                                 if (!message.currentOperation) existingDataset.currentOperation = null;
                                 if (!message.operationStatus) existingDataset.operationStatus = null;
+                                clearAbsentStates(existingDataset, message);
                                 // Re-decorate to update computed properties
                                 $scope.decorateDataset(existingDataset);
 
@@ -1485,6 +1498,7 @@ define(["angular"], function () {
                     // made the progress-restore below hold the bar at 100% forever.
                     if (!message.currentOperation) $scope.dataset.currentOperation = null;
                     if (!message.operationStatus) $scope.dataset.operationStatus = null;
+                    clearAbsentStates($scope.dataset, message);
                     $scope.decorateDataset($scope.dataset);
 
                     // Restore progress if dataset is still active (has current operation)
