@@ -204,6 +204,8 @@ define(["angular"], function () {
                                 if (!message.datasetErrorMessage) existingDataset.datasetErrorMessage = null;
                                 if (!message.datasetErrorTime) existingDataset.datasetErrorTime = null;
                                 if (!message.errorMessage) existingDataset.errorMessage = null;
+                                if (!message.currentOperation) existingDataset.currentOperation = null;
+                                if (!message.operationStatus) existingDataset.operationStatus = null;
                                 // Re-decorate to update computed properties
                                 $scope.decorateDataset(existingDataset);
 
@@ -1471,6 +1473,11 @@ define(["angular"], function () {
                     if (!message.datasetErrorMessage) $scope.dataset.datasetErrorMessage = null;
                     if (!message.datasetErrorTime) $scope.dataset.datasetErrorTime = null;
                     if (!message.errorMessage) $scope.dataset.errorMessage = null;
+                    // Same for operation tracking: the server removes these on
+                    // return to Idle, but extend kept the stale value — which
+                    // made the progress-restore below hold the bar at 100% forever.
+                    if (!message.currentOperation) $scope.dataset.currentOperation = null;
+                    if (!message.operationStatus) $scope.dataset.operationStatus = null;
                     $scope.decorateDataset($scope.dataset);
 
                     // Restore progress if dataset is still active (has current operation)
