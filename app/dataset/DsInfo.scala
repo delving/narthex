@@ -1382,11 +1382,11 @@ class DsInfo(
     bulkApiUpdate(s"${actionMap.toString()}\n")
   }
 
-  // Explicit per-record delete. Emitted as a single bulk-action line with an
-  // array of local_ids, chunked to stay under chunkMaxBytes so very large
-  // delete batches do not overflow the HTTP body. Hub3 must recognise
-  // `action = drop_records` with an `ids` array — the matching Hub3 change
-  // lands separately.
+  // Explicit per-record delete. Emitted as a single bulk-action line with a
+  // `hubIds` array — Hub3's contract (bulk.Request.HubIDs): full hub ids
+  // "{orgId}_{spec}_{localId}", validated against that prefix on the Hub3
+  // side. Chunked to stay under chunkMaxBytes so very large delete batches
+  // do not overflow the HTTP body.
   def dropRecordsByIds(localIds: scala.collection.Seq[String])(
       implicit ec: scala.concurrent.ExecutionContext
   ): scala.concurrent.Future[Any] = {
@@ -1397,13 +1397,14 @@ class DsInfo(
       // comfortably under the ceiling and keeps the single JSON line small.
       val batchSize = 10000
       val batches = localIds.grouped(batchSize).toList
+      val hubIdPrefix = s"${orgContext.appConfig.orgId}_${spec}_"
 
       def sendOne(ids: scala.collection.Seq[String]): scala.concurrent.Future[Any] = {
         val actionMap = Json.obj(
           "dataset" -> spec,
           "orgId" -> orgContext.appConfig.orgId,
           "action" -> "drop_records",
-          "ids" -> ids.toList
+          "hubIds" -> ids.toList.map(id => s"$hubIdPrefix$id")
         )
         bulkApiUpdate(s"${actionMap.toString()}\n")
       }
