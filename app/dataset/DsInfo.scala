@@ -384,7 +384,10 @@ object DsInfo {
     indexingLastMessage: Option[String] = None,
     indexingRecordsIndexed: Option[Int] = None,
     indexingRecordsExpected: Option[Int] = None,
-    indexingErrorCount: Option[Int] = None
+    indexingErrorCount: Option[Int] = None,
+    defaultMappingName: Option[String] = None,
+    defaultMappingPrefix: Option[String] = None,
+    defaultMappingVersion: Option[String] = None
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -430,7 +433,10 @@ object DsInfo {
       "indexingLastMessage" -> ds.indexingLastMessage,
       "indexingRecordsIndexed" -> ds.indexingRecordsIndexed,
       "indexingRecordsExpected" -> ds.indexingRecordsExpected,
-      "indexingErrorCount" -> ds.indexingErrorCount
+      "indexingErrorCount" -> ds.indexingErrorCount,
+      "defaultMappingName" -> ds.defaultMappingName,
+      "defaultMappingPrefix" -> ds.defaultMappingPrefix,
+      "defaultMappingVersion" -> ds.defaultMappingVersion
     )
   }
 
@@ -499,7 +505,10 @@ object DsInfo {
         indexingLastMessage = s(indexingLastMessage),
         indexingRecordsIndexed = i(indexingRecordsIndexed),
         indexingRecordsExpected = i(indexingRecordsExpected),
-        indexingErrorCount = i(indexingErrorCount)
+        indexingErrorCount = i(indexingErrorCount),
+        defaultMappingName = s(datasetDefaultMappingName),
+        defaultMappingPrefix = s(datasetDefaultMappingPrefix),
+        defaultMappingVersion = s(datasetDefaultMappingVersion)
       )
     }
   }
