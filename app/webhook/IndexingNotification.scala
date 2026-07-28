@@ -54,7 +54,26 @@ case class IndexingNotification(
 }
 
 object IndexingNotification {
-  implicit val format: Format[IndexingNotification] = Json.format[IndexingNotification]
+  // Hub3 marshals with omitempty: zero-valued counts are ABSENT from the
+  // payload (e.g. orphansDeleted=0 on a verify notification). Required Ints
+  // made those valid notifications bounce with 400 — default them to 0.
+  implicit val reads: Reads[IndexingNotification] = {
+    import play.api.libs.functional.syntax._
+    import play.api.libs.json.Reads._
+    (
+      (__ \ "type").read[String] and
+      (__ \ "orgID").read[String] and
+      (__ \ "datasetID").read[String] and
+      (__ \ "revision").readWithDefault[Int](0) and
+      (__ \ "timestamp").read[String] and
+      (__ \ "recordsIndexed").readWithDefault[Int](0) and
+      (__ \ "recordsExpected").readWithDefault[Int](0) and
+      (__ \ "orphansDeleted").readWithDefault[Int](0) and
+      (__ \ "errors").readNullable[Seq[IndexingError]] and
+      (__ \ "message").readNullable[String]
+    )(IndexingNotification.apply _)
+  }
+  implicit val writes: Writes[IndexingNotification] = Json.writes[IndexingNotification]
 }
 
 /**
