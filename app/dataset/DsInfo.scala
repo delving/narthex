@@ -532,10 +532,13 @@ object DsInfo {
           errorTime = ds.errorTime,
           harvestType = ds.harvestType
         )
+        val docFields = DatasetStatusDoc.fields(orgContext, ds.spec, projected, docFacts)
+        val phaseIsError = docFields.exists { case (k, v) => k == "phase" && v == play.api.libs.json.JsString(DatasetStatusDoc.PHASE_ERROR) }
+        val dropKeys = staleStateKeys ++ (if (phaseIsError) Set.empty[String] else DatasetStatusDoc.errorPropKeys)
         val baseJson = JsObject(
-          (Json.toJson(ds).as[JsObject].value -- staleStateKeys).toSeq
+          (Json.toJson(ds).as[JsObject].value -- dropKeys).toSeq
         ) ++ JsObject(projected.stateFields.map { case (k, v) => k -> Json.toJson(v) }) ++
-          JsObject(DatasetStatusDoc.fields(orgContext, ds.spec, projected, docFacts))
+          JsObject(docFields)
 
         // Add retry status
         val withRetry = retryStatus.get(ds.spec) match {
@@ -1463,7 +1466,7 @@ class DsInfo(
     // All fields from the registry - uses getValue which handles type conversion.
     // Phase A4b: lifecycle state* fields are excluded here — they come from
     // the projector below (disk + registry truth), not from stored props.
-    val registryFields: scala.collection.immutable.Seq[(String, JsValue)] = DsInfo.webSocketFields
+    val registryFieldsRaw: scala.collection.immutable.Seq[(String, JsValue)] = DsInfo.webSocketFields
       .filterNot(_.jsonName.startsWith("state"))
       .flatMap { field =>
         field.getValue(this).map(value => field.jsonName -> value)
@@ -1488,6 +1491,13 @@ class DsInfo(
       projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) }.toList ++
         DatasetStatusDoc.fields(orgContext, spec, projected, docFacts).toList
     }
+
+    // Stale stored error props must not resurrect the error badge once the
+    // phase says the error is superseded (a later run succeeded).
+    val phaseIsError = projectedStateFields.exists { case (k, v) => k == "phase" && v == JsString(DatasetStatusDoc.PHASE_ERROR) }
+    val registryFields: scala.collection.immutable.Seq[(String, JsValue)] =
+      if (phaseIsError) registryFieldsRaw
+      else registryFieldsRaw.filterNot { case (k, _) => DatasetStatusDoc.errorPropKeys.contains(k) }
 
     // Computed fields that require method calls (not simple property lookups)
     // These are fields derived from multiple properties or require special logic

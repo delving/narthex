@@ -35,6 +35,13 @@ import organization.OrgContext
  */
 object DatasetStatusDoc {
 
+  // Raw stored error props (e.g. the restart-recovery "manual review" flag)
+  // must not reach clients when the phase says the error is superseded — a
+  // later successful run IS the recovery (decision C3). Doc assemblers strip
+  // these keys whenever phase != error.
+  val errorPropKeys: Set[String] =
+    Set("errorMessage", "errorTime", "datasetErrorMessage", "datasetErrorTime")
+
   // Facts the affordance function needs beyond the projected artifacts.
   case class Facts(
     delimitersSet: Option[String],

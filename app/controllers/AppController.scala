@@ -740,7 +740,10 @@ class AppController @Inject() (
           // stateSourced from July with zero source zips on disk — the UI
           // then rendered state blocks whose actions were rightly withheld).
           // Strip ALL state* keys first; the projector is the only source.
-          val withoutStaleStates = JsObject(obj.value.filterNot(_._1.startsWith("state")).toSeq)
+          val phaseIsError = (stateJson \ "phase").asOpt[String].contains(dataset.DatasetStatusDoc.PHASE_ERROR)
+          val withoutStaleStates = JsObject(obj.value.filterNot { case (k, _) =>
+            k.startsWith("state") || (!phaseIsError && dataset.DatasetStatusDoc.errorPropKeys.contains(k))
+          }.toSeq)
           Ok(withoutStaleStates ++ stateJson)
         case other => Ok(other)
       }
