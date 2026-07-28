@@ -1714,6 +1714,22 @@ class DatasetActor(val datasetContext: DatasetContext,
 
         // Log operation completion if we were tracking one
         completedStartTime.foreach { startTime =>
+          // The acquisition fields above are full-dataset totals; for
+          // incremental work the interesting numbers are the run's DELTAS.
+          // Attach the latest registry run (kind + diff + sent) so the
+          // activity tab can show "+a ~c −d / sent" instead of totals.
+          val runMeta: Map[String, play.api.libs.json.JsValue] =
+            scala.util.Try(orgContext.recordRegistry.listRuns(dsInfo.spec, 3650).lastOption).toOption.flatten
+              .map { r =>
+                Map[String, play.api.libs.json.JsValue](
+                  "run_id" -> play.api.libs.json.JsNumber(r.runId),
+                  "run_kind" -> play.api.libs.json.JsString(r.kind),
+                  "added" -> play.api.libs.json.JsNumber(r.added),
+                  "changed" -> play.api.libs.json.JsNumber(r.changed),
+                  "deleted" -> play.api.libs.json.JsNumber(r.deleted),
+                  "sent" -> play.api.libs.json.JsNumber(r.sent)
+                )
+              }.getOrElse(Map.empty)
           // Log operation complete with record count and acquisition counts
           ActivityLogger.logOperationComplete(
             activityLog = datasetContext.activityLog,
@@ -1727,7 +1743,8 @@ class DatasetActor(val datasetContext: DatasetContext,
             sourceCount = dsInfo.getLiteralProp(sourceRecordCount).map(_.toInt),
             validCount = dsInfo.getLiteralProp(processedValid).map(_.toInt),
             invalidCount = dsInfo.getLiteralProp(processedInvalid).map(_.toInt),
-            acquisitionMethod = dsInfo.getLiteralProp(acquisitionMethod)
+            acquisitionMethod = dsInfo.getLiteralProp(acquisitionMethod),
+            metadata = runMeta
           )
 
           // If this completes a workflow, log workflow completion
