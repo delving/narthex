@@ -1519,6 +1519,44 @@ class DatasetActor(val datasetContext: DatasetContext,
         }
       }
 
+      // Persist the notification for customer review whenever it carries
+      // errors or a count mismatch — one JSON line per notification in
+      // indexing-errors.jsonl, correlated to the latest registry run.
+      val mismatch = indexing.recordsExpected > 0 && indexing.recordsIndexed != indexing.recordsExpected
+      if (indexing.errorCount > 0 || mismatch || indexing.notificationType != "success") {
+        scala.util.Try {
+          val latestRunId = orgContext.recordRegistry.listRuns(dsInfo.spec, 3650).lastOption.map(_.runId)
+          val entry = play.api.libs.json.Json.obj(
+            "timestamp" -> indexing.timestamp,
+            "type" -> indexing.notificationType,
+            "revision" -> indexing.revision,
+            "runId" -> latestRunId,
+            "recordsIndexed" -> indexing.recordsIndexed,
+            "recordsExpected" -> indexing.recordsExpected,
+            "orphansDeleted" -> indexing.orphansDeleted,
+            "message" -> indexing.message,
+            "errors" -> indexing.errors.getOrElse(Seq.empty).map(e => play.api.libs.json.Json.obj(
+              "documentId" -> e.documentId, "errorType" -> e.errorType, "reason" -> e.reason))
+          )
+          val fw = new java.io.FileWriter(datasetContext.indexingErrorsLog, true)
+          try fw.write(play.api.libs.json.Json.stringify(entry) + "\n") finally fw.close()
+        }.recover { case ex: Throwable =>
+          log.warning(s"Could not persist indexing errors for ${dsInfo.spec}: ${ex.getMessage}")
+        }
+      }
+
+      // Self-heal: Hub3 named the records it failed to index — forget their
+      // sent-state so the next save re-sends exactly those.
+      indexing.errors.filter(_.nonEmpty).foreach { errors =>
+        val prefix = s"${orgContext.appConfig.orgId}_${dsInfo.spec}_"
+        val localIds = errors.map(_.documentId).map { id =>
+          if (id.startsWith(prefix)) id.substring(prefix.length) else id
+        }
+        val reset = scala.util.Try(
+          orgContext.recordRegistry.resetSentStateForIds(dsInfo.spec, localIds)).getOrElse(0)
+        if (reset > 0) log.info(s"Marked $reset record(s) pending re-index for ${dsInfo.spec} after Hub3 error report")
+      }
+
       // Broadcast updated state to WebSocket clients
       broadcastIdleState()
       stay()

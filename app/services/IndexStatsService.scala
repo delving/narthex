@@ -43,7 +43,14 @@ case class DatasetIndexStats(
   indexCount: Int,
   // Status flags
   deleted: Boolean,
-  disabled: Boolean
+  disabled: Boolean,
+  // Registry-distinct record count: processedValid counts records WRITTEN
+  // (including duplicate ids); the registry and the index collapse by id.
+  // Comparing indexCount against distinctValid stops duplicate source ids
+  // from masquerading as index loss; duplicates = valid - distinct is a
+  // content problem surfaced by name.
+  distinctValid: Option[Int] = None,
+  duplicates: Option[Int] = None
 )
 
 object DatasetIndexStats {
@@ -175,6 +182,9 @@ class IndexStatsService @Inject()(
   private lazy val datasetsDb = new DatasetsDb(
     new java.io.File(narthexConfig.narthexDataDir, narthexConfig.orgId))
 
+  private lazy val recordRegistry = new RecordRegistry(
+    new java.io.File(new java.io.File(narthexConfig.narthexDataDir, narthexConfig.orgId), "datasets"))
+
   def fetchNarthexDatasets(): Future[List[DatasetIndexStats]] = Future.successful {
     datasetsDb.allProps().toList.sortBy(_._1).map { case (spec, p) =>
       def i(k: String): Option[Int] = p.get(k).flatMap(v => scala.util.Try(v.toInt).toOption)
@@ -189,7 +199,13 @@ class IndexStatsService @Inject()(
         acquisitionMethod = p.get("acquisitionMethod"),
         indexCount = 0, // Will be filled in later
         deleted = p.get("deleted").contains("true"),
-        disabled = p.contains("stateDisabled")
+        disabled = p.contains("stateDisabled"),
+        distinctValid = recordRegistry.seenCountIfExists(spec).filter(_ > 0),
+        duplicates = for {
+          valid <- i("processedValid")
+          distinct <- recordRegistry.seenCountIfExists(spec).filter(_ > 0)
+          if valid > distinct
+        } yield valid - distinct
       )
     }
   }
@@ -217,10 +233,12 @@ class IndexStatsService @Inject()(
     } yield {
       val activeDatasets = narthexDatasets.filter(ds => !ds.deleted && !ds.disabled)
 
-      // Wrong count: indexed but count doesn't match
+      // Wrong count: indexed but count doesn't match (vs registry-distinct
+      // when known — duplicate source ids are not an index mismatch)
       val wrongCount = activeDatasets.count { ds =>
         val indexCount = hub3.counts.getOrElse(ds.spec, 0)
-        indexCount > 0 && !ds.processedValid.contains(indexCount)
+        val exp = ds.distinctValid.orElse(ds.processedValid)
+        indexCount > 0 && !exp.contains(indexCount)
       }
 
       // Not indexed: has valid records but not in index
@@ -262,21 +280,25 @@ class IndexStatsService @Inject()(
       // Separate disabled datasets from active datasets
       val (disabledDatasets, activeDatasets) = nonDeletedDatasets.partition(_.disabled)
 
-      // Categorize active datasets (not deleted and not disabled)
+      // Categorize active datasets (not deleted and not disabled).
+      // Expected index size = registry-distinct count when known (the index
+      // is keyed by id, so duplicate source ids can never all appear).
+      def expected(ds: DatasetIndexStats): Option[Int] = ds.distinctValid.orElse(ds.processedValid)
+
       val correct = activeDatasets.filter { ds =>
-        ds.processedValid.exists(_ == ds.indexCount)
+        expected(ds).exists(_ == ds.indexCount)
       }
 
       val notIndexed = activeDatasets.filter { ds =>
-        ds.indexCount == 0 && ds.processedValid.exists(_ > 0)
+        ds.indexCount == 0 && expected(ds).exists(_ > 0)
       }
 
       val notProcessed = activeDatasets.filter { ds =>
-        ds.processedValid.isEmpty && ds.indexCount == 0
+        expected(ds).isEmpty && ds.indexCount == 0
       }
 
       val wrongCount = activeDatasets.filter { ds =>
-        ds.indexCount > 0 && !ds.processedValid.contains(ds.indexCount)
+        ds.indexCount > 0 && !expected(ds).contains(ds.indexCount)
       }
 
       IndexStatsResponse(

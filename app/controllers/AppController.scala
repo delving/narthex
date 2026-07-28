@@ -716,6 +716,17 @@ class AppController @Inject() (
     )
   }
 
+  /** Hub3 indexing-error notifications for review — newest first. */
+  def indexingErrors(spec: String, limit: Int) = Action { request =>
+    val f = orgContext.datasetContext(spec).indexingErrorsLog
+    val entries: Seq[JsValue] =
+      if (!f.exists()) Seq.empty
+      else scala.io.Source.fromFile(f, "UTF-8").getLines().toSeq
+        .reverse.take(limit)
+        .flatMap(line => scala.util.Try(Json.parse(line)).toOption)
+    Ok(Json.obj("spec" -> spec, "notifications" -> entries))
+  }
+
   def datasetInfo(spec: String) = Action { request =>
     withDsInfo(spec, orgContext) { dsInfo =>
       // Phase A4b: overlay projector-derived state* fields (flat names, the

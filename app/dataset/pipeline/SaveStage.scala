@@ -257,6 +257,19 @@ case class SaveStage(
             logger.warn(s"Revision sweep clear_orphans failed for $spec: ${ex.getMessage}")
           }
         logger.info(s"Revision sweep: clear_orphans emitted (keepRevisionSweep=$keepRevisionSweep)")
+      } else if (registryEnabled) {
+        // Registry-owned mode has no clear_orphans, so nothing would report
+        // indexing outcomes back. Ask Hub3 to verify the spec's total count
+        // against the registry's distinct record count and notify the
+        // webhook (per-record failures included) — the detection half of
+        // the self-healing loop.
+        registry.countIfExists(spec, "seen").filter(_ > 0).foreach { expected =>
+          scala.util.Try(Await.result(dsInfo.requestIndexVerify(expected), 2.minutes))
+            .recover { case ex: Throwable =>
+              logger.warn(s"index_verify request failed for $spec: ${ex.getMessage}")
+            }
+          logger.info(s"Registry: index_verify requested for $spec (expected=$expected)")
+        }
       }
 
       // Close the run. The registry computes the real per-run diff

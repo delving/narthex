@@ -185,6 +185,12 @@ class RecordRegistry(datasetsDir: File) {
   def resetSentState(specName: String): Int =
     if (dbFileExists(specName)) spec(specName).resetSentState() else 0
 
+  /** Self-heal: forget sent-state for SPECIFIC records (e.g. ids Hub3
+    * reported as failed to index) so the next save re-sends only those. */
+  def resetSentStateForIds(specName: String, localIds: Seq[String]): Int =
+    if (localIds.isEmpty || !dbFileExists(specName)) 0
+    else spec(specName).resetSentStateForIds(localIds)
+
   /**
    * True when every id is already a deleted row that has been sent to Hub3.
    * Lets the deletes-only harvest path skip opening a no-op run for the
@@ -1196,6 +1202,17 @@ private[services] class SpecRegistry(val datasetDir: File) {
       val ps = conn.prepareStatement(
         "UPDATE records SET last_sent_hash = NULL, last_sent_run_id = NULL")
       try ps.executeUpdate() finally ps.close()
+    }
+  }
+
+  def resetSentStateForIds(localIds: Seq[String]): Int = synchronized {
+    commitTx {
+      val ps = conn.prepareStatement(
+        "UPDATE records SET last_sent_hash = NULL, last_sent_run_id = NULL WHERE local_id = ?")
+      try {
+        localIds.foreach { id => ps.setString(1, id); ps.addBatch() }
+        ps.executeBatch().sum
+      } finally ps.close()
     }
   }
 

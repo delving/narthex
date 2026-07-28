@@ -58,6 +58,10 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   val processedDir = new File(rootDir, "processed")
   val harvestLogger = new File(rootDir, "harvesting_log.txt")
   val activityLog = new File(rootDir, "activity.jsonl")
+
+  // Per-notification indexing errors from Hub3 (webhook) — reviewable per
+  // run: one JSON line per notification carrying the failed ids + reasons.
+  val indexingErrorsLog = new File(rootDir, "indexing-errors.jsonl")
   val trendsLog = new File(rootDir, "trends.jsonl")
   val trendsDailyLog = new File(rootDir, "trends-daily.jsonl")
 

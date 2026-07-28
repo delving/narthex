@@ -1428,6 +1428,22 @@ class DsInfo(
     }
   }
 
+  // Registry-owned completion signal: ask Hub3 to verify the total indexed
+  // count for this spec against our expectation and report back through the
+  // indexing webhook (per-record failures included). Replaces the reporting
+  // role of clear_orphans when the revision sweep is off.
+  def requestIndexVerify(expectedRecords: Int)(
+      implicit ec: scala.concurrent.ExecutionContext
+  ): scala.concurrent.Future[Any] = {
+    val actionMap = Json.obj(
+      "dataset" -> spec,
+      "orgId" -> orgContext.appConfig.orgId,
+      "action" -> "index_verify",
+      "expectedRecords" -> expectedRecords
+    )
+    bulkApiUpdate(s"${actionMap.toString()}\n")
+  }
+
   def disableInNaveIndex() = {
     val actionMap = Json.obj(
       "dataset" -> spec,
