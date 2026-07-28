@@ -86,7 +86,7 @@ class AppController @Inject() (
   def listDatasets = Action.async { request =>
     getListDsTimer.timeFuture(listDsInfo(orgContext)).map(list => {
 
-      val jsonBytes: Array[Byte] = Json.toJson(list).toString().getBytes("UTF-8")
+      val jsonBytes: Array[Byte] = Json.toJson(list.map(enrichedDatasetJson)).toString().getBytes("UTF-8")
       val bos = new ByteArrayOutputStream(jsonBytes.length)
       val gzip = new GZIPOutputStream(bos)
       gzip.write(jsonBytes)
@@ -727,37 +727,40 @@ class AppController @Inject() (
     Ok(Json.obj("spec" -> spec, "notifications" -> entries))
   }
 
+  /** The full-props JSON of one dataset with lifecycle truth applied:
+    * stored state props stripped (the projector is the only source), stale
+    * error props suppressed unless the phase IS error, and the status
+    * document overlaid. Shared by /info and the full dataset list — the raw
+    * prop dump leaked stale states (a depublished dataset kept showing its
+    * old Processed badge on the list, and its stale stateSourced suppressed
+    * the Empty (depublished) trump client-side). */
+  private def enrichedDatasetJson(dsInfo: DsInfo): JsObject = {
+    val projected = DatasetStatusProjector.project(new DatasetContext(orgContext, dsInfo))
+    val docFacts = dataset.DatasetStatusDoc.Facts(
+      delimitersSet = dsInfo.getLiteralProp(triplestore.GraphProperties.delimitersSet),
+      errorMessage = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
+      inRetry = dsInfo.isInRetry,
+      errorTime = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorTime),
+      harvestType = dsInfo.getLiteralProp(triplestore.GraphProperties.harvestType)
+    )
+    val stateJson = JsObject(
+      projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) } ++
+        dataset.DatasetStatusDoc.fields(orgContext, dsInfo.spec, projected, docFacts)
+    )
+    val phaseIsError = (stateJson \ "phase").asOpt[String].contains(dataset.DatasetStatusDoc.PHASE_ERROR)
+    Json.toJson(dsInfo) match {
+      case obj: JsObject =>
+        val cleaned = JsObject(obj.value.filterNot { case (k, _) =>
+          k.startsWith("state") || (!phaseIsError && dataset.DatasetStatusDoc.errorPropKeys.contains(k))
+        }.toSeq)
+        cleaned ++ stateJson
+      case _ => stateJson
+    }
+  }
+
   def datasetInfo(spec: String) = Action { request =>
     withDsInfo(spec, orgContext) { dsInfo =>
-      // Phase A4b: overlay projector-derived state* fields (flat names, the
-      // ones the frontend reads) on the legacy JSON-LD serialization.
-      // Phase C1: plus the status document fields (phase/actions/lastStep/run).
-      val projected = DatasetStatusProjector.project(new DatasetContext(orgContext, dsInfo))
-      val docFacts = dataset.DatasetStatusDoc.Facts(
-        delimitersSet = dsInfo.getLiteralProp(triplestore.GraphProperties.delimitersSet),
-        errorMessage = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorMessage),
-        inRetry = dsInfo.isInRetry,
-        errorTime = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetErrorTime),
-        harvestType = dsInfo.getLiteralProp(triplestore.GraphProperties.harvestType)
-      )
-      val stateJson = JsObject(
-        projected.stateFields.map { case (k, v) => k -> (JsString(v): JsValue) } ++
-          dataset.DatasetStatusDoc.fields(orgContext, spec, projected, docFacts)
-      )
-      Json.toJson(dsInfo) match {
-        case obj: JsObject =>
-          // The projector OMITS absent states, so stale stored state props in
-          // the legacy serialization would survive a plain overlay (seen:
-          // stateSourced from July with zero source zips on disk — the UI
-          // then rendered state blocks whose actions were rightly withheld).
-          // Strip ALL state* keys first; the projector is the only source.
-          val phaseIsError = (stateJson \ "phase").asOpt[String].contains(dataset.DatasetStatusDoc.PHASE_ERROR)
-          val withoutStaleStates = JsObject(obj.value.filterNot { case (k, _) =>
-            k.startsWith("state") || (!phaseIsError && dataset.DatasetStatusDoc.errorPropKeys.contains(k))
-          }.toSeq)
-          Ok(withoutStaleStates ++ stateJson)
-        case other => Ok(other)
-      }
+      Ok(enrichedDatasetJson(dsInfo))
     }
   }
 
