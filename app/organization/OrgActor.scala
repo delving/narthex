@@ -451,6 +451,23 @@ class OrgActor (
     case ProcessQueueOnStartup =>
       // Rows queued before a restart are still here — drain them.
       log.info(s"Processing queue on startup: ${jobQueue.size()} items queued, ${jobQueue.leasedCount()}/$concurrencyLimit leased")
+      // Zombie open runs: an actor killed mid-stage (deploy/restart) leaves
+      // its run row 'running' with no lease and sends no WorkFailure — the
+      // phase then projects RUNNING forever while nothing works. Fail those
+      // runs so the interruption surfaces as an error and the dataset is
+      // actionable again.
+      scala.util.Try {
+        orgContext.datasetsDb.allSpecs().foreach { spec =>
+          if (!jobQueue.isLeased(spec)) {
+            orgContext.recordRegistry.openRun(spec).foreach { case (runId, _) =>
+              orgContext.recordRegistry.failOpenRuns(spec, "interrupted by restart")
+              log.warning(s"Failed zombie open run $runId for $spec (running with no lease after startup)")
+            }
+          }
+        }
+      }.recover { case ex: Throwable =>
+        log.warning(s"Zombie-run sweep failed: ${ex.getMessage}")
+      }
       processQueue()
 
     case PeriodicQueueCheck =>
