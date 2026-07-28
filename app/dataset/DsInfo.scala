@@ -376,7 +376,15 @@ object DsInfo {
     harvestUsername: Option[String],
     harvestPasswordSet: Option[Boolean],
     harvestApiKeySet: Option[Boolean],
-    mapToPrefix: Option[String]
+    mapToPrefix: Option[String],
+    // Last Hub3 indexing notification — the list row shows a warning label
+    // when the latest outcome was not a success (cleared when the next
+    // successful notification overwrites these props).
+    indexingLastStatus: Option[String] = None,
+    indexingLastMessage: Option[String] = None,
+    indexingRecordsIndexed: Option[Int] = None,
+    indexingRecordsExpected: Option[Int] = None,
+    indexingErrorCount: Option[Int] = None
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -417,7 +425,12 @@ object DsInfo {
       "mappingSource" -> ds.mappingSource,
       "harvestUsername" -> ds.harvestUsername,
       "harvestPasswordSet" -> ds.harvestPasswordSet,
-      "harvestApiKeySet" -> ds.harvestApiKeySet
+      "harvestApiKeySet" -> ds.harvestApiKeySet,
+      "indexingLastStatus" -> ds.indexingLastStatus,
+      "indexingLastMessage" -> ds.indexingLastMessage,
+      "indexingRecordsIndexed" -> ds.indexingRecordsIndexed,
+      "indexingRecordsExpected" -> ds.indexingRecordsExpected,
+      "indexingErrorCount" -> ds.indexingErrorCount
     )
   }
 
@@ -481,7 +494,12 @@ object DsInfo {
         harvestUsername = s(harvestUsername),
         harvestPasswordSet = p.get(harvestPassword.name).map(_.nonEmpty),
         harvestApiKeySet = p.get(harvestApiKey.name).map(_.nonEmpty),
-        mapToPrefix = s(datasetMapToPrefix)
+        mapToPrefix = s(datasetMapToPrefix),
+        indexingLastStatus = s(indexingLastStatus),
+        indexingLastMessage = s(indexingLastMessage),
+        indexingRecordsIndexed = i(indexingRecordsIndexed),
+        indexingRecordsExpected = i(indexingRecordsExpected),
+        indexingErrorCount = i(indexingErrorCount)
       )
     }
   }
