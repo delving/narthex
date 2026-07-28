@@ -1637,8 +1637,28 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       // Check if this is a harvest failure (candidate for retry)
       if (isHarvestFailure(active)) {
-        // Check if we're already in retry mode (preserve/use current count)
-        val currentRetryCount = if (dsInfo.isInRetry) dsInfo.getRetryCount else 0
+        // Config error, not transient: the endpoint only accepts DAY
+        // granularity for from/until (OAI badArgument "illegal granularity"
+        // or "From argument ... is not correct"). Retrying can never fix it
+        // — set harvestDateOnly so the next incremental sends YYYY-MM-DD,
+        // and skip retry mode entirely.
+        val granularityFailure = {
+          val m = Option(message).getOrElse("").toLowerCase
+          (m.contains("granularity") || (m.contains("from argument") && m.contains("not correct"))) &&
+            !dsInfo.getBooleanProp(triplestore.GraphProperties.harvestDateOnly)
+        }
+        if (granularityFailure) {
+          log.info(s"Granularity failure for ${dsInfo.spec} — setting harvestDateOnly=true; next periodic incremental uses day granularity")
+          dsInfo.setSingularLiteralProps(triplestore.GraphProperties.harvestDateOnly -> "true")
+          dsInfo.clearRetryState()
+          active.childOpt.foreach(_ ! PoisonPill)
+          goto(Idle) using Dormant
+        } else {
+
+        // Retry counting is PROP-based: the FSM InRetry state (where the old
+        // increment lived) is lost on every restart/queue re-dispatch, so the
+        // count stayed 0 forever and maxRetries never triggered.
+        val currentRetryCount = if (dsInfo.isInRetry) dsInfo.getRetryCount + 1 else 0
         val maxRetries = orgContext.appConfig.harvestMaxRetries
 
         if (currentRetryCount > 0) {
@@ -1671,6 +1691,7 @@ class DatasetActor(val datasetContext: DatasetContext,
 
           // Transition to retry state (not error state)
           goto(Idle) using InRetry(message, currentRetryCount)
+        }
         }
 
       } else {
