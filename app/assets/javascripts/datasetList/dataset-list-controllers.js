@@ -528,6 +528,7 @@ define(["angular"], function () {
             {name: 'stateEmpty', label: 'Empty', count: 0},
             {name: 'stateReadyToHarvest', label: 'Ready to Harvest', count: 0},
             {name: 'stateDisabled', label: 'Disabled', count: 0},
+            {name: 'stateDepublished', label: 'Empty (depublished)', count: 0},
             {name: 'stateRaw', label: 'Raw', count: 0},
             {name: 'stateRawAnalyzed', label: 'Raw analyzed', count: 0},
             {name: 'stateSourced', label: 'Sourced', count: 0},
