@@ -196,6 +196,28 @@ class OaiSourceRepo(orgRoot: File) {
   }
 
   /**
+   * Persist the last discovery result per source so the UI can show it
+   * instantly (with its age) instead of forcing a live OAI round-trip,
+   * and so the nav badge can count new sets without any user action.
+   */
+  def saveLastResult(result: OaiSourceConfig.DiscoveryResult): Unit = {
+    val f = new File(sourcesDir, s"${result.sourceId}-last-result.json")
+    FileUtils.writeStringToFile(f, Json.prettyPrint(Json.toJson(result)), "UTF-8")
+  }
+
+  def loadLastResult(sourceId: String): Option[OaiSourceConfig.DiscoveryResult] = {
+    val f = new File(sourcesDir, s"$sourceId-last-result.json")
+    if (!f.exists()) None
+    else
+      try Some(Json.parse(FileUtils.readFileToString(f, "UTF-8")).as[OaiSourceConfig.DiscoveryResult])
+      catch {
+        case e: Exception =>
+          logger.warn(s"Error reading last discovery result for $sourceId: ${e.getMessage}")
+          None
+      }
+  }
+
+  /**
    * Normalize a setSpec for use as a Narthex dataset identifier.
    * Example: "enb_05.documenten" -> "enb-05-documenten"
    */

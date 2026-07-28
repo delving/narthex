@@ -45,7 +45,15 @@ class DiscoveryController @Inject()(
 
     val enrichedSources = sources.map { source =>
       val cache = sourceRepo.loadCountsCache(source.id)
-      val sourceJson = Json.toJson(source).as[JsObject]
+      val lastResult = sourceRepo.loadLastResult(source.id)
+      val sourceJson = Json.toJson(source).as[JsObject] ++ JsObject(
+        // Durable (no TTL) — from the last background/manual discovery; the
+        // counts cache expires daily and used to take the badge with it.
+        lastResult.toSeq.flatMap(r => Seq(
+          "newSetCount" -> (Json.toJson(r.newSets.size): JsValue),
+          "lastDiscoveredAt" -> (Json.toJson(r.timestamp.toString): JsValue)
+        ))
+      )
 
       cache match {
         case Some(c) =>
@@ -126,6 +134,19 @@ class DiscoveryController @Inject()(
   /**
    * Discover sets from an OAI-PMH source.
    */
+  /** Cached last discovery result — instant load, no OAI round-trip. */
+  def lastDiscovery(id: String): Action[AnyContent] = Action { request =>
+    discoveryService.lastResult(id) match {
+      case Some(result) => Ok(Json.toJson(result))
+      case None => NotFound(Json.obj("error" -> "no cached discovery yet"))
+    }
+  }
+
+  /** New-set totals across sources from cached results (nav badge). */
+  def discoverySummary: Action[AnyContent] = Action { request =>
+    Ok(discoveryService.discoverySummary())
+  }
+
   def discoverSets(id: String): Action[AnyContent] = Action.async { request =>
     discoveryService.discoverSets(id).map {
       case Right(result) => Ok(Json.toJson(result))

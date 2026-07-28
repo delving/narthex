@@ -28,6 +28,7 @@ import triplestore.GraphProperties._
 import triplestore.TripleStore
 import discovery.OaiSourceConfig._
 import services.Temporal._
+import play.api.libs.json.{JsObject, Json}
 
 /**
  * Service for OAI-PMH dataset discovery and import.
@@ -46,12 +47,50 @@ class DatasetDiscoveryService @Inject()(
   // Lazy init the source repo
   lazy val sourceRepo = new OaiSourceRepo(orgContext.orgRoot)
 
+  // Daily background discovery: refresh every source's cached result so new
+  // sets surface on the nav badge and page WITHOUT anyone clicking Discover.
+  if (orgContext.narthexConfig.enableDatasetDiscovery) {
+    import scala.concurrent.duration._
+    orgContext.actorSystem.scheduler.scheduleWithFixedDelay(5.minutes, 24.hours)(new Runnable {
+      override def run(): Unit = {
+        sourceRepo.listSources().foreach { s =>
+          discoverSets(s.id).map {
+            case Right(r) => logger.info(s"Background discovery ${s.name}: ${r.newSets.size} new of ${r.totalSets} sets")
+            case Left(err) => logger.warn(s"Background discovery ${s.name} failed: $err")
+          }.recover { case ex: Throwable =>
+            logger.warn(s"Background discovery ${s.name} error: ${ex.getMessage}")
+          }
+        }
+      }
+    })(orgContext.actorSystem.dispatcher)
+  }
+
   /**
    * Discover sets from an OAI-PMH source.
    *
    * Fetches ListSets, normalizes specs, checks against existing datasets,
    * applies ignore list, and matches mapping rules.
    */
+  /** Cached last result per source — instant page load + badge counting. */
+  def lastResult(sourceId: String): Option[DiscoveryResult] = sourceRepo.loadLastResult(sourceId)
+
+  /** New-set totals across all sources from cached results (no OAI calls). */
+  def discoverySummary(): JsObject = {
+    val perSource = sourceRepo.listSources().map { s =>
+      val last = sourceRepo.loadLastResult(s.id)
+      Json.obj(
+        "sourceId" -> s.id,
+        "sourceName" -> s.name,
+        "newSets" -> last.map(_.newSets.size),
+        "lastChecked" -> last.map(_.timestamp.toString)
+      )
+    }
+    Json.obj(
+      "totalNewSets" -> perSource.flatMap(j => (j \ "newSets").asOpt[Int]).sum,
+      "sources" -> perSource
+    )
+  }
+
   def discoverSets(sourceId: String): Future[Either[String, DiscoveryResult]] = {
     sourceRepo.getSource(sourceId) match {
       case None =>
@@ -155,7 +194,7 @@ class DatasetDiscoveryService @Inject()(
 
               logger.info(s"Discovery result for ${source.name}: ${trulyNew.size} new, ${existing.size} existing, ${emptySets.size} empty, ${ignored.size} ignored")
 
-              Right(DiscoveryResult(
+              val result = DiscoveryResult(
                 sourceId = sourceId,
                 sourceName = source.name,
                 timestamp = timestamp,
@@ -167,7 +206,9 @@ class DatasetDiscoveryService @Inject()(
                 errors = List.empty,
                 countsLastVerified = countsVerifiedAt,
                 countsAvailable = countsCache.isDefined
-              ))
+              )
+              sourceRepo.saveLastResult(result)
+              Right(result)
             }
         }
     }

@@ -2550,6 +2550,13 @@ define(["angular"], function () {
             $rootScope.enableDatasetDiscovery = enableDatasetDiscovery === 'true';
             $scope.enableDatasetDiscovery = $rootScope.enableDatasetDiscovery;
             $scope.toggleBar = true;
+            // Nav badge: new discoverable sets, from cached background
+            // discovery — no visit to the discovery page needed.
+            if ($rootScope.enableDatasetDiscovery) {
+                $http.get('/narthex/app/discovery/summary').then(function (r) {
+                    $rootScope.discoveryNewCount = (r.data && r.data.totalNewSets) || 0;
+                }, function () { /* summary unavailable — badge stays hidden */ });
+            }
         };
 
         $rootScope.sidebarNav = function (page, dataset) {

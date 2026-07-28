@@ -71,6 +71,9 @@
                         <div ng-if="discoveryResult && !discovering">
                             <div class="well well-sm" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
                                 <div>
+                                    <span ng-if="resultIsCached" class="text-muted" style="margin-right: 8px" title="Shown from the last (background) discovery — click Discover Sets for a live check">
+                                        <i class="fa fa-clock-o"></i> as of {{ discoveryResult.timestamp | date:'yyyy-MM-dd HH:mm' }}
+                                    </span>
                                     <strong>{{ discoveryResult.totalSets }}</strong> total sets |
                                     <strong class="text-success">{{ discoveryResult.newSets.length }}</strong> new |
                                     <strong class="text-info">{{ discoveryResult.existingSets.length }}</strong> existing |

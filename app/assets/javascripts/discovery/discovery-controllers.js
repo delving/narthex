@@ -97,6 +97,15 @@ define(["angular"], function (angular) {
             $scope.selectedSource = source;
             $scope.discoveryResult = null;
             $scope.selectedSets = {};
+            $scope.resultIsCached = false;
+            // Show the cached background-discovery result instantly; the
+            // Discover button re-checks live when wanted.
+            discoveryService.lastDiscovery(source.id).then(function(result) {
+                if ($scope.selectedSource && $scope.selectedSource.id === source.id && !$scope.discovering) {
+                    $scope.discoveryResult = result;
+                    $scope.resultIsCached = true;
+                }
+            }, function() { /* no cached result yet — user can click Discover */ });
         };
 
         $scope.discover = function() {
@@ -108,6 +117,7 @@ define(["angular"], function (angular) {
 
             discoveryService.discoverSets($scope.selectedSource.id).then(function(result) {
                 $scope.discoveryResult = result;
+                $scope.resultIsCached = false;
                 $scope.discovering = false;
                 // Check if verification is already running (e.g. triggered externally)
                 if (!$scope.verifying) {

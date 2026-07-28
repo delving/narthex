@@ -145,6 +145,8 @@ POST        /narthex/app/discovery/sources                                   con
 PUT         /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.updateSource(id)
 + nocsrf
 DELETE      /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.deleteSource(id)
+GET         /narthex/app/discovery/summary                                   controllers.DiscoveryController.discoverySummary
+GET         /narthex/app/discovery/sources/:id/last                          controllers.DiscoveryController.lastDiscovery(id)
 GET         /narthex/app/discovery/sources/:id/discover                      controllers.DiscoveryController.discoverSets(id)
 + nocsrf
 POST        /narthex/app/discovery/sources/:id/ignore                        controllers.DiscoveryController.ignoreSets(id)

@@ -51,6 +51,9 @@ define(["angular", "common"], function (angular) {
                 discoverSets: function(sourceId) {
                     return $http.get(baseUrl + '/sources/' + sourceId + '/discover').then(function(r) { return r.data; });
                 },
+                lastDiscovery: function(sourceId) {
+                    return $http.get(baseUrl + '/sources/' + sourceId + '/last').then(function(r) { return r.data; });
+                },
 
                 // Ignore management
                 ignoreSets: function(sourceId, setSpecs) {
