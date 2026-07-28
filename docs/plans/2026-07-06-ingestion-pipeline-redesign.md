@@ -571,3 +571,15 @@ maps each to its structural home. Abbreviated:
 13. processedInvalid reflects the run being saved (→ per-run count in runs)
 14. Scheduled.file meaning shift (→ typed stage inputs/outputs)
 15. registry mirrors Hub3 only if nothing else writes Hub3 (→ health line + reset command, already shipped)
+
+## Follow-ups (2026-07-28, indexing error handling session)
+
+- [ ] **Compile check at default-mapping save time**: a broken default (edm/objecten
+  May 28 edit, Groovy syntax error) sat undetected for two months and failed every
+  tracker at process time. Saving a default (upload/editor/copy-from) should
+  test-compile the mapping (BulkMappingRunner dry compile) and reject or warn.
+  Same check is cheap to add on dataset-mapping saves.
+- [ ] Consider a dataset-row indicator for non-success indexing notifications
+  (currently visible on index-stats + indexing-errors.jsonl, not on the row).
+- [ ] Hub3: graceful-drain covers SIGTERM; SIGKILL losses detected by index_verify.
+  Optionally persist the bulk buffer or lower flush interval.
