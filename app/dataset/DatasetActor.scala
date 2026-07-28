@@ -692,6 +692,14 @@ class DatasetActor(val datasetContext: DatasetContext,
             broadcastIdleState()
             "counts reset"
 
+          case "backfill registry" =>
+            // Externally-processed datasets (upload-processed) predating the
+            // backfill-at-upload: register (id, hash) rows from the processed
+            // output so registry-owned saves can send them.
+            val n = dataset.pipeline.RegistryBackfill.fromProcessedOutput(datasetContext, orgContext)
+            broadcastIdleState()
+            s"registry backfilled with $n record(s) from processed output"
+
           case "reset registry sync" =>
             // Escape hatch after a Hub3 wipe/reindex: forget what was sent so
             // the next save re-sends every record and re-drops tombstones.

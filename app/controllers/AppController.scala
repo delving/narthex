@@ -2404,7 +2404,16 @@ $nodeMappingsXml
           processedExternally -> source
         )
 
-        // 5. Drop stale analysis tree — it describes the previous processed
+        // 5. Registry backfill: external processing IS the process step;
+        //    without (id, hash) rows a registry-owned save sends nothing.
+        if (orgContext.narthexConfig.registryEnabled) {
+          scala.util.Try(dataset.pipeline.RegistryBackfill.fromProcessedOutput(datasetContext, orgContext))
+            .recover { case ex: Throwable =>
+              logger.warn(s"Registry backfill failed for $spec (save will send nothing until reprocessed/reuploaded): ${ex.getMessage}")
+            }
+        }
+
+        // 6. Drop stale analysis tree — it describes the previous processed
         //    output, and its presence would project ANALYZED
         datasetContext.dropTree()
 
