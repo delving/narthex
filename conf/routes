@@ -160,6 +160,7 @@ POST        /narthex/app/discovery/preview-spec                              con
 POST        /narthex/app/discovery/sources/:id/verify                        controllers.DiscoveryController.startVerification(id)
 GET         /narthex/app/discovery/sources/:id/verify-status                  controllers.DiscoveryController.getVerificationStatus(id)
 
+GET         /narthex/app/dataset/:spec/source-duplicates                    controllers.AppController.sourceDuplicates(spec)
 GET         /narthex/app/dataset/:spec/indexing-errors                      controllers.AppController.indexingErrors(spec, limit: Int ?= 50)
 GET         /narthex/app/dataset/:spec/sip-list                              controllers.AppController.listSipFiles(spec)
 GET         /narthex/app/dataset/:spec/delete-latest                         controllers.AppController.deleteLatestSipFile(spec)

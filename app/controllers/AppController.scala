@@ -716,6 +716,22 @@ class AppController @Inject() (
     )
   }
 
+  /** Duplicate source ids (source defect) detected at pocket generation. */
+  def sourceDuplicates(spec: String) = Action { request =>
+    val f = new java.io.File(new java.io.File(orgContext.datasetsDir, spec), "source/duplicates.txt")
+    val entries: Seq[JsValue] =
+      if (!f.exists()) Seq.empty
+      else scala.io.Source.fromFile(f, "UTF-8").getLines().flatMap { line =>
+        line.split("\t") match {
+          case Array(id, n) =>
+            val occ: Int = n.trim.toIntOption.getOrElse(0)
+            Some(Json.obj("id" -> id, "occurrences" -> occ))
+          case _ => None
+        }
+      }.toSeq
+    Ok(Json.obj("spec" -> spec, "duplicates" -> entries))
+  }
+
   /** Hub3 indexing-error notifications for review — newest first. */
   def indexingErrors(spec: String, limit: Int) = Action { request =>
     val f = orgContext.datasetContext(spec).indexingErrorsLog

@@ -324,6 +324,11 @@
                             <td class="acquired"
                                 title="Acquired: {{ dataset.acquiredRecordCount || dataset.datasetRecordCount || 0 }}&#10;Deleted: {{ dataset.deletedRecordCount || 0 }}&#10;Source: {{ dataset.sourceRecordCount || (dataset.acquiredRecordCount || dataset.datasetRecordCount || 0) - (dataset.deletedRecordCount || 0) }}">
                                 <!-- Acquisition method icon -->
+                                <a data-ng-if="dataset.counts.acquired.duplicates" ng-href="/narthex/app/dataset/{{ dataset.datasetSpec }}/source-duplicates" target="_blank"
+                                   ng-click="$event.stopPropagation()"
+                                   title="Source defect: {{ dataset.counts.acquired.duplicates }} duplicated record id(s) — only the first occurrence of each is kept. Click for the id list.">
+                                    <i class="fa fa-clone text-warning"></i>
+                                </a>
                                 <i data-ng-if="dataset.acquisitionMethod == 'harvest'" class="fa fa-download text-info" title="Harvested via OAI-PMH"></i>
                                 <i data-ng-if="dataset.acquisitionMethod == 'upload'" class="fa fa-upload text-muted" title="Uploaded file"></i>
                                 <!-- Acquired count -->
