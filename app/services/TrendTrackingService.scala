@@ -844,7 +844,10 @@ object TrendTrackingService extends Logging {
     val target = org.joda.time.LocalDate.parse(targetDate)
     val startOpt = readDailySummaries(dailyLog).lastOption
       .map(last => org.joda.time.LocalDate.parse(last.date).plusDays(1))
-    val start = startOpt.getOrElse(target)
+    // Never start past the target: when the target date already has a row
+    // (e.g. stamped intraday), the reconcile must REPLACE it — starting at
+    // last+1 skipped the whole loop and froze the stale row forever.
+    val start = startOpt.filter(!_.isAfter(target)).getOrElse(target)
     // Cap backfill at the chart horizon; older gaps have no reader.
     val cappedStart =
       if (org.joda.time.Days.daysBetween(start, target).getDays > MAX_HISTORY_DAYS)
