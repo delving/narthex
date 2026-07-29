@@ -718,6 +718,10 @@ class AppController @Inject() (
 
   /** Duplicate source ids (source defect) detected at pocket generation. */
   def sourceDuplicates(spec: String) = Action { request =>
+    // spec comes from the URL path: reject anything that could traverse
+    if (!spec.matches("[A-Za-z0-9_.-]+")) {
+      BadRequest(Json.obj("error" -> "invalid spec"))
+    } else {
     val f = new java.io.File(new java.io.File(orgContext.datasetsDir, spec), "source/duplicates.txt")
     val entries: Seq[JsValue] =
       if (!f.exists()) Seq.empty
@@ -730,10 +734,14 @@ class AppController @Inject() (
         }
       }.toSeq
     Ok(Json.obj("spec" -> spec, "duplicates" -> entries))
+    }
   }
 
   /** Hub3 indexing-error notifications for review — newest first. */
   def indexingErrors(spec: String, limit: Int) = Action { request =>
+    if (!spec.matches("[A-Za-z0-9_.-]+")) {
+      BadRequest(Json.obj("error" -> "invalid spec"))
+    } else {
     val f = orgContext.datasetContext(spec).indexingErrorsLog
     val entries: Seq[JsValue] =
       if (!f.exists()) Seq.empty
@@ -741,6 +749,7 @@ class AppController @Inject() (
         .reverse.take(limit)
         .flatMap(line => scala.util.Try(Json.parse(line)).toOption)
     Ok(Json.obj("spec" -> spec, "notifications" -> entries))
+    }
   }
 
   /** The full-props JSON of one dataset with lifecycle truth applied:
