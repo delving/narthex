@@ -168,15 +168,16 @@ class OaiSourceRepo(orgRoot: File) {
         val content = FileUtils.readFileToString(cacheFile, "UTF-8")
         val cache = Json.parse(content).as[SetCountCache]
 
-        // Check if cache is expired
+        // DURABLE: verified counts stay valid for classification — deleting
+        // on a 24h TTL made the sweep forget every verified-EMPTY set daily,
+        // reclassifying 1121 empty sets as "new" and lighting the nav badge.
+        // Staleness stays visible via lastVerified (countsVerifiedAt in the
+        // UI); re-verification refreshes it.
         val ageHours = (DateTime.now.getMillis - cache.lastVerified.getMillis) / 3600000.0
         if (ageHours > ttlHours) {
-          logger.debug(s"Counts cache for $sourceId expired (${ageHours.toInt}h old)")
-          cacheFile.delete()
-          None
-        } else {
-          Some(cache)
+          logger.debug(s"Counts cache for $sourceId is ${ageHours.toInt}h old (stale but still used for classification)")
         }
+        Some(cache)
       } catch {
         case e: Exception =>
           logger.error(s"Error reading counts cache for $sourceId: ${e.getMessage}", e)
