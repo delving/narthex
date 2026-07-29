@@ -193,6 +193,12 @@ object DatasetStatusDoc {
         .flatMap(f => scala.util.Try(
           org.apache.commons.io.FileUtils.readFileToString(f, "UTF-8").trim.toInt).toOption).sum)
       .filter(_ > 0)
+    def duplicateIdsCount: Option[Int] = {
+      val f = new java.io.File(sourceDir, "duplicates.txt")
+      if (f.exists())
+        scala.util.Try(org.apache.commons.io.FileUtils.readLines(f, "UTF-8").size).toOption.filter(_ > 0)
+      else None
+    }
     def deletedIdsCount: Option[Int] = {
       val f = new java.io.File(sourceDir, "deleted.ids")
       if (f.exists())
@@ -242,7 +248,8 @@ object DatasetStatusDoc {
     )
 
     Json.obj(
-      "acquired" -> Json.obj("records" -> acquiredRecords, "deleted" -> deleted, "method" -> method),
+      "acquired" -> Json.obj("records" -> acquiredRecords, "deleted" -> deleted, "method" -> method,
+        "duplicates" -> duplicateIdsCount),
       "processed" -> processed,
       "lastIncrement" -> lastIncrement,
       "indexed" -> indexed

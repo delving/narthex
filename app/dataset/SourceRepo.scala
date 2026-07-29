@@ -517,19 +517,38 @@ class SourceRepo(home: File, orgContext: OrgContext) {
         val endList = s"""</$POCKET_LIST>\n"""
         rawOutput.write(startList)
 
-        def pocketWriter(pocket: Pocket): Unit = {
-          writeBuffer.append(pocket.getText)
-          bufferedRecords += 1
+        // Same-id-in-multiple-pockets is a SOURCE DEFECT: keep the first
+        // occurrence only so duplicates never reach processing or the index,
+        // and persist the defect list for counts + customer review.
+        val seenIds = new java.util.HashSet[String]()
+        val duplicateCounts = scala.collection.mutable.Map.empty[String, Int]
 
-          // Flush buffer when it exceeds threshold
-          if (writeBuffer.length >= flushThreshold) {
-            rawOutput.write(writeBuffer.toString())
-            writeBuffer.clear()
-            bufferedRecords = 0
+        def pocketWriter(pocket: Pocket): Unit = {
+          if (!seenIds.add(pocket.id)) {
+            duplicateCounts(pocket.id) = duplicateCounts.getOrElse(pocket.id, 0) + 1
+          } else {
+            writeBuffer.append(pocket.getText)
+            bufferedRecords += 1
+
+            // Flush buffer when it exceeds threshold
+            if (writeBuffer.length >= flushThreshold) {
+              rawOutput.write(writeBuffer.toString())
+              writeBuffer.clear()
+              bufferedRecords = 0
+            }
           }
         }
 
-        recordCount = parsePockets(pocketWriter, idFilter, progress)
+        recordCount = parsePockets(pocketWriter, idFilter, progress) - duplicateCounts.values.sum
+
+        val dupFile = new File(home, "duplicates.txt")
+        if (duplicateCounts.nonEmpty) {
+          val lines = duplicateCounts.toSeq.sortBy(_._1).map { case (id, extra) => s"$id\t${extra + 1}" }
+          FileUtils.writeStringToFile(dupFile, lines.mkString("\n") + "\n", "UTF-8")
+          logger.warn(s"Source defect: ${duplicateCounts.size} duplicated record id(s) (only first occurrence kept) — see ${dupFile.getName}")
+        } else if (dupFile.exists()) {
+          dupFile.delete()
+        }
 
         // Flush any remaining buffered records
         if (writeBuffer.nonEmpty) {

@@ -73,6 +73,16 @@ class PocketWriter(
   // Collect record IDs (thread-safe)
   private val collectedIds = new ConcurrentLinkedQueue[String]()
 
+  // Duplicate ids seen in this harvest (same id in multiple pockets) — a
+  // SOURCE DEFECT: only the first occurrence is written so duplicates never
+  // reach processing or the index; the rest are counted and reported.
+  private val duplicateCounts = new java.util.concurrent.ConcurrentHashMap[String, Integer]()
+
+  def getDuplicateCounts: Map[String, Int] = {
+    import scala.jdk.CollectionConverters._
+    duplicateCounts.asScala.map { case (k, v) => k -> v.intValue() }.toMap
+  }
+
   // Track any error that occurred during processing
   @volatile private var processingError: Option[Throwable] = None
 
@@ -154,6 +164,7 @@ class PocketWriter(
 
       val parser = new PocketParser(sourceFacts, idFilter, orgContext)
       val progress = ProgressReporter() // Dummy progress reporter
+      val seenIds = new java.util.HashSet[String]()
 
       // Process pages until finished and queue is drained
       while (!finished.get() || !pageQueue.isEmpty) {
@@ -166,9 +177,13 @@ class PocketWriter(
             val pageSource = Source.fromString(page)
             try {
               parser.parse(pageSource, Set.empty, { pocket =>
-                writer.write(pocket.getText)
-                collectedIds.offer(pocket.id)
-                recordCount.incrementAndGet()
+                if (seenIds.add(pocket.id)) {
+                  writer.write(pocket.getText)
+                  collectedIds.offer(pocket.id)
+                  recordCount.incrementAndGet()
+                } else {
+                  duplicateCounts.merge(pocket.id, 1, (a, b) => a + b)
+                }
               }, progress)
             } finally {
               pageSource.close()
@@ -188,6 +203,19 @@ class PocketWriter(
 
       val count = recordCount.get()
       logger.info(s"PocketWriter completed: wrote $count records to ${outputFile.getAbsolutePath} (${outputFile.length()} bytes)")
+
+      // Persist the defect list next to the pockets for counts + review;
+      // remove a stale list when this harvest is clean.
+      val dupFile = new File(outputFile.getParentFile, "duplicates.txt")
+      if (!duplicateCounts.isEmpty) {
+        import scala.jdk.CollectionConverters._
+        val lines = duplicateCounts.asScala.toSeq.sortBy(_._1)
+          .map { case (id, extra) => s"$id\t${extra.intValue() + 1}" }
+        org.apache.commons.io.FileUtils.writeStringToFile(dupFile, lines.mkString("\n") + "\n", "UTF-8")
+        logger.warn(s"Source defect: ${duplicateCounts.size} duplicated record id(s) in harvest (only first occurrence kept) — see ${dupFile.getName}")
+      } else if (dupFile.exists()) {
+        dupFile.delete()
+      }
 
     } catch {
       case NonFatal(e) =>
