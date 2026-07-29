@@ -881,6 +881,18 @@ class DatasetActor(val datasetContext: DatasetContext,
                active: Active) =>
       // Records arrived — a standing depublication marker no longer holds.
       if (!noRecordsMatch && fileOpt.isDefined) dsInfo.clearDepublished()
+      // A successful harvest answer (even "no changes since") supersedes a
+      // FAILED harvest run: no-op incrementals record no run of their own,
+      // so without this a config-error run (e.g. granularity, since fixed
+      // by harvestDateOnly) kept the phase on error forever.
+      scala.util.Try {
+        orgContext.recordRegistry.latestRunOutcome(dsInfo.spec).foreach { o =>
+          if (o.status == "failed" && o.failedStage.contains("harvest")) {
+            orgContext.recordRegistry.dismissLatestFailedRun(dsInfo.spec)
+            log.info(s"Dismissed failed harvest run ${o.runId} for ${dsInfo.spec} — harvest now succeeds")
+          }
+        }
+      }
       // The run opened at harvest start; Sample harvests have none.
       val harvestRunIdOpt: Option[Long] =
         if (strategy == Sample) None
