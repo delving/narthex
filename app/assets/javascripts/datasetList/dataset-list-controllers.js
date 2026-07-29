@@ -1574,7 +1574,9 @@ define(["angular"], function () {
         }
         $scope.idFilter = {};
         var baseUrl = angular.element("#content-wrapper").data("nave-url");
-        $scope.searchLink = baseUrl + "/search?q=delving_spec:" + "\"" + $scope.dataset.datasetSpec + "\"";
+        // Hub3 v2 search API filtered to this dataset (post-Fuseki: the old
+        $scope.sparqlPath = baseUrl + "/api/search/v2?rows=10&qf=meta.spec:" + $scope.dataset.datasetSpec;
+        $scope.searchLink = baseUrl + "/api/search/v2?rows=10&qf=meta.spec:" + $scope.dataset.datasetSpec;
 
         $scope.apiLink = baseUrl + "/api/search/v1/?q=delving_spec:" + $scope.dataset.datasetSpec;
         // todo: note that edm is hardcoded here:
