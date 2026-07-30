@@ -204,17 +204,11 @@ class PocketWriter(
       val count = recordCount.get()
       logger.info(s"PocketWriter completed: wrote $count records to ${outputFile.getAbsolutePath} (${outputFile.length()} bytes)")
 
-      // Persist the defect list next to the pockets for counts + review;
-      // remove a stale list when this harvest is clean.
-      val dupFile = new File(outputFile.getParentFile, "duplicates.txt")
+      // duplicates.txt is written by the Harvester at accept time (full
+      // harvests only) — a delta harvest sees a subset and must not
+      // overwrite or clear the full-source defect list.
       if (!duplicateCounts.isEmpty) {
-        import scala.jdk.CollectionConverters._
-        val lines = duplicateCounts.asScala.toSeq.sortBy(_._1)
-          .map { case (id, extra) => s"$id\t${extra.intValue() + 1}" }
-        org.apache.commons.io.FileUtils.writeStringToFile(dupFile, lines.mkString("\n") + "\n", "UTF-8")
-        logger.warn(s"Source defect: ${duplicateCounts.size} duplicated record id(s) in harvest (only first occurrence kept) — see ${dupFile.getName}")
-      } else if (dupFile.exists()) {
-        dupFile.delete()
+        logger.warn(s"Source defect: ${duplicateCounts.size} duplicated record id(s) in harvest (only first occurrence kept)")
       }
 
     } catch {
@@ -250,7 +244,10 @@ object PocketWriter {
       idFilter: IdFilter,
       orgContext: OrgContext
   ): PocketWriter = {
-    val outputFile = new File(sourceDir, "pockets.xml.gz")
+    // Write to a temp name: pockets.xml.gz is the SIP fast-path cache and
+    // must only ever hold a COMPLETE source. The Harvester promotes this
+    // file at accept time for full harvests and discards it for deltas.
+    val outputFile = new File(sourceDir, "pockets-harvest.xml.gz")
     new PocketWriter(outputFile, sourceFacts, idFilter, orgContext)
   }
 }

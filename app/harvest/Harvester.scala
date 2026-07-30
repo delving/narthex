@@ -383,12 +383,16 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     // Signal pocket writer that no more pages are coming and wait for completion
     // Collect IDs for use in acceptHarvestedFile (avoids re-parsing)
     var harvestedIds: Option[Set[String]] = None
+    var harvestedDupCounts: Map[String, Int] = Map.empty
+    var pocketTempOpt: Option[File] = None
     pocketWriterOpt.foreach { pocketWriter =>
       log.info("Waiting for background pocket writer to complete...")
       pocketWriter.finish()
+      pocketTempOpt = Some(pocketWriter.getOutputFile)
       try {
         val pocketCount = pocketWriter.awaitCompletion(600000) // 10 minute timeout
         harvestedIds = Some(pocketWriter.getCollectedIds)
+        harvestedDupCounts = pocketWriter.getDuplicateCounts
         log.info(s"Pocket writer completed with $pocketCount records, collected ${harvestedIds.get.size} IDs")
       } catch {
         case NonFatal(e) =>
@@ -428,6 +432,19 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
             datasetContext.sourceRepoOpt match {
               case Some(sourceRepo) =>
                 Future {
+                  val fullHarvest = strategy match {
+                    case _: FromScratch | FromScratchIncremental => true
+                    case _ => false
+                  }
+                  // A full harvest replaces the source: clear old data only NOW,
+                  // after the harvest itself succeeded. Clearing at harvest start
+                  // left an hours-long window where a crash/restart lost the
+                  // entire source (brabant-collectie, 2026-07-28). Keep the
+                  // freshly written pocket temp file — it becomes the new cache.
+                  if (fullHarvest) {
+                    sourceRepo.clearData(keepNames = pocketTempOpt.map(_.getName).toSet)
+                    log.info(s"Cleared previous source data before accepting full harvest")
+                  }
                   // Use pre-computed IDs if available (from PocketWriter), otherwise fall back to parsing
                   val fileOption = harvestedIds match {
                     case Some(ids) =>
@@ -468,6 +485,36 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     log.info(s"Saved error log: ${errorLogDest.getAbsolutePath}")
                   }
 
+                  // Promote or discard the pocket temp file. pockets.xml.gz (the
+                  // SIP fast-path cache) must only ever hold the COMPLETE source:
+                  // a full harvest's output becomes the new cache; a delta's
+                  // output is a subset and is discarded, and the pre-delta cache
+                  // is invalidated so SIP generation re-parses the source zips.
+                  val cacheFile = new File(sourceRepo.sourceDir, "pockets.xml.gz")
+                  val dupFile = new File(sourceRepo.sourceDir, "duplicates.txt")
+                  if (fullHarvest) {
+                    pocketTempOpt.filter(_.exists()).foreach { tmp =>
+                      if (cacheFile.exists()) cacheFile.delete()
+                      FileUtils.moveFile(tmp, cacheFile)
+                    }
+                    // Full harvest sees the whole source, so its duplicate list
+                    // is authoritative: persist it, or clear a stale one.
+                    if (harvestedDupCounts.nonEmpty) {
+                      val lines = harvestedDupCounts.toSeq.sortBy(_._1).map { case (id, extra) => s"$id\t${extra + 1}" }
+                      FileUtils.writeStringToFile(dupFile, lines.mkString("\n") + "\n", "UTF-8")
+                      log.warning(s"Source defect: ${harvestedDupCounts.size} duplicated record id(s) — see ${dupFile.getName}")
+                    } else if (dupFile.exists()) {
+                      dupFile.delete()
+                    }
+                  } else {
+                    pocketTempOpt.filter(_.exists()).foreach(_.delete())
+                    if (cacheFile.exists()) {
+                      cacheFile.delete()
+                      log.info("Invalidated pockets cache after delta harvest")
+                    }
+                    // duplicates.txt untouched: a delta cannot refute the
+                    // full-source defect list.
+                  }
                   log.info(s"Zip file accepted: $fileOption")
                   context.parent ! HarvestComplete(strategy, fileOption)
                 } onComplete {

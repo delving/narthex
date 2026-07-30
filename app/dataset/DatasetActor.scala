@@ -335,18 +335,12 @@ class DatasetActor(val datasetContext: DatasetContext,
 
       // Prepare source repo based on strategy
       strategy match {
-        case _: FromScratch =>
-          log.info("FromScratch: clearing all data")
-          datasetContext.sourceRepoOpt match {
-            case Some(sourceRepo) => sourceRepo.clearData()
-            case None => datasetContext.createSourceRepo(SourceFacts(ht))
-          }
-        case FromScratchIncremental =>
-          log.info("FromScratchIncremental: clearing data for full periodic harvest")
-          datasetContext.sourceRepoOpt match {
-            case Some(sourceRepo) => sourceRepo.clearData()
-            case None => datasetContext.createSourceRepo(SourceFacts(ht))
-          }
+        case _: FromScratch | FromScratchIncremental =>
+          // Old source is kept until the Harvester accepts the completed
+          // harvest (clearData runs there) — clearing here left an hours-long
+          // crash window that could lose the entire source.
+          log.info(s"$strategy: keeping existing source until new harvest is accepted")
+          if (datasetContext.sourceRepoOpt.isEmpty) datasetContext.createSourceRepo(SourceFacts(ht))
         case _ =>
           log.info(s"Strategy $strategy: checking source repo")
           datasetContext.sourceRepoOpt match {
