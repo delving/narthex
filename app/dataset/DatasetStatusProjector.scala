@@ -196,14 +196,20 @@ object DatasetStatusProjector {
         if (cached != null && cached._1 == zipMtime && cached._2 == targetPrefix) {
           cached._3.map(new DateTime(_))
         } else {
-          val computed = scala.util.Try {
+          // catch Throwable, not Try/NonFatal: a cyclic rec-def makes
+          // sip-core's RecDef.Elem.resolve recurse until StackOverflowError,
+          // which is fatal to the dispatcher thread and took down the whole
+          // JVM (datahub, 2026-07-31). The failure is cached below so the
+          // broken zip is not re-parsed on every projection.
+          val computed = try {
             new SipRepo(orgContext.sipsDir, spec, orgContext.appConfig.rdfBaseUrl).latestSipOpt
               .filter(_.sipMappingOpt.map(_.prefix).contains(targetPrefix))
               .map(sip => new DateTime(sip.file.lastModified()))
-          }.recover { case e =>
-            logger.warn(s"Projector: unreadable zip mapping for $spec — not processable: ${e.getMessage}")
-            None
-          }.get
+          } catch {
+            case e: Throwable =>
+              logger.warn(s"Projector: unreadable zip mapping for $spec — not processable: ${e.getClass.getSimpleName} ${Option(e.getMessage).getOrElse("")}")
+              None
+          }
           zipProcessableCache.put(spec, (zipMtime, targetPrefix, computed.map(_.getMillis)))
           computed
         }
