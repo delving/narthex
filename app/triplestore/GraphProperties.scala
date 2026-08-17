@@ -188,6 +188,7 @@ object GraphProperties {
   val acquisitionMethod = NXProp("acquisitionMethod")                 // "harvest" or "upload"
   val sourceRemoteTotal = NXProp("sourceRemoteTotal", intProp)        // Total the remote endpoint reports (daily check)
   val sourceRemoteCheckTime = NXProp("sourceRemoteCheckTime", timeProp)
+  val sourceCheckLastRepairTime = NXProp("sourceCheckLastRepairTime", timeProp)
 
   val recordGraphsInSync = NXProp("recordGraphsInSync", booleanProp)
   val recordGraphsStored = NXProp("recordGraphsStored", intProp)

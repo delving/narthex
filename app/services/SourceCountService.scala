@@ -92,11 +92,15 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
                 sourceRemoteTotal -> total.toString,
                 sourceRemoteCheckTime -> Temporal.timeToString(new org.joda.time.DateTime())
               )
-              val local = ds.sourceRecordCount.getOrElse(0) + ds.deletedRecordCount.getOrElse(0)
+              // Known source duplicates are counted by the endpoint but
+              // deduped by us — they are expected, permanent "drift" and must
+              // not put a set in a daily repair loop.
+              val dupExtras = duplicateExtras(ds.spec)
+              val local = ds.sourceRecordCount.getOrElse(0) + ds.deletedRecordCount.getOrElse(0) + dupExtras
               val drift = total - local
               if (drift != 0) {
-                logger.warn(s"SourceCount drift for ${ds.spec}: remote=$total local=$local (drift=$drift)")
-                maybeRepair(ds.spec, drift, total)
+                logger.warn(s"SourceCount drift for ${ds.spec}: remote=$total local=$local (drift=$drift, dupExtras=$dupExtras)")
+                maybeRepair(dsInfo, drift, total)
               }
             }
           }.recover { case e =>
@@ -110,7 +114,24 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
     }
   }
 
-  private def maybeRepair(spec: String, drift: Int, remoteTotal: Int): Unit = {
+  /** Extra occurrences of duplicated source ids (occurrences beyond the first,
+    * which we keep) — read from the duplicates.txt defect file. */
+  private def duplicateExtras(spec: String): Int = {
+    val f = new java.io.File(new java.io.File(new java.io.File(orgContext.datasetsDir, spec), "source"), "duplicates.txt")
+    if (!f.exists()) 0
+    else scala.util.Try {
+      scala.io.Source.fromFile(f, "UTF-8").getLines().map { line =>
+        line.split('\t') match {
+          case Array(_, n) => math.max(0, n.trim.toInt - 1)
+          case _ => 0
+        }
+      }.sum
+    }.getOrElse(0)
+  }
+
+  private val REPAIR_COOLDOWN_HOURS = 48
+
+  private def maybeRepair(dsInfo: DsInfo, drift: Int, remoteTotal: Int): Unit = {
     val cfg = orgContext.narthexConfig
     if (!cfg.sourceCheckAutoRepair) return
     if (math.abs(drift) < cfg.sourceCheckRepairThreshold) return
@@ -118,9 +139,18 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
     // on that signal; the normal harvest cycle's completeListSize=0 attestation
     // path owns depublication.
     if (remoteTotal == 0) return
-    logger.warn(s"SourceCount auto-repair: queueing full harvest for $spec (drift=$drift)")
+    // Cooldown: a set whose drift survives a repair (endpoint counts
+    // differently, stale completeListSize, defect we don't model yet) must
+    // not be full-harvested every day.
+    val lastRepair = dsInfo.getLiteralProp(sourceCheckLastRepairTime).map(Temporal.stringToTime)
+    if (lastRepair.exists(_.isAfter(new org.joda.time.DateTime().minusHours(REPAIR_COOLDOWN_HOURS)))) {
+      logger.warn(s"SourceCount auto-repair for ${dsInfo.spec} skipped: last repair within ${REPAIR_COOLDOWN_HOURS}h and drift persists ($drift) — needs a look")
+      return
+    }
+    dsInfo.setSingularLiteralProps(sourceCheckLastRepairTime -> Temporal.timeToString(new org.joda.time.DateTime()))
+    logger.warn(s"SourceCount auto-repair: queueing full harvest for ${dsInfo.spec} (drift=$drift)")
     import dataset.DatasetActor.{FromScratchIncremental, StartHarvest}
     import organization.OrgActor.EnqueueOperation
-    orgContext.orgActor ! EnqueueOperation(spec, StartHarvest(FromScratchIncremental, trigger = "source-check"), "periodic")
+    orgContext.orgActor ! EnqueueOperation(dsInfo.spec, StartHarvest(FromScratchIncremental, trigger = "source-check"), "periodic")
   }
 }
