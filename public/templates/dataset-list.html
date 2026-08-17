@@ -459,11 +459,13 @@
                                     <span ng-switch-when="stateReadyToHarvest">Ready to Harvest</span>
                                     <span ng-switch-default>Empty</span>
                                 </span>
-                                <span ng-if="dataset.indexingLastStatus && dataset.indexingLastStatus != 'success'"
-                                      class="label label-warning" style="margin-left: 4px; cursor: help"
-                                      title="Indexing {{ dataset.indexingLastStatus }}: {{ dataset.indexingLastMessage || 'see indexing errors' }} ({{ dataset.indexingRecordsIndexed || 0 }}/{{ dataset.indexingRecordsExpected || 0 }} indexed, {{ dataset.indexingErrorCount || 0 }} record error(s))">
+                                <a ng-if="dataset.indexingLastStatus && dataset.indexingLastStatus != 'success'"
+                                      ng-href="/narthex/app/dataset/{{ dataset.datasetSpec }}/indexing-errors" target="_blank"
+                                      class="label label-warning" style="margin-left: 4px"
+                                      ng-click="$event.stopPropagation();"
+                                      title="Indexing {{ dataset.indexingLastStatus }}: {{ dataset.indexingLastMessage || 'see indexing errors' }} ({{ dataset.indexingRecordsIndexed || 0 }}/{{ dataset.indexingRecordsExpected || 0 }} indexed, {{ dataset.indexingErrorCount || 0 }} record error(s)) — click for the notification log">
                                     <i class="fa fa-exclamation-triangle"></i> index
-                                </span>
+                                </a>
                             </td>
                             <td class="date-time">
                                 {{ dataset.stateCurrent.date | date: 'yyyy/MM/dd HH:mm' }}
