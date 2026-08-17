@@ -387,7 +387,10 @@ object DsInfo {
     indexingErrorCount: Option[Int] = None,
     defaultMappingName: Option[String] = None,
     defaultMappingPrefix: Option[String] = None,
-    defaultMappingVersion: Option[String] = None
+    defaultMappingVersion: Option[String] = None,
+    // Full harvest attested the set empty — the row badge shows
+    // 'Empty (depublished)' instead of a leftover artifact state.
+    depublishedAt: Option[String] = None
   )
 
   implicit val dsInfoLightWrites: Writes[DsInfoLight] = new Writes[DsInfoLight] {
@@ -429,6 +432,7 @@ object DsInfo {
       "harvestUsername" -> ds.harvestUsername,
       "harvestPasswordSet" -> ds.harvestPasswordSet,
       "harvestApiKeySet" -> ds.harvestApiKeySet,
+      "depublishedAt" -> ds.depublishedAt,
       "indexingLastStatus" -> ds.indexingLastStatus,
       "indexingLastMessage" -> ds.indexingLastMessage,
       "indexingRecordsIndexed" -> ds.indexingRecordsIndexed,
@@ -501,6 +505,7 @@ object DsInfo {
         harvestPasswordSet = p.get(harvestPassword.name).map(_.nonEmpty),
         harvestApiKeySet = p.get(harvestApiKey.name).map(_.nonEmpty),
         mapToPrefix = s(datasetMapToPrefix),
+        depublishedAt = s(depublishedAt),
         indexingLastStatus = s(indexingLastStatus),
         indexingLastMessage = s(indexingLastMessage),
         indexingRecordsIndexed = i(indexingRecordsIndexed),
