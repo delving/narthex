@@ -186,6 +186,8 @@ object GraphProperties {
   val deletedRecordCount = NXProp("deletedRecordCount", intProp)      // Deleted in OAI-PMH (0 for uploads)
   val sourceRecordCount = NXProp("sourceRecordCount", intProp)        // Active records in source.xml
   val acquisitionMethod = NXProp("acquisitionMethod")                 // "harvest" or "upload"
+  val sourceRemoteTotal = NXProp("sourceRemoteTotal", intProp)        // Total the remote endpoint reports (daily check)
+  val sourceRemoteCheckTime = NXProp("sourceRemoteCheckTime", timeProp)
 
   val recordGraphsInSync = NXProp("recordGraphsInSync", booleanProp)
   val recordGraphsStored = NXProp("recordGraphsStored", intProp)

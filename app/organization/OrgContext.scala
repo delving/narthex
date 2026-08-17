@@ -79,6 +79,7 @@ class OrgContext @Inject() (
   // Schedule daily trend snapshot if enabled
   if (narthexConfig.enableTrendTracking) {
     scheduleDailyTrendSnapshot()
+    scheduleDailySourceCountSweep()
   }
 
   /**
@@ -114,6 +115,26 @@ class OrgContext @Inject() (
         runBootstrapTrendAggregation()
       }(actorSystem.dispatcher)
     }
+  }
+
+  lazy val sourceCountService = new services.SourceCountService(this)(ec)
+
+  /** Daily 05:00 UTC: ask each source endpoint for its total record count so
+    * acquisition drift is surfaced (see SourceCountService). */
+  private def scheduleDailySourceCountSweep(): Unit = {
+    if (!narthexConfig.sourceCheckEnabled) {
+      logger.info("SourceCount sweep disabled by config")
+      return
+    }
+    val zone = ZoneId.of("UTC")
+    val now = ZonedDateTime.now(zone)
+    val targetTime = now.toLocalDate.atTime(LocalTime.of(5, 0)).atZone(zone)
+    val nextRun = if (now.isAfter(targetTime)) targetTime.plusDays(1) else targetTime
+    val initialDelayMillis = java.time.Duration.between(now, nextRun).toMillis
+    logger.info(s"Scheduling daily source-count sweep at 05:00 UTC. First run in ${initialDelayMillis / 3600000} hours.")
+    actorSystem.scheduler.scheduleWithFixedDelay(initialDelayMillis.millis, 24.hours)(new Runnable {
+      override def run(): Unit = sourceCountService.runSweep()
+    })(actorSystem.dispatcher)
   }
 
   private def runBootstrapTrendAggregation(): Unit = {

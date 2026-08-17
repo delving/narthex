@@ -111,6 +111,14 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(true)
   logger.info(s"narthex.registry.keepRevisionSweep: $registryKeepRevisionSweep")
 
+  def sourceCheckEnabled: Boolean = configuration
+    .getOptional[Boolean]("narthex.sourceCheck.enabled").getOrElse(true)
+  def sourceCheckAutoRepair: Boolean = configuration
+    .getOptional[Boolean]("narthex.sourceCheck.autoRepair").getOrElse(false)
+  def sourceCheckRepairThreshold: Int = configuration
+    .getOptional[Int]("narthex.sourceCheck.repairThreshold").getOrElse(1)
+  logger.info(s"narthex.sourceCheck: enabled=$sourceCheckEnabled autoRepair=$sourceCheckAutoRepair threshold=$sourceCheckRepairThreshold")
+
   // Minute offset past midnight to run daily aggregation (default: 30 = 00:30)
   def trendAggregationMinute: Int = configuration
     .getOptional[Int]("narthex.trends.aggregationMinute")

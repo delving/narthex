@@ -324,6 +324,10 @@
                             <td class="acquired"
                                 title="Acquired: {{ dataset.acquiredRecordCount || dataset.datasetRecordCount || 0 }}&#10;Deleted: {{ dataset.deletedRecordCount || 0 }}&#10;Source: {{ dataset.sourceRecordCount || (dataset.acquiredRecordCount || dataset.datasetRecordCount || 0) - (dataset.deletedRecordCount || 0) }}">
                                 <!-- Acquisition method icon -->
+                                <span data-ng-if="dataset.counts.acquired.remoteDrift" class="text-warning"
+                                      title="Source endpoint reports {{ dataset.counts.acquired.remote }} records; drift {{ dataset.counts.acquired.remoteDrift > 0 ? '+' : '' }}{{ dataset.counts.acquired.remoteDrift }} vs acquired (checked {{ dataset.counts.acquired.remoteCheckedAt | date:'yyyy/MM/dd' }}). A full harvest re-syncs.">
+                                    <i class="fa fa-exchange"></i>
+                                </span>
                                 <a data-ng-if="dataset.counts.acquired.duplicates" ng-href="/narthex/app/dataset/{{ dataset.datasetSpec }}/source-duplicates" target="_blank"
                                    ng-click="$event.stopPropagation()"
                                    title="Source defect: {{ dataset.counts.acquired.duplicates }} duplicated record id(s) — only the first occurrence of each is kept. Click for the id list.">

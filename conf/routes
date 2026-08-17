@@ -25,6 +25,7 @@ GET         /narthex/app/active-datasets                                     con
 POST        /narthex/app/cancel-queue/:spec                                  controllers.AppController.cancelQueuedOperation(spec)
 GET         /narthex/app/index-stats/wrong-count                             controllers.AppController.indexStatsWrongCount
 GET         /narthex/app/index-stats-with-trends                             controllers.AppController.indexStatsWithTrends
+POST        /narthex/app/source-count-sweep                                  controllers.AppController.runSourceCountSweep
 # Memory monitoring
 GET         /narthex/app/memory-stats                                        controllers.AppController.memoryStats
 + nocsrf

@@ -183,6 +183,12 @@ class AppController @Inject() (
     }
   }
 
+  /** Kick the daily source-count sweep on demand (runs async). */
+  def runSourceCountSweep = Action { request =>
+    orgContext.sourceCountService.runSweep()
+    Ok(Json.obj("started" -> true))
+  }
+
   /**
    * Get index statistics augmented with 24h trend data.
    */

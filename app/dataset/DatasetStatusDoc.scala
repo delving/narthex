@@ -247,9 +247,16 @@ object DatasetStatusDoc {
       "pendingDrops" -> pending.pendingDrops
     )
 
+    // Daily source-count sweep result: what the remote endpoint says it holds.
+    // drift != 0 means our acquired set no longer matches the source.
+    val remoteTotal = orgContext.datasetsDb.getProp(spec, "sourceRemoteTotal").flatMap(_.toIntOption)
+    val remoteCheckedAt = orgContext.datasetsDb.getProp(spec, "sourceRemoteCheckTime")
+    val remoteDrift = remoteTotal.map(r => r - (acquiredRecords.getOrElse(0) + deleted.getOrElse(0)))
+
     Json.obj(
       "acquired" -> Json.obj("records" -> acquiredRecords, "deleted" -> deleted, "method" -> method,
-        "duplicates" -> duplicateIdsCount),
+        "duplicates" -> duplicateIdsCount,
+        "remote" -> remoteTotal, "remoteCheckedAt" -> remoteCheckedAt, "remoteDrift" -> remoteDrift),
       "processed" -> processed,
       "lastIncrement" -> lastIncrement,
       "indexed" -> indexed
