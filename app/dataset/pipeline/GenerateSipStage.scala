@@ -131,33 +131,38 @@ object GenerateSipStage extends PipelineStage {
         // only mapping carrier (observed: a failing generation deleted the
         // good SIP and every retry reused its own corrupted output).
         val priorSips = datasetContext.sipFiles.toList
+        // Build into a .tmp file and only rename to the real .sip.zip name on
+        // success: a JVM kill mid-write must never leave a truncated zip
+        // behind (one 500'd the whole sip-app listing, datahub 2026-07-30 —
+        // .tmp doesn't match the .sip.zip filters, so a leftover is inert).
+        def buildAtomically(build: File => Unit): Either[String, File] = {
+          val sipFile = datasetContext.createSipFile
+          val tmpFile = new File(sipFile.getParentFile, sipFile.getName + ".tmp")
+          try {
+            build(tmpFile)
+            java.nio.file.Files.move(tmpFile.toPath, sipFile.toPath,
+              java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+              java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            Right(sipFile)
+          } catch {
+            case e: Exception =>
+              tmpFile.delete()
+              throw e
+          }
+        }
         val sipBuilt: Either[String, File] = reusableLatestSip match {
           case Some(latestSip) =>
             val prefixRepoOpt = latestSip.sipMappingOpt.flatMap(mapping =>
               datasetContext.orgContext.sipFactory.prefixRepo(mapping.prefix, recDefVersionHashOpt))
-            val sipFile = datasetContext.createSipFile
-            try {
-              latestSip.copyWithSourceTo(sipFile, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo), effectiveMappingXml)
-              Right(sipFile)
-            } catch {
-              case e: Exception =>
-                sipFile.delete()
-                throw e
-            }
+            buildAtomically(tmp =>
+              latestSip.copyWithSourceTo(tmp, pocketFile, prefixRepoOpt, SipGenerationFacts(dsInfo), effectiveMappingXml))
           case None =>
             val facts = SipGenerationFacts(dsInfo)
             logger.info(s"Generating fresh SIP for $spec on prefix=${facts.prefix} (no reusable prior SIP for that prefix)")
             datasetContext.orgContext.sipFactory.prefixRepo(facts.prefix, recDefVersionHashOpt) match {
               case Some(prefixRepo) =>
-                val sipFile = datasetContext.createSipFile
-                    try {
-                  prefixRepo.initiateSipZip(sipFile, pocketFile, facts, effectiveMappingXml)
-                  Right(sipFile)
-                } catch {
-                  case e: Exception =>
-                    sipFile.delete()
-                    throw e
-                }
+                buildAtomically(tmp =>
+                  prefixRepo.initiateSipZip(tmp, pocketFile, facts, effectiveMappingXml))
               case None =>
                     Left("Unable to build sip for download")
             }

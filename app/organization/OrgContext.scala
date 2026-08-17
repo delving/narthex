@@ -250,7 +250,14 @@ class OrgContext @Inject() (
     DsInfo.listDsInfo(this).map { list =>
       list.flatMap { dsi =>
         val datasetContext = new DatasetContext(this, dsi)
-        datasetContext.sipRepo.latestSipOpt
+        datasetContext.sipRepo.latestSipOpt.filter { sip =>
+          // A truncated zip (e.g. JVM killed mid-generation) must not 500
+          // the whole sip-app listing — skip it and leave a trace.
+          scala.util.Try(sip.entries).isSuccess || {
+            logger.warn(s"Skipping unreadable SIP zip for ${dsi.spec}: ${sip.file.getName}")
+            false
+          }
+        }
       }
     }
   }
