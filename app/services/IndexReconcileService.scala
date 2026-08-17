@@ -37,14 +37,32 @@ class IndexReconcileService(orgContext: OrgContext)(implicit ec: ExecutionContex
           .map(id => if (id.startsWith(prefix)) id.substring(prefix.length) else id)
           .toSet
         val registryIds = orgContext.recordRegistry.listSeenLocalIds(spec)
+        val registrySet = registryIds.toSet
         val missing = registryIds.filterNot(indexedLocalIds.contains)
-        val orphans = indexedLocalIds.size - (registryIds.size - missing.size)
+        // Orphans: indexed docs without a live registry record — deleted or
+        // depublished records whose drop never reached (or never left for)
+        // the index. Both directions of the same defect class.
+        val orphanIds = (indexedLocalIds -- registrySet).toSeq
         val reset = orgContext.recordRegistry.resetSentStateForIds(spec, missing)
         if (missing.nonEmpty)
           logger.warn(s"Index reconcile $spec: ${missing.size} record(s) in registry but not indexed — sent-state reset ($reset). Sample: ${missing.take(3).mkString(", ")}")
-        if (orphans > 0)
-          logger.warn(s"Index reconcile $spec: $orphans orphan doc(s) in index without a live registry record — a full save's index_verify/clear path owns their removal")
-        ReconcileResult(spec, indexedLocalIds.size, registryIds.size, reset, math.max(0, orphans), missing.take(10).toSeq)
+        (spec, registryIds.size, indexedLocalIds.size, missing, reset, orphanIds)
+      }
+      .flatMap { case (spec, expected, indexed, missing, reset, orphanIds) =>
+        val dropF =
+          if (orphanIds.isEmpty) Future.successful(())
+          else if (expected == 0) {
+            // An empty registry against a populated index is depublication
+            // territory (or a registry wiped behind our back) — dropping the
+            // whole index from a reconcile would be destruction by accident.
+            logger.warn(s"Index reconcile $spec: ${orphanIds.size} indexed doc(s) but registry holds NO live records — refusing orphan drop; use depublication or registry backfill")
+            Future.successful(())
+          }
+          else {
+            logger.warn(s"Index reconcile $spec: dropping ${orphanIds.size} orphan doc(s) from the index. Sample: ${orphanIds.take(3).mkString(", ")}")
+            dataset.DsInfo.getDsInfo(spec, orgContext).dropRecordsByIds(orphanIds)
+          }
+        dropF.map(_ => ReconcileResult(spec, indexed, expected, reset, orphanIds.size, missing.take(10).toSeq))
       }
   }
 }

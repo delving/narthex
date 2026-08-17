@@ -1575,9 +1575,11 @@ class DatasetActor(val datasetContext: DatasetContext,
       // named NO failing records (silent drops). Only an id diff against the
       // real index contents can find them — reconcile, then re-send. The 1h
       // cooldown breaks the loop for records the index keeps refusing.
-      val silentGap = indexing.recordsExpected - indexing.recordsIndexed
+      // Gap in either direction: expected>indexed = silent drops on the way
+      // in; indexed>expected = orphans (deletes that never landed).
+      val silentGap = math.abs(indexing.recordsExpected - indexing.recordsIndexed)
       val noNamedErrors = indexing.errors.forall(_.isEmpty)
-      if (silentGap > 0 && silentGap <= 1000 && noNamedErrors) {
+      if (silentGap > 0 && silentGap <= 1000 && indexing.recordsExpected > 0 && noNamedErrors) {
         val cooledDown = dsInfo.getLiteralProp(indexReconcileLastTime)
           .map(services.Temporal.stringToTime)
           .forall(_.isBefore(new org.joda.time.DateTime().minusHours(1)))
