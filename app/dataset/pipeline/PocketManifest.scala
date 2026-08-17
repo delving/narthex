@@ -56,6 +56,21 @@ object PocketManifest {
     )
   }
 
+  /** The pocket file must end with the closing list tag — size/mtime match a
+    * truncated file just as happily when the manifest itself was written next
+    * to it (JVM died between flush and close; datahub 2026-06/07: four sets
+    * kept re-serving truncated pockets for months because the manifest said
+    * "unchanged"). */
+  private def endsWithClosingTag(pocketFile: File): Boolean = scala.util.Try {
+    val raf = new java.io.RandomAccessFile(pocketFile, "r")
+    try {
+      val tail = new Array[Byte](32.min(raf.length().toInt))
+      raf.seek(raf.length() - tail.length)
+      raf.readFully(tail)
+      new String(tail, "UTF-8").contains(s"</${record.PocketParser.POCKET_LIST}>")
+    } finally raf.close()
+  }.getOrElse(false)
+
   /** Pocket count from a matching manifest, or None when anything moved. */
   def cachedCount(manifestFile: File, currentInputs: JsObject, pocketFile: File): Option[Int] =
     if (!manifestFile.exists() || !pocketFile.exists()) None
@@ -64,7 +79,7 @@ object PocketManifest {
       val inputsMatch = (stored \ "inputs").asOpt[JsObject].contains(currentInputs)
       val outputIntact = (stored \ "pocket" \ "size").asOpt[Long].contains(pocketFile.length()) &&
         (stored \ "pocket" \ "mtime").asOpt[Long].contains(pocketFile.lastModified())
-      if (inputsMatch && outputIntact) (stored \ "pocketCount").asOpt[Int] else None
+      if (inputsMatch && outputIntact && endsWithClosingTag(pocketFile)) (stored \ "pocketCount").asOpt[Int] else None
     }.toOption.flatten
 
   def write(manifestFile: File, currentInputs: JsObject, pocketCount: Int, pocketFile: File): Unit = {
