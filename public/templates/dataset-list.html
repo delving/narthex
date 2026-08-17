@@ -349,10 +349,13 @@
                                 <span class="text-success">
                                     {{ dataset.processedValid || '-' }}
                                 </span>
-                                <!-- Invalid count (if any) -->
-                                <span data-ng-if="dataset.processedInvalid > 0" class="text-danger">
+                                <!-- Invalid count (if any) — links straight to the error report -->
+                                <a data-ng-if="dataset.processedInvalid > 0" class="text-danger"
+                                   ng-href="/narthex/api/{{ dataset.datasetSpec }}/errors" target="_blank"
+                                   title="{{ dataset.processedInvalid }} invalid record(s) — click for the processing error report"
+                                   ng-click="$event.stopPropagation();">
                                     /{{ dataset.processedInvalid }}
-                                </span>
+                                </a>
                                 <!-- Last incremental run, registry-diff vocabulary:
                                      +added ~changed(content hash differs) −deleted -->
                                 <span data-ng-if="dataset.counts.lastIncrement && (dataset.counts.lastIncrement.added + dataset.counts.lastIncrement.changed + dataset.counts.lastIncrement.deleted) > 0"
@@ -1923,6 +1926,8 @@
     <li class="list-group-item" data-ng-if="dataset.processedInvalid > 0">
         <i class="fa fa-times text-danger"></i>
         Invalid: <strong class="text-danger">{{ dataset.processedInvalid }}</strong>
+        <a ng-href="/narthex/api/{{ dataset.datasetSpec }}/errors" target="_blank"
+           title="Open the processing error report">— view errors</a>
     </li>
 </ul>
 
@@ -1952,6 +1957,8 @@
     <li class="list-group-item" data-ng-if="dataset.processedIncrementalInvalid > 0">
         <i class="fa fa-times text-danger"></i>
         Invalid in last incremental: <strong class="text-danger">{{ dataset.processedIncrementalInvalid }}</strong>
+        <a ng-href="/narthex/api/{{ dataset.datasetSpec }}/errors" target="_blank"
+           title="Open the processing error report">— view errors</a>
     </li>
 </ul>
 
