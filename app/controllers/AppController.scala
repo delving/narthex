@@ -189,6 +189,18 @@ class AppController @Inject() (
     Ok(Json.obj("started" -> true))
   }
 
+  /** Diff the registry against the actual index contents (Hub3 id stream),
+    * reset sent-state for silently missing records, and save to re-send them. */
+  def reconcileIndex(spec: String) = Action.async { request =>
+    if (!spec.matches("[A-Za-z0-9_.-]+")) Future.successful(BadRequest("invalid spec"))
+    else orgContext.indexReconcileService.reconcile(spec).map { r =>
+      if (r.missingReset > 0) orgContext.orgActor ! DatasetMessage(spec, Command("start saving"))
+      Ok(Json.obj("spec" -> r.spec, "indexed" -> r.indexed, "expected" -> r.expected,
+        "missingReset" -> r.missingReset, "orphansInIndex" -> r.orphansInIndex,
+        "missingSample" -> r.missingSample, "saveTriggered" -> (r.missingReset > 0)))
+    }.recover { case e => InternalServerError(Json.obj("error" -> e.getMessage)) }
+  }
+
   /**
    * Get index statistics augmented with 24h trend data.
    */

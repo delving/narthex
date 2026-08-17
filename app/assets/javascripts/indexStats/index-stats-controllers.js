@@ -234,6 +234,32 @@ define(["angular"], function (angular) {
             );
         };
 
+        // Diff registry vs actual index contents; resets sent-state for
+        // silently missing records and (server-side) triggers a save.
+        $scope.reconcileIndex = function (spec) {
+            if ($scope.pendingOps[spec]) return;
+            $scope.pendingOps[spec] = true;
+            $http.post('/narthex/app/dataset/' + spec + '/reconcile-index').then(
+                function (response) {
+                    var r = response.data;
+                    alert('Reconcile ' + spec + ':\n' +
+                        r.indexed + ' indexed, ' + r.expected + ' expected\n' +
+                        r.missingReset + ' missing record(s) queued for re-send' +
+                        (r.orphansInIndex ? '\n' + r.orphansInIndex + ' orphan(s) in index' : '') +
+                        (r.saveTriggered ? '\nSave triggered.' : ''));
+                    setTimeout(function () {
+                        $scope.loadStats();
+                        delete $scope.pendingOps[spec];
+                    }, 2000);
+                },
+                function (error) {
+                    console.error("Error reconciling " + spec + ":", error);
+                    alert('Reconcile failed for ' + spec + ': ' + ((error.data && error.data.error) || error.status));
+                    delete $scope.pendingOps[spec];
+                }
+            );
+        };
+
         /**
          * Check if an operation is pending for a dataset
          */

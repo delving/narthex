@@ -118,6 +118,7 @@ class OrgContext @Inject() (
   }
 
   lazy val sourceCountService = new services.SourceCountService(this)(ec)
+  lazy val indexReconcileService = new services.IndexReconcileService(this)(ec)
 
   /** Daily 05:00 UTC: ask each source endpoint for its total record count so
     * acquisition drift is surfaced (see SourceCountService). */

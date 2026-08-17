@@ -191,6 +191,12 @@ class RecordRegistry(datasetsDir: File) {
     if (localIds.isEmpty || !dbFileExists(specName)) 0
     else spec(specName).resetSentStateForIds(localIds)
 
+  /** Every live (seen) local id — the expected index contents, used to diff
+    * against what Hub3 actually holds. */
+  def listSeenLocalIds(specName: String): Seq[String] =
+    if (!dbFileExists(specName)) Seq.empty
+    else spec(specName).listSeenLocalIds()
+
   /**
    * True when every id is already a deleted row that has been sent to Hub3.
    * Lets the deletes-only harvest path skip opening a no-op run for the
@@ -1214,6 +1220,16 @@ private[services] class SpecRegistry(val datasetDir: File) {
         ps.executeBatch().sum
       } finally ps.close()
     }
+  }
+
+  def listSeenLocalIds(): Seq[String] = synchronized {
+    val ps = conn.prepareStatement("SELECT local_id FROM records WHERE status = 'seen'")
+    try {
+      val rs = ps.executeQuery()
+      val buf = scala.collection.mutable.ArrayBuffer.empty[String]
+      while (rs.next()) buf += rs.getString(1)
+      buf.toSeq
+    } finally ps.close()
   }
 
   def pendingCounts(): PendingCounts = synchronized {

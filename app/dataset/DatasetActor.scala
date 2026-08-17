@@ -1571,6 +1571,30 @@ class DatasetActor(val datasetContext: DatasetContext,
         if (reset > 0) log.info(s"Marked $reset record(s) pending re-index for ${dsInfo.spec} after Hub3 error report")
       }
 
+      // Self-heal, count-only case: fewer indexed than expected but Hub3
+      // named NO failing records (silent drops). Only an id diff against the
+      // real index contents can find them — reconcile, then re-send. The 1h
+      // cooldown breaks the loop for records the index keeps refusing.
+      val silentGap = indexing.recordsExpected - indexing.recordsIndexed
+      val noNamedErrors = indexing.errors.forall(_.isEmpty)
+      if (silentGap > 0 && silentGap <= 1000 && noNamedErrors) {
+        val cooledDown = dsInfo.getLiteralProp(indexReconcileLastTime)
+          .map(services.Temporal.stringToTime)
+          .forall(_.isBefore(new org.joda.time.DateTime().minusHours(1)))
+        if (cooledDown) {
+          dsInfo.setSingularLiteralProps(indexReconcileLastTime ->
+            services.Temporal.timeToString(new org.joda.time.DateTime()))
+          val spec = dsInfo.spec
+          log.info(s"Index verify gap of $silentGap without named errors for $spec — reconciling registry against index contents")
+          orgContext.indexReconcileService.reconcile(spec).foreach { r =>
+            if (r.missingReset > 0)
+              orgContext.orgActor ! organization.OrgActor.DatasetMessage(spec, Command("start saving"))
+          }(context.dispatcher)
+        } else {
+          log.warning(s"Index verify gap of $silentGap for ${dsInfo.spec} persists within reconcile cooldown — needs a look")
+        }
+      }
+
       // Broadcast updated state to WebSocket clients
       broadcastIdleState()
       stay()
