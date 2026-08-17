@@ -36,6 +36,7 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
         Some((username, CredentialEncryption.decrypt(encrypted, orgContext.appConfig.appSecret)))
       else None
     }
+    if (prop(harvestURL).trim.isEmpty) return Future.successful(None)
     prop(harvestType) match {
       case "pmh" =>
         val base = prop(harvestURL).stripSuffix("?")
@@ -82,7 +83,10 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
       candidates.foldLeft(Future.successful(())) { (acc, ds) =>
         acc.flatMap { _ =>
           val dsInfo = DsInfo.getDsInfo(ds.spec, orgContext)
-          fetchRemoteTotal(dsInfo).map { totalOpt =>
+          // Future.unit.flatMap: a synchronous throw from URL building (e.g.
+          // empty harvestURL) must land in the recover below, not abort the
+          // whole sweep fold.
+          Future.unit.flatMap(_ => fetchRemoteTotal(dsInfo)).map { totalOpt =>
             totalOpt.foreach { total =>
               dsInfo.setSingularLiteralProps(
                 sourceRemoteTotal -> total.toString,
