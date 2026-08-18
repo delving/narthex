@@ -129,6 +129,7 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
     val harvestingLogger = appender(datasetContext.harvestLogger)
     var validRecords = 0
     var invalidRecords = 0
+    var unexpectedWithStack = 0
     var time = System.currentTimeMillis()
     val dataset = DatasetFactory.createGeneral()
 
@@ -179,7 +180,16 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
               writeError("XSD ERROR", sax.getMessage, rawPocket.id)
 
             case Failure(unexpected: Throwable) =>
-              writeError("UNEXPECTED ERROR", unexpected.toString, rawPocket.id)
+              // A bare toString ("IndexOutOfBoundsException: Index 1 out of
+              // bounds") is undiagnosable — include the stack for the first
+              // few so the failing mapping construct can be located, without
+              // bloating a report that repeats the same error 400k times.
+              unexpectedWithStack += 1
+              val detail =
+                if (unexpectedWithStack <= 5)
+                  unexpected.toString + "\n" + unexpected.getStackTrace.take(20).mkString("  at ", "\n  at ", "")
+                else unexpected.toString
+              writeError("UNEXPECTED ERROR", detail, rawPocket.id)
           }
         }
 
