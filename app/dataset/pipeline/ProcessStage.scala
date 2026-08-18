@@ -164,6 +164,14 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
         // Write results sequentially (maintains order, thread-safe output)
         results.foreach { case (rawPocket, pocketTry) =>
           pocketTry match {
+            case Success(pocket) if !pocket.text.contains("rdf:about") =>
+              // The mapping ran without error but produced an empty graph —
+              // no root entity, nothing Hub3 can index. Counting these as
+              // valid made a fully-broken mapping look healthy until the
+              // save failed on 'unable to retrieve aboutType'
+              // (brocade-agents-rh: 5371 'valid' empty records).
+              writeError("EMPTY RECORD", "mapping produced no RDF entities", rawPocket.id)
+
             case Success(pocket) =>
               val hash = PocketParser.sha1(pocket.text)
               pocket.writeTo(xmlOutput)
