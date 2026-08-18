@@ -167,9 +167,12 @@ define(["angular"], function (angular) {
          * Calculate difference between valid and indexed counts
          */
         $scope.getDifference = function (ds) {
-            var valid = ds.processedValid || 0;
+            // Same expected the server classifies on (registry-distinct when
+            // known) — using processedValid here showed Difference 0 on rows
+            // the server still filed under Wrong Count.
+            var expected = (ds.distinctValid != null ? ds.distinctValid : ds.processedValid) || 0;
             var indexed = ds.indexCount || 0;
-            return indexed - valid;
+            return indexed - expected;
         };
 
         /**

@@ -188,7 +188,19 @@ case class SaveStage(
         return StageFailed("Explicit processed-file save completed with zero graph chunks")
       }
       if (registryIndexFiltering && !isIncremental && missingPending.nonEmpty) {
-        return StageFailed(
+        // A pending record absent from the FULL processed output no longer
+        // exists as a publishable record — typically valid->invalid between
+        // runs. The registry kept it 'seen', inflating the expected count
+        // forever, and failing here blocked the very reconcile that could
+        // clean it up (stadsarchief-breda: 2 ghosts, hourly heal loop).
+        // Tombstone them so the drop flow below removes them from the index.
+        // A large gap still fails: that smells like truncated output, and
+        // mass-tombstoning on it would sweep the whole index.
+        if (missingPending.size <= 1000) {
+          val stamped = registryRunIdOpt.map(runId =>
+            registry.stampTombstones(spec, missingPending.toSeq, runId)).getOrElse(Seq.empty)
+          logger.warn(s"Registry save for $spec: ${missingPending.size} pending record(s) missing from full processed output — tombstoned (${stamped.size}) as no longer publishable")
+        } else return StageFailed(
           s"Registry save for $spec sent only ${sentIds.size} of ${expectedIndexIds.size} pending index records — ${missingPending.size} missing from processed output")
       }
       // A file-scoped incremental save can legitimately lack pending
