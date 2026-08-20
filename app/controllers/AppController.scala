@@ -1289,13 +1289,31 @@ class AppController @Inject() (
     }
   }
 
+  /** Read an uploaded XML file tolerantly: honour a UTF-8/UTF-16 BOM when
+    * present (Windows editors add them; a BOM read as UTF-8 text lands in
+    * front of the prolog and XML parsing fails with 'content is not allowed
+    * in prolog'), then drop anything before the first '<'. */
+  private def readUploadedXml(file: java.io.File): String = {
+    val in = new org.apache.commons.io.input.BOMInputStream(
+      new java.io.BufferedInputStream(new java.io.FileInputStream(file)),
+      false,
+      org.apache.commons.io.ByteOrderMark.UTF_8,
+      org.apache.commons.io.ByteOrderMark.UTF_16LE,
+      org.apache.commons.io.ByteOrderMark.UTF_16BE)
+    try {
+      val charset = Option(in.getBOMCharsetName).getOrElse("UTF-8")
+      val raw = org.apache.commons.io.IOUtils.toString(in, charset)
+      raw.substring(math.max(0, raw.indexOf('<')))
+    } finally in.close()
+  }
+
   def uploadRecDef(prefix: String) = Action(parse.multipartFormData) { request =>
     request.body.file("recdef") match {
       case None =>
         NotAcceptable(Json.obj("problem" -> "No recdef file provided (form field 'recdef')"))
       case Some(recDefFile) =>
-        val recDefXml = FileUtils.readFileToString(recDefFile.ref.path.toFile, "UTF-8")
-        val xsdXmlOpt = request.body.file("xsd").map(f => FileUtils.readFileToString(f.ref.path.toFile, "UTF-8"))
+        val recDefXml = readUploadedXml(recDefFile.ref.path.toFile)
+        val xsdXmlOpt = request.body.file("xsd").map(f => readUploadedXml(f.ref.path.toFile))
         val notes = request.body.dataParts.get("notes").flatMap(_.headOption)
         try {
           val v = recDefRepo.saveVersion(prefix, recDefXml, xsdXmlOpt, "upload", notes)
