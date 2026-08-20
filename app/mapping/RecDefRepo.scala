@@ -93,18 +93,25 @@ object RecDefRepo {
    * Parse the recdef XML to extract `<record-definition prefix="X" version="Y"/>`.
    * Returns Some("X_Y") on success, None if the root element is missing required attrs.
    */
-  def parseSchemaVersion(xml: String): Option[String] = {
+  def parseSchemaVersion(xml: String): Option[String] =
+    parseSchemaVersionDetailed(xml).toOption
+
+  /** Left = user-facing reason the recdef is unusable — one generic message
+    * for three distinct failure modes sent an author guessing (#3492). */
+  def parseSchemaVersionDetailed(xml: String): Either[String, String] = {
     try {
       val root = XML.loadString(xml)
-      if (root.label != "record-definition") return None
+      if (root.label != "record-definition")
+        return Left(s"Root element is <${root.label}>, expected <record-definition prefix=... version=...>")
       val prefix = (root \ "@prefix").text
       val version = (root \ "@version").text
-      if (prefix.isEmpty || version.isEmpty) None
-      else Some(s"${prefix}_${version}")
+      if (prefix.isEmpty || version.isEmpty)
+        Left(s"<record-definition> is missing the ${Seq("prefix" -> prefix, "version" -> version).collect { case (n, v) if v.isEmpty => n }.mkString(" and ")} attribute(s)")
+      else Right(s"${prefix}_${version}")
     } catch {
       case e: Exception =>
         logger.warn(s"Failed to parse recdef XML: ${e.getMessage}")
-        None
+        Left(s"Not well-formed XML: ${e.getMessage}")
     }
   }
 
@@ -172,11 +179,10 @@ class RecDefRepo(orgRoot: File) {
     source: String,
     notes: Option[String]
   ): RecDefVersion = {
-    val schemaVersion = parseSchemaVersion(recDefXml).getOrElse(
-      throw new IllegalArgumentException(
-        "RecDef XML missing required <record-definition prefix=... version=...> attributes"
-      )
-    )
+    val schemaVersion = parseSchemaVersionDetailed(recDefXml) match {
+      case Right(v) => v
+      case Left(reason) => throw new IllegalArgumentException(s"RecDef rejected: $reason")
+    }
     val xmlPrefix = schemaVersion.split("_", 2)(0)
     if (xmlPrefix != prefix) {
       logger.warn(s"Uploaded recdef declares prefix='$xmlPrefix' but route prefix='$prefix' — using route prefix")

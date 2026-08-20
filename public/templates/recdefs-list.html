@@ -141,8 +141,12 @@
                             <i class="fa fa-file-code-o"></i>
                             <span ng-if="!uploadFiles[s.prefix].recdef">Choose .xml…</span>
                             <span ng-if="uploadFiles[s.prefix].recdef">{{ uploadFiles[s.prefix].recdef.name }}</span>
-                            <input type="file" accept=".xml" style="display: none;"
-                                   onchange="angular.element(this).scope().onRecDefFileSelect('{{ s.prefix }}', this.files)">
+                            <!-- Angular disallows {{ }} inside DOM event attributes
+                                 (onchange) — the handler silently never compiled and the
+                                 chosen file was never registered (#3492). The prefix
+                                 rides along in a data-attribute instead. -->
+                            <input type="file" accept=".xml" style="display: none;" data-prefix="{{ s.prefix }}"
+                                   onchange="angular.element(this).scope().onRecDefFileSelect(this.getAttribute('data-prefix'), this.files)">
                         </label>
                     </div>
                     <div class="col-sm-3">
@@ -150,8 +154,8 @@
                             <i class="fa fa-file-code-o"></i>
                             <span ng-if="!uploadFiles[s.prefix].xsd">XSD (optional)</span>
                             <span ng-if="uploadFiles[s.prefix].xsd">{{ uploadFiles[s.prefix].xsd.name }}</span>
-                            <input type="file" accept=".xsd" style="display: none;"
-                                   onchange="angular.element(this).scope().onXsdFileSelect('{{ s.prefix }}', this.files)">
+                            <input type="file" accept=".xsd" style="display: none;" data-prefix="{{ s.prefix }}"
+                                   onchange="angular.element(this).scope().onXsdFileSelect(this.getAttribute('data-prefix'), this.files)">
                         </label>
                     </div>
                     <div class="col-sm-3">
