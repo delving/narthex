@@ -87,6 +87,17 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
           // empty harvestURL) must land in the recover below, not abort the
           // whole sweep fold.
           Future.unit.flatMap(_ => fetchRemoteTotal(dsInfo)).map { totalOpt =>
+            if (totalOpt.isEmpty) {
+              // Endpoint answered but reports no total (no completeListSize on
+              // a paginated list, or empty headers). Not an error — but a
+              // stored total from better days would keep showing phantom
+              // drift, so clear it and leave a trace of the blind spot.
+              if (dsInfo.getLiteralProp(sourceRemoteTotal).isDefined) {
+                dsInfo.removeLiteralProp(sourceRemoteTotal)
+                dsInfo.removeLiteralProp(sourceRemoteCheckTime)
+              }
+              logger.info(s"SourceCount: ${ds.spec} endpoint reports no total — set not verifiable by count")
+            }
             totalOpt.foreach { total =>
               dsInfo.setSingularLiteralProps(
                 sourceRemoteTotal -> total.toString,
