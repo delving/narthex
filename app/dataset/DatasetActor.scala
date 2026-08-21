@@ -1037,6 +1037,11 @@ class DatasetActor(val datasetContext: DatasetContext,
             dsInfo.removeState(SAVED)
             dsInfo.removeState(INCREMENTAL_SAVED)
           } else {
+            // Stamp ONLY the full-harvest time (not setLastHarvestTime(false),
+            // which would flip the set out of incremental mode). The periodic
+            // full-refresh cadence reads this to know when the last honest
+            // full pass ran.
+            dsInfo.setSingularLiteralProps(triplestore.GraphProperties.lastFullHarvestTime -> dsInfo.now)
             processIncremental(fileOpt, noRecordsMatch, None)
             dsInfo.updatedSpecCountFromFile(dsInfo.spec,
                                           orgContext.appConfig.narthexDataDir,

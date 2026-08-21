@@ -27,7 +27,7 @@ import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
-import triplestore.GraphProperties.harvestDateOnly
+import triplestore.GraphProperties.{harvestDateOnly, harvestFullRefreshDays, lastFullHarvestTime}
 import triplestore.TripleStore
 
 object PeriodicHarvest {
@@ -113,7 +113,19 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                   logger.info(s"Set harvest cron: $next")
                   info.setHarvestCron(next)
                   val dateOnly = info.getBooleanProp(harvestDateOnly)
-                  val strategy = if (harvestCron.incremental) ModifiedAfter(harvestCron.previous, dateOnly) else FromScratchIncremental
+                  // Honesty pass: endpoints like Memorix change record content
+                  // without bumping the OAI datestamp, so incrementals can
+                  // never see it. Every N days the incremental is promoted to
+                  // a full harvest; the save's output-hash diff then re-sends
+                  // only records that actually changed.
+                  val refreshDays = info.getLiteralProp(harvestFullRefreshDays).flatMap(_.toIntOption)
+                    .getOrElse(orgContext.narthexConfig.harvestFullRefreshDays)
+                  val fullRefreshDue = refreshDays > 0 && harvestCron.incremental &&
+                    info.getLiteralProp(lastFullHarvestTime).map(services.Temporal.stringToTime)
+                      .forall(_.isBefore(org.joda.time.DateTime.now.minusDays(refreshDays)))
+                  if (fullRefreshDue)
+                    logger.info(s"$info: full-refresh due (last full harvest > $refreshDays days ago) — promoting to FromScratchIncremental")
+                  val strategy = if (harvestCron.incremental && !fullRefreshDue) ModifiedAfter(harvestCron.previous, dateOnly) else FromScratchIncremental
                   val startHarvest = StartHarvest(strategy, trigger = "periodic")
 
                   logger.info(s"$info queueing periodic harvest $startHarvest")

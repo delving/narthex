@@ -111,6 +111,14 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(true)
   logger.info(s"narthex.registry.keepRevisionSweep: $registryKeepRevisionSweep")
 
+  /** Every N days a periodic incremental harvest is promoted to a full one —
+    * the honesty pass that catches endpoints (Memorix) that change record
+    * content without bumping the OAI datestamp. 0 = off. Per-dataset override
+    * via the harvestFullRefreshDays prop. */
+  def harvestFullRefreshDays: Int = configuration
+    .getOptional[Int]("narthex.harvest.fullRefreshDays").getOrElse(0)
+  logger.info(s"narthex.harvest.fullRefreshDays: $harvestFullRefreshDays")
+
   def sourceCheckEnabled: Boolean = configuration
     .getOptional[Boolean]("narthex.sourceCheck.enabled").getOrElse(true)
   def sourceCheckAutoRepair: Boolean = configuration

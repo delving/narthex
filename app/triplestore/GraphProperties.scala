@@ -190,6 +190,7 @@ object GraphProperties {
   val sourceRemoteCheckTime = NXProp("sourceRemoteCheckTime", timeProp)
   val sourceCheckLastRepairTime = NXProp("sourceCheckLastRepairTime", timeProp)
   val indexReconcileLastTime = NXProp("indexReconcileLastTime", timeProp)
+  val harvestFullRefreshDays = NXProp("harvestFullRefreshDays", intProp)  // per-dataset override; 0 = disabled
 
   val recordGraphsInSync = NXProp("recordGraphsInSync", booleanProp)
   val recordGraphsStored = NXProp("recordGraphsStored", intProp)
