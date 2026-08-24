@@ -183,6 +183,19 @@ class RecDefRepo(orgRoot: File) {
       case Right(v) => v
       case Left(reason) => throw new IllegalArgumentException(s"RecDef rejected: $reason")
     }
+    // Run the REAL resolver at upload time: cycles, dangling template refs
+    // and structural mistakes surface here with the engine's precise error,
+    // instead of much later as a silently empty Record Definition in
+    // SIP-Creator (#3492 — three round-trips before the actual defect showed).
+    try {
+      val recDef = eu.delving.metadata.RecDef.read(
+        new java.io.ByteArrayInputStream(recDefXml.getBytes("UTF-8")))
+      eu.delving.metadata.RecDefTree.create(recDef)
+    } catch {
+      case e: Throwable =>
+        throw new IllegalArgumentException(
+          s"RecDef rejected: it does not resolve — ${Option(e.getMessage).getOrElse(e.getClass.getSimpleName)}")
+    }
     val xmlPrefix = schemaVersion.split("_", 2)(0)
     if (xmlPrefix != prefix) {
       logger.warn(s"Uploaded recdef declares prefix='$xmlPrefix' but route prefix='$prefix' — using route prefix")
