@@ -98,6 +98,7 @@ GET         /narthex/app/rec-defs                                            con
 GET         /narthex/app/rec-defs/:prefix                                    controllers.AppController.listRecDefVersions(prefix)
 GET         /narthex/app/rec-defs/:prefix/:hash/xml                          controllers.AppController.getRecDefXml(prefix, hash)
 GET         /narthex/app/rec-defs/:prefix/:hash/xsd                          controllers.AppController.getRecDefXsd(prefix, hash)
+GET         /narthex/app/rec-defs/:prefix/:hash/artifact/:name               controllers.AppController.getRecDefArtifact(prefix, hash, name)
 + nocsrf
 POST        /narthex/app/rec-defs/:prefix/upload                             controllers.AppController.uploadRecDef(prefix)
 + nocsrf

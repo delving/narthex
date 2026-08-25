@@ -119,6 +119,15 @@
                                 <a class="btn btn-default btn-xs" ng-href="{{ downloadXsdUrl(s.prefix, v.hash) }}" target="_blank" ng-if="v.hasXsd">
                                     <i class="fa fa-download"></i> XSD
                                 </a>
+                                <a class="btn btn-default btn-xs" ng-href="{{ artifactUrl(s.prefix, v.hash, 'ontology.ttl') }}" target="_blank">
+                                    <i class="fa fa-download"></i> RDFS
+                                </a>
+                                <a class="btn btn-default btn-xs" ng-href="{{ artifactUrl(s.prefix, v.hash, 'shapes.ttl') }}" target="_blank">
+                                    <i class="fa fa-download"></i> SHACL
+                                </a>
+                                <a class="btn btn-default btn-xs" ng-href="{{ artifactUrl(s.prefix, v.hash, 'context.jsonld') }}" target="_blank">
+                                    <i class="fa fa-download"></i> Context
+                                </a>
                                 <button class="btn btn-primary btn-xs"
                                         ng-click="setCurrent(s.prefix, v.hash)"
                                         ng-if="v.hash !== versions[s.prefix].currentVersion">

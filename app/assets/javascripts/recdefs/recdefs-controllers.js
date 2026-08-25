@@ -112,6 +112,10 @@ define(["angular"], function () {
             return '/narthex/app/rec-defs/' + prefix + '/' + hash + '/xsd';
         };
 
+        $scope.artifactUrl = function (prefix, hash, name) {
+            return '/narthex/app/rec-defs/' + prefix + '/' + hash + '/artifact/' + name;
+        };
+
         $scope.refresh();
     };
 

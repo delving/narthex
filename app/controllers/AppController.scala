@@ -1289,6 +1289,35 @@ class AppController @Inject() (
     }
   }
 
+  /** Semantic artifacts generated on the fly from the stored recdef —
+    * never stored, so a generator improvement is immediately visible. */
+  def getRecDefArtifact(prefix: String, hash: String, name: String) = Action { request =>
+    recDefRepo.getVersion(prefix, hash) match {
+      case Some(resolved) =>
+        try {
+          val recDef = eu.delving.metadata.RecDef.read(
+            new java.io.FileInputStream(resolved.recordDefinitionFile))
+          name match {
+            case "ontology.rdf" =>
+              Ok(eu.delving.metadata.RdfsGenerator.generate(recDef, "RDF/XML-ABBREV")).as("application/rdf+xml")
+            case "ontology.ttl" =>
+              Ok(eu.delving.metadata.RdfsGenerator.generate(recDef, "TURTLE")).as("text/turtle")
+            case "shapes.ttl" =>
+              Ok(eu.delving.metadata.ShaclGenerator.generate(recDef)).as("text/turtle")
+            case "context.jsonld" =>
+              Ok(eu.delving.metadata.JsonLdContextGenerator.generateContext(recDef)).as("application/ld+json")
+            case _ =>
+              NotFound(Json.obj("problem" -> s"Unknown artifact: $name"))
+          }
+        } catch {
+          case e: Exception =>
+            InternalServerError(Json.obj("problem" -> s"Generation failed: ${e.getMessage}"))
+        }
+      case None =>
+        NotFound(Json.obj("problem" -> s"Rec-def not found: $prefix/$hash"))
+    }
+  }
+
   /** Read an uploaded XML file tolerantly: honour a UTF-8/UTF-16 BOM when
     * present (Windows editors add them; a BOM read as UTF-8 text lands in
     * front of the prolog and XML parsing fails with 'content is not allowed
