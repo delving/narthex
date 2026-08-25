@@ -1295,8 +1295,9 @@ class AppController @Inject() (
     recDefRepo.getVersion(prefix, hash) match {
       case Some(resolved) =>
         try {
+          val recDefXml = FileUtils.readFileToString(resolved.recordDefinitionFile, "UTF-8")
           val recDef = eu.delving.metadata.RecDef.read(
-            new java.io.FileInputStream(resolved.recordDefinitionFile))
+            new java.io.ByteArrayInputStream(recDefXml.getBytes("UTF-8")))
           name match {
             case "ontology.rdf" =>
               Ok(eu.delving.metadata.RdfsGenerator.generate(recDef, "RDF/XML-ABBREV")).as("application/rdf+xml")
@@ -1310,7 +1311,7 @@ class AppController @Inject() (
               NotFound(Json.obj("problem" -> s"Unknown artifact: $name"))
           }
         } catch {
-          case e: Exception =>
+          case e: Throwable =>
             InternalServerError(Json.obj("problem" -> s"Generation failed: ${e.getMessage}"))
         }
       case None =>
