@@ -1313,7 +1313,18 @@ class AppController @Inject() (
         NotAcceptable(Json.obj("problem" -> "No recdef file provided (form field 'recdef')"))
       case Some(recDefFile) =>
         val recDefXml = readUploadedXml(recDefFile.ref.path.toFile)
+        // No hand-made XSD supplied: generate a lax validation XSD from the
+        // recdef itself (modeller-driven strictness via required/singular/
+        // xsdDataType/xsdPattern annotations). SIP-Creator refuses to open a
+        // set without one.
         val xsdXmlOpt = request.body.file("xsd").map(f => readUploadedXml(f.ref.path.toFile))
+          .orElse {
+            scala.util.Try {
+              val recDef = eu.delving.metadata.RecDef.read(
+                new java.io.ByteArrayInputStream(recDefXml.getBytes("UTF-8")))
+              eu.delving.metadata.XsdGenerator.generate(recDef)
+            }.toOption
+          }
         val notes = request.body.dataParts.get("notes").flatMap(_.headOption)
         try {
           val v = recDefRepo.saveVersion(prefix, recDefXml, xsdXmlOpt, "upload", notes)
