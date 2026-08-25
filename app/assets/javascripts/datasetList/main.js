@@ -15,13 +15,13 @@ define(
                 function ($routeProvider) {
                     $routeProvider.when(
                         "/", {
-                            templateUrl: "/narthex/assets/templates/dataset-list.html?v=0.8.9.114",
+                            templateUrl: "/narthex/assets/templates/dataset-list.html?v=0.8.9.115",
                             controller: controllers.DatasetListCtrl,
                             reloadOnSearch: false
                         }
                     ).when(
                         "/sip-creator", {
-                            templateUrl: "/narthex/assets/templates/sip-creator-downloads.html?v=0.8.9.114",
+                            templateUrl: "/narthex/assets/templates/sip-creator-downloads.html?v=0.8.9.115",
                             controller: 'SipCreatorDownloadsCtrl'
                         }
                     );
