@@ -141,6 +141,16 @@ define(["angular", "common"], function (angular) {
                     );
                 },
 
+                // Delete an entire named mapping (all versions)
+                deleteNamedMapping: function (prefix, name) {
+                    return $http.delete('/narthex/app/default-mappings/' + prefix + '/' + name).then(
+                        function (response) {
+                            return response.data;
+                        },
+                        rejection
+                    );
+                },
+
                 // Dataset Mapping Source API
                 listDatasetMappingVersions: function (spec) {
                     return app.listDatasetMappingVersions(spec).get().then(

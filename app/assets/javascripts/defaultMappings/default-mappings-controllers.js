@@ -208,6 +208,18 @@ define(["angular"], function (angular) {
             });
         };
 
+        $scope.deleteMapping = function (prefix, mapping) {
+            var label = mapping.displayName + ' (' + mapping.name + ')';
+            if (!confirm('Delete mapping ' + label + ' and ALL its versions? This cannot be undone.')) {
+                return;
+            }
+
+            defaultMappingsService.deleteNamedMapping(prefix, mapping.name).then(function (data) {
+                delete $scope.expandedMappings[prefix + '/' + mapping.name];
+                loadMappings();
+            });
+        };
+
         // =============== Version Comparison ===============
 
         $scope.getSelectedCount = function(mapping) {

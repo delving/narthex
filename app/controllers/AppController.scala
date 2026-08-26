@@ -1253,6 +1253,14 @@ class AppController @Inject() (
     }
   }
 
+  def deleteNamedMapping(prefix: String, name: String) = Action { request =>
+    if (defaultMappingRepo.deleteMapping(prefix, name)) {
+      Ok(Json.obj("success" -> true))
+    } else {
+      NotFound(Json.obj("problem" -> s"Mapping not found: $prefix/$name"))
+    }
+  }
+
   // ==================== Rec-Defs (Versioned Record Definitions) ====================
 
   private def recDefRepo: mapping.RecDefRepo = orgContext.sipFactory.recDefRepo

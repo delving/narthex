@@ -108,9 +108,16 @@
                             <small class="text-muted">({{ mapping.name }})</small>
                             <span class="label label-default" style="margin-left: 6px;">{{ mapping.versionCount }} version(s)</span>
                         </div>
-                        <small class="text-muted" ng-if="mapping.latestTimestamp">
-                            {{ formatTimestamp(mapping.latestTimestamp) }}
-                        </small>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <small class="text-muted" ng-if="mapping.latestTimestamp">
+                                {{ formatTimestamp(mapping.latestTimestamp) }}
+                            </small>
+                            <button class="btn btn-default btn-xs"
+                                    ng-click="deleteMapping(prefixData.prefix, mapping); $event.stopPropagation()"
+                                    title="Delete mapping (all versions)">
+                                <i class="fa fa-trash text-danger"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Mapping Body (expanded) -->
@@ -191,8 +198,11 @@
                             </tbody>
                         </table>
 
-                        <div class="text-center text-muted" style="padding: 15px;" ng-if="!mapping.versions || mapping.versions.length === 0">
+                        <div class="text-center text-muted" style="padding: 15px;" ng-if="!mapping.versions">
                             <i class="fa fa-spinner fa-spin"></i> Loading versions...
+                        </div>
+                        <div class="text-center text-muted" style="padding: 15px;" ng-if="mapping.versions && mapping.versions.length === 0">
+                            <i class="fa fa-info-circle"></i> No versions yet — upload an XML below, or delete this mapping.
                         </div>
 
                         <!-- Upload / Copy Actions -->
@@ -200,8 +210,10 @@
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                        <label class="btn btn-default btn-xs" style="margin-bottom: 0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                            <i class="fa fa-file-code-o"></i> Choose XML...
+                                        <label class="btn btn-default btn-xs" style="margin-bottom: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            <i class="fa fa-file-code-o"></i>
+                                            <span ng-if="!selectedFileName">Choose XML...</span>
+                                            <span ng-if="selectedFileName">{{ selectedFileName }}</span>
                                             <input type="file" accept=".xml" style="display: none;"
                                                    onchange="angular.element(this).scope().onFileSelect(this.files)">
                                         </label>

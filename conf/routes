@@ -92,6 +92,7 @@ POST        /narthex/app/default-mappings/:prefix/:name/copy-from/:spec      con
 POST        /narthex/app/default-mappings/:prefix/:name/set-current          controllers.AppController.setCurrentDefaultMapping(prefix, name)
 + nocsrf
 DELETE      /narthex/app/default-mappings/:prefix/:name/versions/:hash       controllers.AppController.deleteDefaultMappingVersion(prefix, name, hash)
+DELETE      /narthex/app/default-mappings/:prefix/:name                      controllers.AppController.deleteNamedMapping(prefix, name)
 
 # Rec-Defs (versioned record definitions)
 GET         /narthex/app/rec-defs                                            controllers.AppController.listRecDefs
