@@ -1158,10 +1158,13 @@ class DsInfo(
     val source_dir = s"$spec_source_dir/source"
     val valid: Int = uniqueCounterProcessed(processed_dir).size
     val total: Int = uniqueCounterSource(source_dir).size
-    val invalid = total - valid
     setRecordCount(total)
-    setProcessedRecordCounts(valid, invalid)
-    (invalid, valid, total)
+    // processedInvalid is NOT derived here: source-minus-processed also counts
+    // duplicates, tombstones and hash-skipped records, which showed up in the
+    // UI as "N invalid record(s)" with an empty error report (#3508). Invalid
+    // stays whatever the processing pipeline actually reported.
+    setSingularLiteralProps(processedValid -> valid.toString)
+    (total - valid, valid, total)
   }
 
   def setRecordCount(count: Int) =
