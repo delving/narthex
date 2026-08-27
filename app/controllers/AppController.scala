@@ -1176,10 +1176,53 @@ class AppController @Inject() (
       val xmlContent = FileUtils.readFileToString(file.ref.path.toFile, "UTF-8")
       val notes = request.body.dataParts.get("notes").flatMap(_.headOption)
       val targetRecDefHash = deriveTargetRecDefHash(prefix, xmlContent)
-      val version = defaultMappingRepo.saveVersion(prefix, name, xmlContent, "upload", None, notes, targetRecDefHash)
-      Ok(Json.toJson(version))
+      // Same door policy as recdef uploads (#3497/#3501): run the REAL parser
+      // and refuse a broken mapping with the exact reason, instead of storing
+      // a version the user then wants to delete again.
+      validateMappingUpload(prefix, xmlContent, targetRecDefHash) match {
+        case Some(problem) =>
+          BadRequest(Json.obj("problem" -> problem))
+        case None =>
+          val version = defaultMappingRepo.saveVersion(prefix, name, xmlContent, "upload", None, notes, targetRecDefHash)
+          Ok(Json.toJson(version))
+      }
     }.getOrElse {
       NotAcceptable(Json.obj("problem" -> "No file provided"))
+    }
+  }
+
+  /** Left-of-the-door validation for uploaded mapping XML: well-formed
+    * `<rec-mapping>` whose prefix matches the route, parseable by the real
+    * engine against the rec-def it declares (or the current one). Returns
+    * the user-facing reason to refuse, or None when acceptable. */
+  private def validateMappingUpload(prefix: String, mappingXml: String, targetRecDefHash: Option[String]): Option[String] = {
+    val rootRx = """<rec-mapping\b[^>]*""".r
+    rootRx.findFirstIn(mappingXml) match {
+      case None =>
+        Some("Not a mapping file: no <rec-mapping> root element found. Expected a SIP-Creator mapping XML (mapping_" + prefix + ".xml).")
+      case Some(rootAttrs) =>
+        val prefixRx = """\bprefix="([^"]+)"""".r
+        val declaredPrefix = prefixRx.findFirstMatchIn(rootAttrs).map(_.group(1))
+        if (declaredPrefix.exists(_ != prefix)) {
+          Some(s"Mapping is for prefix '${declaredPrefix.get}' but was uploaded under '$prefix'.")
+        } else {
+          val resolvedOpt = targetRecDefHash.flatMap(h => recDefRepo.getVersion(prefix, h))
+            .orElse(recDefRepo.getCurrent(prefix))
+          resolvedOpt match {
+            case None =>
+              Some(s"No record definition available for prefix '$prefix' to validate this mapping against — upload the rec-def first.")
+            case Some(resolved) =>
+              try {
+                val tree = dataset.Sip.loadRecDefTree(resolved.recordDefinitionFile)
+                val in = new java.io.ByteArrayInputStream(mappingXml.getBytes("UTF-8"))
+                try eu.delving.metadata.RecMapping.read(in, tree) finally in.close()
+                None
+              } catch {
+                case e: Throwable =>
+                  Some(s"Mapping rejected: the engine cannot parse it against rec-def ${resolved.version.schemaVersion} — ${Option(e.getMessage).getOrElse(e.getClass.getSimpleName)}")
+              }
+          }
+        }
     }
   }
 
