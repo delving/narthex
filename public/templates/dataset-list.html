@@ -467,7 +467,8 @@
                                     <i class="fa fa-exclamation-triangle"></i> index
                                 </a>
                             </td>
-                            <td class="date-time">
+                            <td class="date-time"
+                                title="Last checked (harvest attempt): {{ dataset.harvestPreviousTime ? (dataset.harvestPreviousTime | date: 'yyyy/MM/dd HH:mm') : 'n/a' }}">
                                 {{ dataset.stateCurrent.date | date: 'yyyy/MM/dd HH:mm' }}
                             </td>
                         </tr>
