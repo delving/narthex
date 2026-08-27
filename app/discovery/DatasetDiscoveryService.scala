@@ -39,7 +39,8 @@ import play.api.libs.json.{JsObject, Json}
 @Singleton
 class DatasetDiscoveryService @Inject()(
   orgContext: OrgContext,
-  oaiParser: OaiListSetsParser
+  oaiParser: OaiListSetsParser,
+  setCountVerifier: SetCountVerifier
 )(implicit ec: ExecutionContext, ts: TripleStore) {
 
   private val logger = Logger(getClass)
@@ -55,7 +56,36 @@ class DatasetDiscoveryService @Inject()(
       override def run(): Unit = {
         sourceRepo.listSources().foreach { s =>
           discoverSets(s.id).map {
-            case Right(r) => logger.info(s"Background discovery ${s.name}: ${r.newSets.size} new of ${r.totalSets} sets")
+            case Right(r) =>
+              logger.info(s"Background discovery ${s.name}: ${r.newSets.size} new of ${r.totalSets} sets")
+              // A set that goes from 0 records to N never surfaced on its own:
+              // "new" filters on recordCount != 0 from the counts cache, and the
+              // sweep only refreshed ListSets — the counts stayed stale until
+              // someone clicked Refresh Counts (#3518). Re-verify just the
+              // candidates (new + empty), not all sets.
+              val toCheck = (r.newSets ++ r.emptySets).map(_.setSpec)
+              if (toCheck.nonEmpty && !setCountVerifier.isRunning(s.id)) {
+                setCountVerifier.verify(s.id, s.url, s.defaultMetadataPrefix, toCheck, delayMs = 500)
+                  .map { case (counts, errors) =>
+                    // Merge: unchecked sets keep their cached counts.
+                    val existing = sourceRepo.loadCountsCache(s.id).map(_.counts).getOrElse(Map.empty)
+                    val merged = existing ++ counts
+                    val withRecords = merged.values.count(_ > 0)
+                    sourceRepo.saveCountsCache(OaiSourceConfig.SetCountCache(
+                      sourceId = s.id,
+                      lastVerified = org.joda.time.DateTime.now(),
+                      counts = merged,
+                      errors = errors,
+                      summary = OaiSourceConfig.CountSummary(merged.size + errors.size, withRecords, merged.values.count(_ == 0))
+                    ))
+                    discoverSets(s.id).map {
+                      case Right(r2) => logger.info(s"Background discovery ${s.name} after count refresh: ${r2.newSets.size} new (${counts.size} counts re-verified)")
+                      case Left(err) => logger.warn(s"Background discovery ${s.name} re-classify failed: $err")
+                    }
+                  }.recover { case ex: Throwable =>
+                    logger.warn(s"Background count verify ${s.name} error: ${ex.getMessage}")
+                  }
+              }
             case Left(err) => logger.warn(s"Background discovery ${s.name} failed: $err")
           }.recover { case ex: Throwable =>
             logger.warn(s"Background discovery ${s.name} error: ${ex.getMessage}")
