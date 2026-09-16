@@ -46,9 +46,14 @@ class DiscoveryController @Inject()(
     val enrichedSources = sources.map { source =>
       val cache = sourceRepo.loadCountsCache(source.id)
       val lastResult = sourceRepo.loadLastResult(source.id)
+      // newSetCount comes ONLY from the last discovery result: that is the
+      // real classification (new = not existing, not ignored, has records)
+      // and import/discover keep it current. The counts cache must never
+      // override it — its summary.newWithRecords counts every cached entry
+      // with records, and an imported set keeps its entry forever (the
+      // sweep only re-verifies new+empty candidates), so the old override
+      // pinned the badge at stale values like enb-101's "1" (#3566).
       val sourceJson = Json.toJson(source).as[JsObject] ++ JsObject(
-        // Durable (no TTL) — from the last background/manual discovery; the
-        // counts cache expires daily and used to take the badge with it.
         lastResult.toSeq.flatMap(r => Seq(
           "newSetCount" -> (Json.toJson(r.newSets.size): JsValue),
           "lastDiscoveredAt" -> (Json.toJson(r.timestamp.toString): JsValue)
@@ -58,13 +63,11 @@ class DiscoveryController @Inject()(
       cache match {
         case Some(c) =>
           sourceJson ++ Json.obj(
-            "newSetCount" -> c.summary.newWithRecords,
             "emptySetCount" -> c.summary.empty,
             "countsLastVerified" -> Json.toJson(c.lastVerified)
           )
         case None =>
           sourceJson ++ Json.obj(
-            "newSetCount" -> JsNull,
             "emptySetCount" -> JsNull,
             "countsLastVerified" -> JsNull
           )

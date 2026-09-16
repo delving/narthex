@@ -119,6 +119,9 @@ define(["angular"], function (angular) {
                 $scope.discoveryResult = result;
                 $scope.resultIsCached = false;
                 $scope.discovering = false;
+                // Fresh discovery rewrote the cached result server-side;
+                // re-derive the sidebar badge so it can't stay stale (#3566)
+                loadSources();
                 // Check if verification is already running (e.g. triggered externally)
                 if (!$scope.verifying) {
                     checkForRunningVerification();
@@ -228,6 +231,10 @@ define(["angular"], function (angular) {
                     $scope.importing = false;
                     alert("Import complete: " + result.imported + " imported, " + result.failed + " failed.");
                     $scope.clearSelection();
+                    // Import updated the cached result server-side (imported
+                    // sets moved new -> existing); refresh badge immediately,
+                    // then re-discover for the full fresh view (#3566)
+                    loadSources();
                     $scope.discover(); // Refresh
                 }, function(error) {
                     $scope.importing = false;

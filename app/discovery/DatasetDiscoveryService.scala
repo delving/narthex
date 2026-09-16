@@ -341,6 +341,39 @@ class DatasetDiscoveryService @Inject()(
       acc.flatMap { results =>
         importSet(request).map(result => results :+ result)
       }
+    }.map { results =>
+      updateCachedResultAfterImport(requests, results)
+      results
+    }
+  }
+
+  /**
+   * Move successfully imported sets from newSets to existingSets in the
+   * cached discovery result. Without this the nav badge (fed by
+   * discoverySummary, which reads the cache) keeps counting an imported
+   * set as "new" until the next discover/sweep — up to a day of a red
+   * pill pointing at an empty list (#3566).
+   */
+  private def updateCachedResultAfterImport(
+      requests: List[SetImportRequest],
+      results: List[ImportResult]): Unit = {
+    val successSpecs = results.filter(_.success).map(_.spec).toSet
+    requests.groupBy(_.sourceId).foreach { case (sourceId, reqs) =>
+      val importedSetSpecs =
+        reqs.filter(r => successSpecs.contains(r.normalizedSpec)).map(_.setSpec).toSet
+      if (importedSetSpecs.nonEmpty) {
+        sourceRepo.loadLastResult(sourceId).foreach { last =>
+          val (imported, remaining) = last.newSets.partition(s => importedSetSpecs.contains(s.setSpec))
+          if (imported.nonEmpty) {
+            sourceRepo.saveLastResult(last.copy(
+              newSets = remaining,
+              existingSets = last.existingSets ++ imported.map(_.copy(status = "existing"))
+            ))
+            logger.info(
+              s"Discovery cache for $sourceId updated after import: ${imported.size} set(s) moved new -> existing")
+          }
+        }
+      }
     }
   }
 
