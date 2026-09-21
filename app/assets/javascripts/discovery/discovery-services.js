@@ -43,8 +43,9 @@ define(["angular", "common"], function (angular) {
                     return $http.put(baseUrl + '/sources/' + id, source).then(function(r) { return r.data; });
                 },
 
+                // POST instead of DELETE: some networks block DELETE (#3497).
                 deleteSource: function(id) {
-                    return $http.delete(baseUrl + '/sources/' + id).then(function(r) { return r.data; });
+                    return $http.post(baseUrl + '/sources/' + id + '/delete').then(function(r) { return r.data; });
                 },
 
                 // Discovery

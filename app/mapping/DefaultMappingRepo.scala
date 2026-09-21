@@ -371,6 +371,21 @@ class DefaultMappingRepo(orgRoot: File) {
     val hash = computeHash(xmlContent)
     val filename = generateFilename(timestamp, hash)
 
+    val existingInfo = getInfo(prefix, name).getOrElse(
+      NamedMapping(prefix = prefix, name = name, displayName = name, versions = List.empty, currentVersion = None)
+    )
+
+    // Check if this hash already exists — still make it CURRENT: a re-save
+    // of known content expresses "use this one" (the early return used to
+    // leave the pointer elsewhere, so 'latest' silently stayed stale).
+    // Checked BEFORE writing: a duplicate upload used to leave a second,
+    // orphaned copy of the file on disk that no metadata entry pointed at.
+    if (existingInfo.versions.exists(_.hash == hash)) {
+      logger.info(s"Mapping with hash $hash already exists for $prefix/$name — setting current")
+      saveMetadata(prefix, name, existingInfo.copy(currentVersion = Some(hash)))
+      return existingInfo.versions.find(_.hash == hash).get
+    }
+
     // Write the XML file
     val versionFile = new File(versionsDir, filename)
     FileUtils.writeStringToFile(versionFile, xmlContent, "UTF-8")
@@ -384,20 +399,6 @@ class DefaultMappingRepo(orgRoot: File) {
       notes = notes,
       targetRecDefHash = targetRecDefHash
     )
-
-    // Update metadata
-    val existingInfo = getInfo(prefix, name).getOrElse(
-      NamedMapping(prefix = prefix, name = name, displayName = name, versions = List.empty, currentVersion = None)
-    )
-
-    // Check if this hash already exists — still make it CURRENT: a re-save
-    // of known content expresses "use this one" (the early return used to
-    // leave the pointer elsewhere, so 'latest' silently stayed stale).
-    if (existingInfo.versions.exists(_.hash == hash)) {
-      logger.info(s"Mapping with hash $hash already exists for $prefix/$name — setting current")
-      saveMetadata(prefix, name, existingInfo.copy(currentVersion = Some(hash)))
-      return existingInfo.versions.find(_.hash == hash).get
-    }
 
     val updatedInfo = existingInfo.copy(
       versions = existingInfo.versions :+ newVersion,

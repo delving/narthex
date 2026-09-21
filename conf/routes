@@ -93,6 +93,13 @@ POST        /narthex/app/default-mappings/:prefix/:name/set-current          con
 + nocsrf
 DELETE      /narthex/app/default-mappings/:prefix/:name/versions/:hash       controllers.AppController.deleteDefaultMappingVersion(prefix, name, hash)
 DELETE      /narthex/app/default-mappings/:prefix/:name                      controllers.AppController.deleteNamedMapping(prefix, name)
+# POST variants of the deletes above: some networks/middleboxes block the
+# DELETE method entirely (#3497, reproduced from a home connection too), so
+# the UI uses these; the DELETE routes stay for API/scripting compatibility.
++ nocsrf
+POST        /narthex/app/default-mappings/:prefix/:name/versions/:hash/delete controllers.AppController.deleteDefaultMappingVersion(prefix, name, hash)
++ nocsrf
+POST        /narthex/app/default-mappings/:prefix/:name/delete               controllers.AppController.deleteNamedMapping(prefix, name)
 
 # Rec-Defs (versioned record definitions)
 GET         /narthex/app/rec-defs                                            controllers.AppController.listRecDefs
@@ -106,6 +113,8 @@ POST        /narthex/app/rec-defs/:prefix/upload                             con
 POST        /narthex/app/rec-defs/:prefix/set-current                        controllers.AppController.setCurrentRecDef(prefix)
 + nocsrf
 DELETE      /narthex/app/rec-defs/:prefix/versions/:hash                     controllers.AppController.deleteRecDefVersion(prefix, hash)
++ nocsrf
+POST        /narthex/app/rec-defs/:prefix/versions/:hash/delete              controllers.AppController.deleteRecDefVersion(prefix, hash)
 
 # Per-dataset rec-def version pinning
 + nocsrf
@@ -149,6 +158,8 @@ POST        /narthex/app/discovery/sources                                   con
 PUT         /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.updateSource(id)
 + nocsrf
 DELETE      /narthex/app/discovery/sources/:id                               controllers.DiscoveryController.deleteSource(id)
++ nocsrf
+POST        /narthex/app/discovery/sources/:id/delete                        controllers.DiscoveryController.deleteSource(id)
 GET         /narthex/app/discovery/summary                                   controllers.DiscoveryController.discoverySummary
 GET         /narthex/app/discovery/sources/:id/last                          controllers.DiscoveryController.lastDiscovery(id)
 GET         /narthex/app/discovery/sources/:id/discover                      controllers.DiscoveryController.discoverSets(id)

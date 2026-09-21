@@ -1183,8 +1183,12 @@ class AppController @Inject() (
         case Some(problem) =>
           BadRequest(Json.obj("problem" -> problem))
         case None =>
+          // Duplicate content is deduplicated by hash (no new version row), which
+          // looked like a silently failed upload (#3501) — tell the UI explicitly.
+          val hash = mapping.DefaultMappingRepo.computeHash(xmlContent)
+          val isDuplicate = defaultMappingRepo.hasVersion(prefix, name, hash)
           val version = defaultMappingRepo.saveVersion(prefix, name, xmlContent, "upload", None, notes, targetRecDefHash)
-          Ok(Json.toJson(version))
+          Ok(Json.toJson(version).as[JsObject] + ("duplicate" -> JsBoolean(isDuplicate)))
       }
     }.getOrElse {
       NotAcceptable(Json.obj("problem" -> "No file provided"))

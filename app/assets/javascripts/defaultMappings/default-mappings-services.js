@@ -131,9 +131,10 @@ define(["angular", "common"], function (angular) {
                     );
                 },
 
-                // Delete a specific version
+                // Delete a specific version. POST instead of DELETE: some
+                // networks block the DELETE method outright (#3497).
                 deleteDefaultMappingVersion: function (prefix, name, hash) {
-                    return app.deleteDefaultMappingVersion(prefix, name, hash).delete().then(
+                    return $http.post('/narthex/app/default-mappings/' + prefix + '/' + name + '/versions/' + hash + '/delete').then(
                         function (response) {
                             return response.data;
                         },
@@ -141,9 +142,9 @@ define(["angular", "common"], function (angular) {
                     );
                 },
 
-                // Delete an entire named mapping (all versions)
+                // Delete an entire named mapping (all versions); POST, see above.
                 deleteNamedMapping: function (prefix, name) {
-                    return $http.delete('/narthex/app/default-mappings/' + prefix + '/' + name).then(
+                    return $http.post('/narthex/app/default-mappings/' + prefix + '/' + name + '/delete').then(
                         function (response) {
                             return response.data;
                         },

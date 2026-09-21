@@ -169,6 +169,10 @@ define(["angular"], function (angular) {
             }
 
             defaultMappingsService.uploadDefaultMapping(prefix, name, $scope.selectedFile, $scope.uploadNotes).then(function (data) {
+                if (data && data.duplicate) {
+                    alert('This file is identical to existing version ' + data.hash +
+                        ' — no new version was created. That version is now set as current.');
+                }
                 $scope.selectedFile = null;
                 $scope.uploadNotes = '';
                 loadMappings();

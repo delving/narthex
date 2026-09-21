@@ -53,8 +53,9 @@ define(["angular", "common"], function (angular) {
                     return app.setCurrentRecDef(prefix).post({hash: hash}).then(function (r) { return r.data; }, rejection);
                 },
 
+                // POST instead of DELETE: some networks block DELETE (#3497).
                 deleteRecDefVersion: function (prefix, hash) {
-                    return app.deleteRecDefVersion(prefix, hash).delete().then(function (r) { return r.data; }, rejection);
+                    return $http.post('/narthex/app/rec-defs/' + prefix + '/versions/' + hash + '/delete').then(function (r) { return r.data; }, rejection);
                 }
             };
         }
