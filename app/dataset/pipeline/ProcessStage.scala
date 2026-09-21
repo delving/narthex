@@ -133,6 +133,19 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
     var time = System.currentTimeMillis()
     val dataset = DatasetFactory.createGeneral()
 
+    def writeUnexpected(id: String, unexpected: Throwable): Unit = {
+      // A bare toString ("IndexOutOfBoundsException: Index 1 out of
+      // bounds") is undiagnosable — include the stack for the first
+      // few so the failing mapping construct can be located, without
+      // bloating a report that repeats the same error 400k times.
+      unexpectedWithStack += 1
+      val detail =
+        if (unexpectedWithStack <= 5)
+          unexpected.toString + "\n" + unexpected.getStackTrace.take(20).mkString("  at ", "\n  at ", "")
+        else unexpected.toString
+      writeError("UNEXPECTED ERROR", detail, id)
+    }
+
     def writeError(heading: String, error: String, id: String) = {
       invalidRecords += 1
       val errorString = s"""
@@ -150,6 +163,15 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
     val batchSize = 100
     val batch = new ArrayBuffer[Pocket](batchSize)
     val seenBuf = new ArrayBuffer[(String, String)](batchSize)
+    // UNEXPECTED failures get one serial retry after the main pass (#3507):
+    // that class has proven transient (shared-state races under the parallel
+    // batch produced record-random AIOOBEs that healed on the next full run),
+    // and a record left invalid stays missing from the index until someone
+    // manually harvests. Deterministic classes (URI/XSD/discard/empty) fail
+    // straight to the error report. Capped so a systematically broken
+    // mapping (400k identical failures) does not buffer the world.
+    val retryCap = 1000
+    val retryBuf = new ArrayBuffer[(Pocket, Throwable)]()
 
     def processBatch(): Unit = {
       if (batch.nonEmpty) {
@@ -188,16 +210,8 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
               writeError("XSD ERROR", sax.getMessage, rawPocket.id)
 
             case Failure(unexpected: Throwable) =>
-              // A bare toString ("IndexOutOfBoundsException: Index 1 out of
-              // bounds") is undiagnosable — include the stack for the first
-              // few so the failing mapping construct can be located, without
-              // bloating a report that repeats the same error 400k times.
-              unexpectedWithStack += 1
-              val detail =
-                if (unexpectedWithStack <= 5)
-                  unexpected.toString + "\n" + unexpected.getStackTrace.take(20).mkString("  at ", "\n  at ", "")
-                else unexpected.toString
-              writeError("UNEXPECTED ERROR", detail, rawPocket.id)
+              if (retryBuf.size < retryCap) retryBuf += ((rawPocket, unexpected))
+              else writeUnexpected(rawPocket.id, unexpected)
           }
         }
 
@@ -254,6 +268,38 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
 
     // Process any remaining records in the final batch
     processBatch()
+
+    // Serial second chance for the UNEXPECTED class collected above.
+    if (retryBuf.nonEmpty) {
+      logger.info(s"Retrying ${retryBuf.size} record(s) after unexpected errors (serial pass, $spec)")
+      var healed = 0
+      retryBuf.foreach { case (rawPocket, firstError) =>
+        sipMapper.executeMapping(rawPocket) match {
+          case Success(pocket) if pocket.text.contains("rdf:about") =>
+            val hash = PocketParser.sha1(pocket.text)
+            pocket.writeTo(xmlOutput)
+            validRecords += 1
+            healed += 1
+            if (registryEnabled) runIdOpt.foreach { runId =>
+              registry.upsertSeenBatch(spec, Seq((rawPocket.id, hash)), runId)
+            }
+          case Success(_) =>
+            writeError("EMPTY RECORD", "mapping produced no RDF entities", rawPocket.id)
+          case Failure(ue: URIErrorsException) =>
+            writeError("URI ERRORS", ue.uriErrors.mkString("\n"), rawPocket.id)
+          case Failure(disc: DiscardRecordException) =>
+            writeError("DISCARDED RECORD", disc.getMessage, rawPocket.id)
+          case Failure(sax: SAXException) =>
+            writeError("XSD ERROR", sax.getMessage, rawPocket.id)
+          case Failure(again: Throwable) =>
+            // Failed twice — report the FIRST error (the retry may fail
+            // differently and the original is what the batch actually hit).
+            writeUnexpected(rawPocket.id, firstError)
+            logger.info(s"Retry also failed for ${rawPocket.id}: ${again.toString}")
+        }
+      }
+      logger.info(s"Retry pass healed $healed of ${retryBuf.size} record(s) ($spec)")
+    }
 
     xmlOutput.close()
     errorOutput.close()

@@ -692,10 +692,18 @@ class PocketMappingEngine(
   import Sip.{RDF_PREFIX, RDF_ROOT_TAG, RDF_URI}
   import SipRepo.URIErrorsException
 
-  val serializer = new XmlSerializer
   val namespaces: Map[String, String] =
     recDefTree.getRecDef.namespaces.asScala.map(ns => ns.prefix -> ns.uri).toMap
-  val factory = new MetadataRecordFactory(namespaces.asJava)
+
+  // Per-thread instances (#3507): XmlSerializer keeps a mutable indent-string
+  // ArrayList and MetadataRecordFactory a DocumentBuilder — neither is
+  // thread-safe, and sharing them across the parallel batch produced rare,
+  // record-random bare ArrayIndexOutOfBoundsExceptions ("UNEXPECTED ERROR"
+  // invalids that vanished on the next full run over identical content).
+  private val serializerTL = ThreadLocal.withInitial[XmlSerializer](() => new XmlSerializer)
+  private val factoryTL = ThreadLocal.withInitial[MetadataRecordFactory](() => new MetadataRecordFactory(namespaces.asJava))
+  def serializer: XmlSerializer = serializerTL.get()
+  private def factory: MetadataRecordFactory = factoryTL.get()
 
   val runner = new BulkMappingRunner(recMapping, new CodeGenerator(recMapping).withTrace(false).toRecordMappingCode)
 
@@ -708,7 +716,9 @@ class PocketMappingEngine(
 
   /**
    * Execute mapping on multiple pockets in parallel.
-   * Thread-safe: CompiledScript.eval() and MetadataRecordFactory are both thread-safe.
+   * Thread-safe: CompiledScript.eval() is thread-safe; serializer/factory are
+   * per-thread (see above); the optional XSD Validator (javax Validator is
+   * not thread-safe either) is guarded by a lock in executeMapping.
    * Returns results in same order as input.
    */
   override def executeMappingsParallel(pockets: Seq[Pocket]): Seq[(Pocket, Try[Pocket])] = {
@@ -726,8 +736,10 @@ class PocketMappingEngine(
     // check uri errors
     val uriErrors = result.getUriErrors.asScala.toList
     if (uriErrors.nonEmpty) throw new URIErrorsException(uriErrors)
-    // validate using XSD
-    validatorOpt.foreach(_.validate(new DOMSource(result.root())))
+    // validate using XSD — javax Validator is not thread-safe; validation is
+    // off by default (Sip.XSD_VALIDATION), so a lock beats plumbing Schema
+    // through for per-thread validators.
+    validatorOpt.foreach(v => v.synchronized(v.validate(new DOMSource(result.root()))))
     // re-wrap in an RDF construction
     val root = result.root().asInstanceOf[Element]
     val doc = root.getOwnerDocument
