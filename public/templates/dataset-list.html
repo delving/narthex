@@ -708,10 +708,6 @@
                                             <i class="fa fa-fw fa-eye"></i>
                                             <span>View indexed records</span>
                                         </a>
-                                        <a href data-ng-click="resendAll(dataset)" data-ng-if="!dataset.isActive">
-                                            <i class="fa fa-fw fa-refresh"></i>
-                                            <span>Resend all to index</span>
-                                        </a>
                                         <br />
                                     </div>
                                 </div>
@@ -2007,6 +2003,16 @@
             </button>
         </div>
         <hr/>
+        <div data-ng-show="dataset.stateSaved || dataset.stateIncrementalSaved">
+            <div class="alert alert-info">
+                Resend pushes every record to the index again, unchanged content included —
+                for when the index representation changed while the data did not.
+            </div>
+            <button class="btn btn-info" data-ng-click="resendAll(dataset)" data-ng-disabled="dataset.isActive">
+                <i class="fa fa-refresh"></i> Resend all records to index
+            </button>
+            <hr/>
+        </div>
     </div>
     <div class="alert alert-warning">
         Only reset a dataset after the buttons of the workflow become unresponsive. To make sure that it is not a websockets issue
