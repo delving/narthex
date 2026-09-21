@@ -818,6 +818,17 @@ class AppController @Inject() (
     Ok
   }
 
+  /** Force resend (#3548): mark every live record pending and kick a full
+    * save. The save's delta filter then sees the whole set as unsent and
+    * re-indexes it -- needed when the WIRE FORMAT changes (e.g. the
+    * order-preserving RDF/XML switch) while content hashes stay identical,
+    * which a normal save legitimately skips as "nothing changed". */
+  def resendAllRecords(spec: String) = Action { request =>
+    val marked = orgContext.recordRegistry.markAllForResend(spec)
+    orgContext.orgActor ! DatasetMessage(spec, Command("start saving"))
+    Ok(Json.obj("marked" -> marked, "saveStarted" -> true))
+  }
+
   def fastSave(spec: String) = Action { request =>
     val datasetContext = orgContext.datasetContext(spec)
     // Phase A4b: the projected state IS the artifact truth — a dataset can

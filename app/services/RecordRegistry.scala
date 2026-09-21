@@ -272,6 +272,9 @@ class RecordRegistry(datasetsDir: File) {
   def pendingIndexBatch(specName: String, limit: Int): Seq[(String, String)] =
     spec(specName).pendingIndexBatch(limit)
 
+  def markAllForResend(specName: String): Int =
+    spec(specName).markAllForResend()
+
   def pendingDropBatch(specName: String, limit: Int): Seq[String] =
     spec(specName).pendingDropBatch(limit)
 
@@ -1077,6 +1080,22 @@ private[services] class SpecRegistry(val datasetDir: File) {
         ps.setString(4, ts)
         ps.setString(5, STATUS_SEEN)
         ps.setLong(6, runId)
+        ps.executeUpdate()
+      } finally ps.close()
+    }
+  }
+
+  /** Field-order rollout (#3548): clear the sent-hash so EVERY live record
+    * counts as pending again -- the next save then re-sends the whole set
+    * (now as order-preserving RDF/XML). Content hashes are untouched, so
+    * this is a pure "send again" marker, not a data change. */
+  def markAllForResend(): Int = synchronized {
+    commitTx {
+      val sql = """UPDATE records SET last_sent_hash = NULL, updated_at = ? WHERE status = ?"""
+      val ps = conn.prepareStatement(sql)
+      try {
+        ps.setString(1, nowIso())
+        ps.setString(2, STATUS_SEEN)
         ps.executeUpdate()
       } finally ps.close()
     }
