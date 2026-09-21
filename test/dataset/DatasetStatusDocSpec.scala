@@ -16,7 +16,7 @@ class DatasetStatusDocSpec extends AnyFlatSpec with Matchers {
   private val noFacts = Facts(delimitersSet = None, errorMessage = None, inRetry = false)
 
   "actions" should "keep upstream actions during a run, hiding consumers of its output" in {
-    val s = blank.copy(sourced = Some(t0), processable = Some(t0), processed = Some(t0), analyzed = Some(t0))
+    val s = blank.copy(sourced = Some(t0), mappable = Some(t0), processable = Some(t0), processed = Some(t0), analyzed = Some(t0))
     // While processing: redo of earlier steps stays; analyze_processed and
     // save consume this run's output and hide. Cancel always offered.
     val during = actions(s, PHASE_RUNNING, noFacts, runningStage = Some("process"))
@@ -37,8 +37,12 @@ class DatasetStatusDocSpec extends AnyFlatSpec with Matchers {
 
   it should "not offer process without a mapping" in {
     val idle = actions(blank.copy(sourced = Some(t0)), PHASE_IDLE, noFacts)
-    idle should contain allOf ("analyze_source", "generate_sip", "fast_save")
+    idle should contain allOf ("generate_sip", "fast_save")
     idle should not contain "process"
+    // Source analysis reads source.xml.gz from the latest SIP zip, so it is
+    // only offered once a SIP exists (#3572).
+    idle should not contain "analyze_source"
+    actions(blank.copy(sourced = Some(t0), mappable = Some(t0)), PHASE_IDLE, noFacts) should contain ("analyze_source")
   }
 
   it should "offer process when source + mapping exist" in {

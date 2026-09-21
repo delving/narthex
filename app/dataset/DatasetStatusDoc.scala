@@ -96,7 +96,11 @@ object DatasetStatusDoc {
     if (p.raw.isDefined) b += "analyze_raw"
     if (p.raw.isDefined && p.rawAnalyzed.isDefined && !delimitersValid) b += "delimit"
     if ((delimitersValid || facts.harvestType.isDefined) && p.sourced.isEmpty) b += "first_harvest"
-    if (p.sourced.isDefined) { b += "analyze_source"; b += "generate_sip"; b += "fast_save" }
+    if (p.sourced.isDefined) { b += "generate_sip"; b += "fast_save" }
+    // Source analysis reads source.xml.gz out of the latest SIP zip
+    // (DatasetActor.StartSourceAnalysis) — offering it before a SIP exists
+    // gave a button that silently did nothing (#3572 klacht 2).
+    if (p.sourced.isDefined && p.mappable.isDefined) b += "analyze_source"
     if (p.sourced.isDefined && p.processable.isDefined) b += "process"
     if (p.processed.isDefined) b += "analyze_processed"
     if (p.analyzed.isDefined) b += "save"

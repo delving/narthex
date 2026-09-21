@@ -180,7 +180,7 @@ object DatasetStatusProjector {
     // "processable" = a current mapping exists for the dataset's prefix —
     // folder first, latest SIP zip as legacy fallback. Existence only; a
     // mapping that fails to build surfaces at process time with its reason.
-    val processable: Option[DateTime] = {
+    val mappingTime: Option[DateTime] = {
       val folderMapping = new DatasetMappingRepo(datasetRoot).getInfo
         .filter(info => info.prefix == targetPrefix && info.currentVersion.isDefined)
         .flatMap(info => info.currentVersion.flatMap(h => info.versions.find(_.hash == h)).map(_.timestamp))
@@ -214,6 +214,17 @@ object DatasetStatusProjector {
           computed
         }
       }
+    }
+
+    // PROCESSABLE needs BOTH the mapping and data to process (#3572): the
+    // mapping folder is configuration and survives a data wipe, and counting
+    // its mtime alone made an empty dataset read "Processable" while a fresh
+    // Make SIP read "Mappable" (the sip zip outraced the older mapping in
+    // the newest-artifact badge). The moment the dataset became processable
+    // is when the LATER of the two arrived, so the badge ranks it correctly.
+    val processable: Option[DateTime] = {
+      val dataTime = (sourced.toSeq ++ mappable.toSeq).map(_.getMillis).maxOption
+      for (m <- mappingTime; d <- dataTime) yield new DateTime(math.max(m.getMillis, d))
     }
 
     // Registry runs are the truth for saved status — but only runs that
