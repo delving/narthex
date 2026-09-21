@@ -75,34 +75,46 @@ object ProcessedRepo {
     m.flatMap(mat => scala.util.Try(mat.group(1).toInt).toOption).getOrElse(-1)
   }
 
-  case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String) {
+  case class GraphChunk(dataset: Dataset, dsInfo: DsInfo, bulkActions: String,
+                        rawGraphs: Map[String, String] = Map.empty) {
 
     def bulkAPIQ(orgId: String): String = {
 
       def createBulkAction(dataset: Dataset, graphUri: String): String = {
-		val model = dataset.getNamedModel(graphUri)
-		val triples = new StringWriter()
-		RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
-		val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
-                                                
-		val hubId = s"${orgId}_${spec}_$localId"
-		//val localHash = model.listObjectsOfProperty(model.getProperty(contentHash.uri)).toList().head.toString
-		val actionMap = Json.obj(
-		  "hubId" -> hubId,
+        val (spec, localId) = dsInfo.extractSpecIdFromGraphName(graphUri)
+        val hubId = s"${orgId}_${spec}_$localId"
+        // Field order (#3548/#952): the processed RDF/XML on disk carries the
+        // source's field order, but a round-trip through a Jena model (an
+        // unordered triple set) scrambles it. Hub3's bulk API has parsed
+        // application/rdf+xml order-preservingly since 2018 (hub3 f79ee8e2:
+        // streaming decoder -> insertion-order Triples() ->
+        // AppendOrderedTriple -> entries sorted by Order in the index doc),
+        // so send the raw record XML verbatim whenever the reader captured
+        // it. The Jena JSON-LD path remains only as fallback for chunks
+        // without raw text.
+        val (mimeType, graphPayload) = rawGraphs.get(graphUri) match {
+          case Some(rawXml) => ("application/rdf+xml", rawXml.trim)
+          case None =>
+            val model = dataset.getNamedModel(graphUri)
+            val triples = new StringWriter()
+            RDFDataMgr.write(triples, model, RDFFormat.JSONLD_FLAT)
+            ("application/ld+json", s"$triples".stripMargin.trim)
+        }
+        val actionMap = Json.obj(
+          "hubId" -> hubId,
           "orgId" -> orgId,
-		  "dataset" -> spec,
-		  "graphUri" -> graphUri,
-		  "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
-		  "tags" -> dsInfo.getLiteralProp(datasetTags).getOrElse("").toString(),
-		  "action" -> "index",
-          "graphMimeType" -> "application/ld+json",
-		  //"contentHash" -> localHash.toString,
-		  "graph" -> s"$triples".stripMargin.trim
-		)
-		actionMap.toString()
-	  }
-	  dataset.listNames().asScala.toList.map(g => createBulkAction(dataset, g)).mkString("\n")
-	}
+          "dataset" -> spec,
+          "graphUri" -> graphUri,
+          "type" -> dsInfo.getLiteralProp(datasetType).getOrElse("narthex_record").toString(),
+          "tags" -> dsInfo.getLiteralProp(datasetTags).getOrElse("").toString(),
+          "action" -> "index",
+          "graphMimeType" -> mimeType,
+          "graph" -> graphPayload
+        )
+        actionMap.toString()
+      }
+      dataset.listNames().asScala.toList.map(g => createBulkAction(dataset, g)).mkString("\n")
+    }
   }
 
   trait GraphReader {
@@ -345,6 +357,10 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
     override def readChunkOpt: Option[GraphChunk] = {
       val dataset = DatasetFactory.createGeneral()
       val recordText = new StringBuilder
+      // Raw per-record RDF/XML, keyed by graph name: the save path sends this
+      // verbatim to the bulk API (order-preserving, #3548) while the Jena
+      // dataset above stays the parse/validation gate.
+      val rawGraphs = scala.collection.mutable.LinkedHashMap[String, String]()
       var graphCount = 0
       var chunkComplete = false
       var bytesProcessed = 0
@@ -366,6 +382,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
                 val m = dataset.getNamedModel(graphName)
                 try {
                   m.read(new StringReader(recordText.toString()), null, "RDF/XML")
+                  rawGraphs += graphName -> recordText.toString()
                 }
                 catch {
                   case e: Throwable =>
@@ -414,7 +431,7 @@ class ProcessedRepo(val home: File, dsInfo: DsInfo) {
               }
       }
       //Logger.info(s"Graphcount is: $graphCount.")
-      if (graphCount > 0) Some(GraphChunk(dataset, dsInfo, "")) else None
+      if (graphCount > 0) Some(GraphChunk(dataset, dsInfo, "", rawGraphs.toMap)) else None
     }
 
      override def close(): Unit = {
