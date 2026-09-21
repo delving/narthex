@@ -1947,6 +1947,23 @@ define(["angular"], function () {
             command(commandMessage, question);
         };
 
+        // Force resend (#3548): every record goes to the index again, even
+        // when its content is unchanged (a normal save skips those).
+        $scope.resendAll = function (dataset) {
+            if (!confirm('Resend ALL records of ' + dataset.datasetSpec +
+                    ' to the index? Use this when index representation changed while the data did not.')) {
+                return;
+            }
+            $scope.datasetBusy = true;
+            $scope.dataset.commandPending = "Starting...";
+            $http.post('/narthex/app/dataset/' + dataset.datasetSpec + '/resend').then(function (response) {
+                // save is queued server-side; websocket updates take it from here
+            }, function () {
+                $scope.datasetBusy = false;
+                alert('Resend failed to start');
+            });
+        };
+
         $scope.remove = function (commandMessage, question) {
             command(commandMessage, question);
         };
