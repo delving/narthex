@@ -82,6 +82,24 @@ class OrgContext @Inject() (
     scheduleDailySourceCountSweep()
   }
 
+  scheduleFailureMailFlush()
+
+  /** Failures collect in MailService and go out as one mail per minute. A source
+    * outage fails every dataset that harvests from it, and each one retries
+    * dozens of times, so one mail per failure means hundreds of mails for a
+    * single cause. Also moves the blocking SMTP call off the dataset actor. */
+  private def scheduleFailureMailFlush(): Unit = {
+    actorSystem.scheduler.scheduleWithFixedDelay(1.minute, 1.minute)(new Runnable {
+      override def run(): Unit =
+        try mailService.flushPending()
+        catch {
+          // A broken mail server must not kill the timer -- it would not come
+          // back until the next restart, and every later failure would be lost.
+          case e: Exception => logger.warn(s"Could not send failure mail: ${e.getMessage}")
+        }
+    })(actorSystem.dispatcher)
+  }
+
   /**
    * Schedule daily trend snapshot at configured hour.
    * Captures record counts from all datasets and Hub3 index.
