@@ -458,8 +458,11 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
         seen_count INTEGER, changed_count INTEGER, deleted_count INTEGER,
         added_count INTEGER, sent_count INTEGER, note TEXT)""")
       s.executeUpdate("INSERT INTO schema_meta (k, v) VALUES ('schema_version', '3')")
-      s.executeUpdate("""INSERT INTO harvest_runs (kind, started_at, status, seen_count, sent_count)
-        VALUES ('full', '2026-07-01T00:00:00Z', 'completed', 5, 5)""")
+      // Relative, not a fixed date: listRuns only returns runs inside its
+      // sinceDays window, so a hardcoded started_at makes this pass until that
+      // date falls out of the window and then fail forever.
+      s.executeUpdate(s"""INSERT INTO harvest_runs (kind, started_at, status, seen_count, sent_count)
+        VALUES ('full', '${isoDaysAgo(1)}', 'completed', 5, 5)""")
       s.close()
     } finally conn.close()
 

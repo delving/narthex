@@ -26,9 +26,14 @@ class PocketManifestSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     f
   }
 
+  /** What SourceRepo and PocketWriter actually emit, down to the closing tag:
+    * the manifest refuses to trust a pocket file that does not end in one, so a
+    * self-closing `<pockets/>` is never cacheable and tests nothing. */
+  private val emptyPocketFile = "<pockets>\n</pockets>\n"
+
   "PocketManifest" should "reuse pockets only while inputs and output are untouched" in {
     write("00001.zip", "source data")
-    val pockets = write("pockets.xml", "<pockets/>")
+    val pockets = write("pockets.xml", emptyPocketFile)
     val manifestFile = PocketManifest.manifestFileFor(pockets)
 
     val inputs = PocketManifest.inputs(dir, idFilter)
@@ -49,12 +54,14 @@ class PocketManifestSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
 
   it should "ignore the cache when the pocket file itself changed" in {
     write("00001.zip", "source data")
-    val pockets = write("pockets.xml", "<pockets/>")
+    val pockets = write("pockets.xml", emptyPocketFile)
     val manifestFile = PocketManifest.manifestFileFor(pockets)
     val inputs = PocketManifest.inputs(dir, idFilter)
     PocketManifest.write(manifestFile, inputs, 7, pockets)
 
-    FileUtils.writeStringToFile(pockets, "<pockets>tampered</pockets>", "UTF-8")
+    // Still well-formed and still ends in the closing tag, so only the
+    // size/mtime check can catch this -- which is the point of the test.
+    FileUtils.writeStringToFile(pockets, "<pockets>tampered</pockets>\n", "UTF-8")
     PocketManifest.cachedCount(manifestFile, inputs, pockets) shouldBe None
   }
 }
