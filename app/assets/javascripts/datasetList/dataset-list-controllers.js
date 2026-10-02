@@ -1261,17 +1261,41 @@ define(["angular"], function () {
             modalAlert.confirm("Bulk Fast Save", confirmMessage, function() {
                 var delay = 0;
                 selected.forEach(function(ds) {
-                    // Determine state for each dataset
+                    // Where does the work actually have to start?
+                    //
+                    // Not "the furthest state this dataset has ever reached" --
+                    // that is what this did, and it answered stateProcessed for
+                    // a dataset whose source was harvested today and whose
+                    // processed output was a week old. Fast Save then re-sent
+                    // the stale output without processing anything, in seconds,
+                    // which looks like success and ships last week's records.
+                    //
+                    // So compare the stamps and start at the first stage whose
+                    // input is newer than its output.
+                    var ts = function(v) { return v ? new Date(v).getTime() : 0; };
+                    var sourced = ts(ds.stateSourced),
+                        processable = ts(ds.stateProcessable),
+                        processed = ts(ds.stateProcessed),
+                        saved = Math.max(ts(ds.stateSaved), ts(ds.stateIncrementalSaved));
+
                     var state = null;
-                    if (ds.stateAnalyzed) state = 'stateAnalyzed';
-                    else if (ds.stateProcessed) state = 'stateProcessed';
-                    else if (ds.stateProcessable) state = 'stateProcessable';
-                    else if (ds.stateSourced) state = 'stateSourced';
+                    if (sourced > processed) state = 'stateSourced';
+                    else if (processable > processed) state = 'stateProcessable';
+                    else if (processed > saved) state = 'stateProcessed';
+                    else if (ds.stateAnalyzed) state = 'stateAnalyzed';
+                    else if (processed) state = 'stateProcessed';
+                    else if (processable) state = 'stateProcessable';
+                    else if (sourced) state = 'stateSourced';
 
                     if (state) {
                         // Stagger commands slightly to avoid overwhelming the queue
                         $timeout(function() {
-                            datasetListService.fastSave(ds.datasetSpec)
+                            // The second argument is not optional in practice:
+                            // without it the server auto-detects by lattice and
+                            // picks the furthest-along state, which silently
+                            // degrades a requested re-chain into a save-only
+                            // run. Its own comment says so.
+                            datasetListService.fastSave(ds.datasetSpec, state)
                                 .then(function(reply) {
                                     console.log("Bulk fast save queued: " + ds.datasetSpec, reply);
                                 })
