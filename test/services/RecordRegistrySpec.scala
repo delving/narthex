@@ -499,9 +499,11 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
         started_at TEXT NOT NULL, completed_at TEXT, status TEXT NOT NULL,
         seen_count INTEGER, changed_count INTEGER, deleted_count INTEGER, note TEXT)""")
       s.executeUpdate("INSERT INTO schema_meta (k, v) VALUES ('schema_version', '1')")
-      // The v1 run that saw old1 — keeps run-id autoincrement realistic
-      s.executeUpdate("""INSERT INTO harvest_runs (kind, started_at, status, seen_count, changed_count, deleted_count)
-        VALUES ('full', '2026-01-01T00:00:00Z', 'completed', 1, 1, 0)""")
+      // The v1 run that saw old1 — keeps run-id autoincrement realistic.
+      // Relative for the same reason as the v3 fixture above: a fixed date
+      // drops out of listRuns' window and the row goes silently invisible.
+      s.executeUpdate(s"""INSERT INTO harvest_runs (kind, started_at, status, seen_count, changed_count, deleted_count)
+        VALUES ('full', '${isoDaysAgo(2)}', 'completed', 1, 1, 0)""")
       s.executeUpdate("""INSERT INTO records
         (local_id, content_hash, status, last_seen_run_id, last_seen_ts, created_at, updated_at)
         VALUES ('old1', 'h1', 'seen', 1, 't', 't', 't')""")
@@ -513,7 +515,14 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.upsertSeenBatch("v1spec", Seq("old1" -> "h1", "new1" -> "h9"), run)
     registry.completeRun("v1spec", run)
 
-    val r = registry.listRuns("v1spec", 30).last
+    // The pre-migration run survives the rename to runs and is still listed
+    // next to the new one, oldest first (listRuns orders by run_id)
+    val runs = registry.listRuns("v1spec", 30)
+    runs.size shouldBe 2
+    runs.head.kind shouldBe "full"
+    runs.head.seen shouldBe 1
+
+    val r = runs.last
     // Pre-migration record was backfilled first_seen=last_seen(=1), so only
     // new1 counts as added
     r.added shouldBe 1
