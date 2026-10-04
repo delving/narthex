@@ -1101,10 +1101,31 @@ private[services] class SpecRegistry(val datasetDir: File) {
     }
   }
 
+  /** Records the next save must send.
+    *
+    * The hash comparison alone is not enough, because it cannot see a
+    * resurrection. A record that was tombstoned -- and therefore dropped from
+    * Hub3 -- and then reappears unchanged upstream keeps a last_sent_hash equal
+    * to its content_hash, so by hash it looks sent while the index no longer
+    * has it. upsertSeen already moves last_changed_run_id on resurrection,
+    * saying it "is re-sent to Hub3"; this is the clause that makes that true.
+    *
+    * enb-101-bidprentje, #3626: a full harvest returned 1 of 3434 records on
+    * 2026-09-12, the sweep tombstoned 3433 and the drop loop removed them from
+    * the index. When the set came back on 2026-10-03 only the 284 with changed
+    * content were sent -- the other 3089 were invisible here, and no amount of
+    * re-harvesting could fix it because nothing about them had changed.
+    *
+    * last_changed_run_id is NULL on rows migrated from schema v1, where the
+    * comparison yields NULL and the row stays out -- which is correct: those
+    * records were never tombstoned by a run this db knows about.
+    */
   def pendingIndexBatch(limit: Int): Seq[(String, String)] = synchronized {
     val sql = """SELECT local_id, content_hash FROM records
                   WHERE status = ?
-                    AND (last_sent_hash IS NULL OR last_sent_hash <> content_hash)
+                    AND (last_sent_hash IS NULL
+                         OR last_sent_hash <> content_hash
+                         OR last_sent_run_id < last_changed_run_id)
                   LIMIT ?"""
     val ps = conn.prepareStatement(sql)
     try {

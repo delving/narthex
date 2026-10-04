@@ -145,6 +145,36 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.count(spec, STATUS_SEEN) shouldBe 1
   }
 
+  it should "re-send a resurrected record whose content never changed (#3626)" in {
+    // Sent and indexed.
+    val run1 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run1)
+    registry.confirmIndexed(spec, Seq("a" -> "h1", "b" -> "h2"), run1)
+    registry.completeRun(spec, run1)
+    registry.pendingIndexBatch(spec, 100) shouldBe empty
+
+    // A full run sees almost nothing, so the sweep tombstones "a" and the
+    // drop flow removes it from Hub3. This is what a broken harvest does.
+    val run2 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("b" -> "h2"), run2)
+    registry.markMissingForFullRun(spec, run2) shouldBe 1
+    registry.pendingDropBatch(spec, 100) shouldBe Seq("a")
+    registry.confirmDropped(spec, Seq("a"))
+    registry.completeRun(spec, run2)
+
+    // The set comes back, with "a" byte-for-byte as it was. By content hash it
+    // still looks sent -- but it is no longer in the index, so it has to go
+    // again. Nothing about the record changed, which is why re-harvesting
+    // could never fix this on its own.
+    val run3 = registry.beginRun(spec, KIND_FULL)
+    registry.upsertSeenBatch(spec, Seq("a" -> "h1", "b" -> "h2"), run3)
+    registry.pendingIndexBatch(spec, 100).toSet shouldBe Set("a" -> "h1")
+
+    // And once it really is sent, it stops being pending.
+    registry.confirmIndexedByIds(spec, Seq("a"), run3)
+    registry.pendingIndexBatch(spec, 100) shouldBe empty
+  }
+
   it should "isolate state per spec" in {
     val rA = registry.beginRun("dsA", KIND_FULL)
     val rB = registry.beginRun("dsB", KIND_FULL)
