@@ -190,6 +190,11 @@ object GraphProperties {
   val sourceRemoteCheckTime = NXProp("sourceRemoteCheckTime", timeProp)
   val sourceCheckLastRepairTime = NXProp("sourceCheckLastRepairTime", timeProp)
   val indexReconcileLastTime = NXProp("indexReconcileLastTime", timeProp)
+  // When we last mailed about an index gap too large to repair by itself. The
+  // verification runs on every save, so without this the same unrepaired gap
+  // would mail on every save of every day (#3626: five verifications in one
+  // afternoon for one dataset).
+  val indexGapMailLastTime = NXProp("indexGapMailLastTime", timeProp)
   val harvestFullRefreshDays = NXProp("harvestFullRefreshDays", intProp)  // per-dataset override; 0 = disabled
 
   val recordGraphsInSync = NXProp("recordGraphsInSync", booleanProp)

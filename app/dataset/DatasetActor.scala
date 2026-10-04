@@ -1582,24 +1582,59 @@ class DatasetActor(val datasetContext: DatasetContext,
       // cooldown breaks the loop for records the index keeps refusing.
       // Gap in either direction: expected>indexed = silent drops on the way
       // in; indexed>expected = orphans (deletes that never landed).
-      val silentGap = math.abs(indexing.recordsExpected - indexing.recordsIndexed)
       val noNamedErrors = indexing.errors.forall(_.isEmpty)
-      if (silentGap > 0 && silentGap <= 1000 && indexing.recordsExpected > 0 && noNamedErrors) {
-        val cooledDown = dsInfo.getLiteralProp(indexReconcileLastTime)
-          .map(services.Temporal.stringToTime)
-          .forall(_.isBefore(new org.joda.time.DateTime().minusHours(1)))
-        if (cooledDown) {
-          dsInfo.setSingularLiteralProps(indexReconcileLastTime ->
-            services.Temporal.timeToString(new org.joda.time.DateTime()))
-          val spec = dsInfo.spec
-          log.info(s"Index verify gap of $silentGap without named errors for $spec — reconciling registry against index contents")
-          orgContext.indexReconcileService.reconcile(spec).foreach { r =>
-            if (r.missingReset > 0)
-              orgContext.orgActor ! organization.OrgActor.DatasetMessage(spec, Command("start saving"))
-          }(context.dispatcher)
-        } else {
-          log.warning(s"Index verify gap of $silentGap for ${dsInfo.spec} persists within reconcile cooldown — needs a look")
-        }
+      val verifyAction = IndexVerifyAction(
+        indexing.recordsExpected, indexing.recordsIndexed, hasNamedErrors = !noNamedErrors)
+      verifyAction match {
+        case IndexVerifyAction.Reconcile(silentGap) =>
+          val cooledDown = dsInfo.getLiteralProp(indexReconcileLastTime)
+            .map(services.Temporal.stringToTime)
+            .forall(_.isBefore(new org.joda.time.DateTime().minusHours(1)))
+          if (cooledDown) {
+            dsInfo.setSingularLiteralProps(indexReconcileLastTime ->
+              services.Temporal.timeToString(new org.joda.time.DateTime()))
+            val spec = dsInfo.spec
+            log.info(s"Index verify gap of $silentGap without named errors for $spec — reconciling registry against index contents")
+            orgContext.indexReconcileService.reconcile(spec).foreach { r =>
+              if (r.missingReset > 0)
+                orgContext.orgActor ! organization.OrgActor.DatasetMessage(spec, Command("start saving"))
+            }(context.dispatcher)
+          } else {
+            log.warning(s"Index verify gap of $silentGap for ${dsInfo.spec} persists within reconcile cooldown — needs a look")
+          }
+
+        case IndexVerifyAction.Report(silentGap) =>
+          // Too large for the self-heal above, which is deliberate: reconciling
+          // on a gap this size would mass-resend a dataset on one verification
+          // result. But doing nothing was worse -- it made the system quieter
+          // the bigger the problem got. enb-101-bidprentje sat at 285 of 3374
+          // for a day, detected five times, reported nowhere (#3626).
+          //
+          // Mail once a day per dataset, not once per save: the verification
+          // runs on every save and an unrepaired gap persists by definition.
+          val mailCooledDown = dsInfo.getLiteralProp(indexGapMailLastTime)
+            .map(services.Temporal.stringToTime)
+            .forall(_.isBefore(new org.joda.time.DateTime().minusHours(24)))
+          if (mailCooledDown) {
+            dsInfo.setSingularLiteralProps(indexGapMailLastTime ->
+              services.Temporal.timeToString(new org.joda.time.DateTime()))
+            val direction =
+              if (indexing.recordsExpected > indexing.recordsIndexed) "missing from the index"
+              else "in the index but not expected"
+            val message =
+              s"Index verification found $silentGap record(s) $direction: " +
+              s"${indexing.recordsIndexed} indexed of ${indexing.recordsExpected} expected. " +
+              "The gap is too large to repair automatically and needs a look."
+            log.warning(s"Index verify gap of $silentGap for ${dsInfo.spec} is too large to self-heal — reporting by mail")
+            scala.util.Try(mailService.sendProcessingErrorMessage(dsInfo.spec, message, None))
+              .recover { case ex: Throwable =>
+                log.warning(s"Could not report index gap for ${dsInfo.spec}: ${ex.getMessage}")
+              }
+          } else {
+            log.info(s"Index verify gap of $silentGap for ${dsInfo.spec} already reported within the last 24h")
+          }
+
+        case IndexVerifyAction.Nothing => // counts match, or Hub3 named the records and they heal by their own path
       }
 
       // Broadcast updated state to WebSocket clients
