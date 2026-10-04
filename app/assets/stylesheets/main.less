@@ -357,6 +357,14 @@ code {
       margin-right: 2px;
     }
   }
+  // Fixed width so the label always has room: in the status cell it competed
+  // with the state labels and a busy dataset pushed it out of view (#3626).
+  .index-warning {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+    white-space: nowrap;
+  }
   .activity {
     width: 150px;
     min-width: 150px;

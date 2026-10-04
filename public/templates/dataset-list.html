@@ -109,6 +109,17 @@
                     <i class="fa fa-refresh"></i>
                     {{ retryDatasetCount }} retrying
                 </button>
+                <!-- With 371 datasets nobody scrolls to find out whether the index
+                     is short somewhere. One click filters the list down to exactly
+                     those, which is the difference between visible and actionable. -->
+                <button type="button" class="btn"
+                        ng-class="{'btn-danger': stateFilter === 'stateIndexWarning', 'btn-default': stateFilter !== 'stateIndexWarning'}"
+                        ng-click="stateFilter === 'stateIndexWarning' ? stateFilter = '' : setStateFilter('stateIndexWarning')"
+                        ng-if="indexWarningCount > 0"
+                        title="Datasets whose last index verification did not match. Click to show only these.">
+                    <i class="fa fa-exclamation-triangle" ng-class="{'text-danger': stateFilter !== 'stateIndexWarning'}"></i>
+                    {{ indexWarningCount }} index warning{{ indexWarningCount == 1 ? '' : 's' }}
+                </button>
                 <button type="button" class="btn btn-default"
                         ng-click="toggleStatsPanel()"
                         title="Show completion statistics">
@@ -290,6 +301,7 @@
                 <th class="acquired" title="Acquired records (harvested or uploaded) and deleted count">Acquired</th>
                 <th class="source" title="Source records (valid/invalid after processing)">Source</th>
                 <th class="trend" title="24h change in indexed records">Trend</th>
+                <th class="index-warning" title="Last index verification: records actually in the index against the number expected. Empty means the two matched.">Index</th>
                 <th class="activity">Activity</th>
                 <th class="status">Status</th>
                 <th class="date-time" title="When the dataset last reached its current state (data actually changed). Harvest runs without changes don't move this — see the Activity Log for all activity.">Last changed</th>
@@ -381,6 +393,24 @@
                                     -
                                 </span>
                             </td>
+                            <!-- Its own column on purpose. This lived in the status
+                                 cell next to the state labels, where a busy dataset
+                                 squeezed it out of sight -- which is how 285 of 3374
+                                 indexed went unnoticed for a day (#3626). A fixed
+                                 place cannot be crowded out, and the numbers belong
+                                 on screen rather than in a tooltip: the gap IS the
+                                 signal. -->
+                            <td class="index-warning">
+                                <a ng-if="dataset.indexWarning"
+                                   ng-href="/narthex/app/dataset/{{ dataset.datasetSpec }}/indexing-errors" target="_blank"
+                                   ng-click="$event.stopPropagation();"
+                                   class="label" ng-class="dataset.indexShort ? 'label-danger' : 'label-warning'"
+                                   title="{{ dataset.indexWarningTitle }}">
+                                    <i class="fa fa-exclamation-triangle"></i>
+                                    <span ng-if="dataset.indexShort">{{ dataset.indexingRecordsIndexed }} / {{ dataset.indexingRecordsExpected }}</span>
+                                    <span ng-if="!dataset.indexShort">{{ dataset.indexingLastStatus }}</span>
+                                </a>
+                            </td>
                             <td class="activity">
                                 <!-- Processing status with cancel button -->
                                 <span data-ng-if="dataset.isProcessing" class="label label-primary">
@@ -459,13 +489,6 @@
                                     <span ng-switch-when="stateReadyToHarvest">Ready to Harvest</span>
                                     <span ng-switch-default>Empty</span>
                                 </span>
-                                <a ng-if="dataset.indexingLastStatus && dataset.indexingLastStatus != 'success'"
-                                      ng-href="/narthex/app/dataset/{{ dataset.datasetSpec }}/indexing-errors" target="_blank"
-                                      class="label label-warning" style="margin-left: 4px"
-                                      ng-click="$event.stopPropagation();"
-                                      title="Indexing {{ dataset.indexingLastStatus }}: {{ dataset.indexingLastMessage || 'see indexing errors' }} ({{ dataset.indexingRecordsIndexed || 0 }}/{{ dataset.indexingRecordsExpected || 0 }} indexed, {{ dataset.indexingErrorCount || 0 }} record error(s)) — click for the notification log">
-                                    <i class="fa fa-exclamation-triangle"></i> index
-                                </a>
                             </td>
                             <td class="date-time"
                                 title="Last checked (harvest attempt): {{ dataset.harvestPreviousTime ? (dataset.harvestPreviousTime | date: 'yyyy/MM/dd HH:mm') : 'n/a' }}">

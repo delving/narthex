@@ -402,6 +402,8 @@ define(["angular"], function () {
                 return ds.inRetry === true && !ds.isProcessing && !ds.isSaving && !ds.isQueued;
             } else if (filter === 'stateEmpty') {
                 return ds.empty;
+            } else if (filter === 'stateIndexWarning') {
+                return ds.indexWarning === true;
             } else {
                 var currentState = ds.stateCurrentForFilter || ds.stateCurrent;
                 return currentState.name === filter;
@@ -622,6 +624,7 @@ define(["angular"], function () {
          */
         $scope.decorateDatasetLight = function (dataset) {
             // Map lightweight property names to template property names
+            decorateIndexWarning(dataset);
             dataset.datasetSpec = dataset.spec;
             dataset.datasetName = dataset.name;
             dataset.datasetRecordCount = dataset.recordCount;
@@ -755,6 +758,7 @@ define(["angular"], function () {
         };
 
         $scope.decorateDataset = function (dataset) {
+            decorateIndexWarning(dataset);
             // Initialize error handling properties with defaults if not present
             // Must do this BEFORE copying to ensure dataset and dataset.edit match
             if (!dataset.harvestContinueOnError) {
@@ -1131,6 +1135,32 @@ define(["angular"], function () {
             });
         };
 
+        // The last index verification, as something the row can show and the
+        // toolbar can count. Two separate signals, deliberately:
+        //
+        //   indexShort - fewer records in the index than expected. This is the
+        //                one that matters and the one that hid: Hub3 names no
+        //                failing records for a silent drop, so indexingErrorCount
+        //                is 0 and only the gap between the two counts shows it.
+        //   indexWarning - any non-success verification, gap or not.
+        function decorateIndexWarning(dataset) {
+            var indexed = dataset.indexingRecordsIndexed;
+            var expected = dataset.indexingRecordsExpected;
+            dataset.indexShort = angular.isNumber(indexed) && angular.isNumber(expected) &&
+                expected > 0 && indexed < expected;
+            dataset.indexWarning = dataset.indexShort ||
+                (!!dataset.indexingLastStatus && dataset.indexingLastStatus !== 'success');
+            dataset.indexWarningTitle = dataset.indexWarning
+                ? (dataset.indexShort
+                    ? (expected - indexed) + ' record(s) missing from the index: ' + indexed +
+                      ' of ' + expected + ' expected. ' +
+                      (dataset.indexingLastMessage || '') + ' Click for the indexing errors.'
+                    : 'Indexing ' + dataset.indexingLastStatus + ': ' +
+                      (dataset.indexingLastMessage || 'see indexing errors'))
+                : null;
+            return dataset.indexWarning;
+        }
+
         $scope.updateDatasetStateCounter = function () {
             var datasetStateCounter = _.countBy($scope.datasets, function (dataset) {
                 // Use stateCurrentForFilter if available (includes active state), otherwise stateCurrent
@@ -1142,12 +1172,15 @@ define(["angular"], function () {
             var workingCount = 0;
             var queuedCount = 0;
             var retryCount = 0;
+            var indexWarningCount = 0;
             _.forEach($scope.datasets, function(dataset) {
                 if (dataset.isProcessing || dataset.isSaving) workingCount++;
                 if (dataset.isQueued) queuedCount++;
                 if (dataset.inRetry && !dataset.isProcessing && !dataset.isSaving && !dataset.isQueued) retryCount++;
+                if (decorateIndexWarning(dataset)) indexWarningCount++;
             });
             $scope.retryDatasetCount = retryCount;
+            $scope.indexWarningCount = indexWarningCount;
 
             $scope.datasetStates = _.map(
                 $scope.datasetStates,
