@@ -2012,6 +2012,9 @@
             <button class="btn btn-warning" data-ng-show="dataset.stateRaw" data-ng-click="remove('remove raw', 'Remove raw file?')">
                 <i class="fa fa-trash"></i> Raw
             </button>
+            <button class="btn btn-default" data-ng-show="dataset.stateRaw" data-ng-click="remove('restore previous upload', 'Restore the previous upload? This discards the current raw file and everything derived from it.')">
+                <i class="fa fa-undo"></i> Previous upload
+            </button>
             <button class="btn btn-warning" data-ng-show="dataset.stateSourced" data-ng-click="remove('remove source', 'Remove source records?')">
                 <i class="fa fa-trash"></i> Source
             </button>

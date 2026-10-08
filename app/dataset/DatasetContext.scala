@@ -27,6 +27,7 @@ import dataset.Sip.SipMapper
 import dataset.SourceRepo._
 import harvest.Harvesting.HarvestType
 import organization.OrgContext
+import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FileUtils.deleteQuietly
 import play.api.Logger
 import record.PocketParser
@@ -119,6 +120,40 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   def createRawFile(fileName: String): File = new File(clearDir(rawDir), fileName)
 
+  // The props an upload/drop clears, kept beside the archived files so a
+  // restore brings back a harvested or externally-processed dataset intact.
+  private val archivedProps = Seq(GraphProperties.harvestType, GraphProperties.processedExternally)
+
+  private def archivedPropFile(prop: GraphProperties.NXProp) =
+    new File(UploadArchive.archiveDir(rootDir), s"props/${prop.name}")
+
+  /**
+   * A new raw upload supersedes everything derived from the previous one —
+   * left in place, the old source/processed made the projector skip the
+   * delimiter step and the pipeline silently re-ran on the old source
+   * (#3621). The previous version is parked, not deleted; see UploadArchive.
+   */
+  def archivePreviousUpload(): Unit = {
+    val props = archivedProps.flatMap(prop => dsInfo.getLiteralProp(prop).map(prop -> _))
+    UploadArchive.archive(rootDir, sipFiles.toSeq)
+    props.foreach { case (prop, value) => FileUtils.write(archivedPropFile(prop), value, "UTF-8") }
+    dropTree()
+    dsInfo.removeLiteralProp(GraphProperties.processedExternally)
+  }
+
+  def restorePreviousUpload(): Boolean = {
+    val props = archivedProps.flatMap { prop =>
+      val file = archivedPropFile(prop)
+      if (file.exists()) Some(prop -> FileUtils.readFileToString(file, "UTF-8")) else None
+    }
+    val restored = UploadArchive.restore(rootDir, sipFiles.toSeq, orgContext.sipsDir)
+    if (restored) {
+      archivedProps.foreach(dsInfo.removeLiteralProp)
+      dsInfo.setSingularLiteralProps(props: _*)
+    }
+    restored
+  }
+
   // todo: recordContainer instead perhaps
   def setDelimiters(harvestTypeOpt: Option[HarvestType], recordRoot: String, uniqueId: String): Unit = rawXmlFile.foreach { raw =>
     harvestTypeOpt match {
@@ -157,6 +192,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
     def cleanupWorkflowStates(): Unit = dsInfo.removeLiteralProp(GraphProperties.delimitersSet)
 
     if (fileName.endsWith(".csv")) {
+      archivePreviousUpload()
       val csvFile = setTargetFile(createRawFile(fileName))
       val reader = FileHandling.createReader(csvFile)
       val baseName = fileName.substring(0, fileName.lastIndexOf("."))
@@ -178,6 +214,7 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       None
     }
     else if (fileName.endsWith(".xml.gz") || fileName.endsWith(".xml")) {
+      archivePreviousUpload()
       setTargetFile(createRawFile(fileName))
       cleanupWorkflowStates()
       dsInfo.removeLiteralProp(GraphProperties.harvestType)

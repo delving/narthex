@@ -517,6 +517,12 @@ class DatasetActor(val datasetContext: DatasetContext,
             broadcastIdleState()
             "raw removed"
 
+          case "restore previous upload" =>
+            if (datasetContext.restorePreviousUpload()) {
+              broadcastIdleState()
+              "previous upload restored"
+            } else "no previous upload to restore"
+
           case "remove source" =>
             datasetContext.dropSourceRepo()
             broadcastIdleState()
