@@ -28,6 +28,23 @@
     Click on a field in the tree, then click "Use as Unique Element" if the histogram shows unique values.
 </div>
 
+<div class="alert alert-success" style="margin: 0 0 15px 0;" data-ng-if="previousDelimiters">
+    <strong>Previously used for this dataset</strong>
+    <div>Record root: <code>{{ previousDelimiters.recordRoot }}</code>
+        <span data-ng-if="previousDelimiters.recordRootNode">({{ previousDelimiters.recordRootNode.count }} in this file)</span></div>
+    <div>Unique id: <code>{{ previousDelimiters.uniqueId }}</code>
+        <span data-ng-if="previousDelimiters.uniqueIdNode">({{ previousDelimiters.uniqueIdNode.count }} in this file)</span></div>
+    <div style="margin-top: 8px;">
+        <a href class="btn btn-success btn-sm" data-ng-click="acceptPreviousDelimiters()"
+           data-ng-if="previousDelimiters.recordRootNode && previousDelimiters.uniqueIdNode">
+            <i class="fa fa-check-circle"></i> Use these again
+        </a>
+        <span class="text-danger" data-ng-if="!previousDelimiters.recordRootNode || !previousDelimiters.uniqueIdNode">
+            <i class="fa fa-exclamation-triangle"></i> Not found in this file: the structure changed, choose a new unique id below.
+        </span>
+    </div>
+</div>
+
 <div class="row" ng-show="tree">
     <div class="col-sm-5">
         <div class="widget widget-schema">

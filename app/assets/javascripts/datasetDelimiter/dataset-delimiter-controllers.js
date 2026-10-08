@@ -66,6 +66,26 @@ define(["angular"], function () {
 
                 $scope.tree = tree;
 
+                // #3621: offer the delimiters of the previous upload, so a
+                // re-upload is not delimited differently by accident. Only
+                // acceptable when both paths exist in the new file's tree.
+                function findNode(node, path) {
+                    if (node.path == path) return node;
+                    for (var index = 0; index < node.kids.length; index++) {
+                        var found = findNode(node.kids[index], path);
+                        if (found) return found;
+                    }
+                    return null;
+                }
+                if ($scope.info.recordRoot && $scope.info.uniqueId) {
+                    $scope.previousDelimiters = {
+                        recordRoot: $scope.info.recordRoot,
+                        uniqueId: $scope.info.uniqueId,
+                        recordRootNode: findNode(tree, $scope.info.recordRoot),
+                        uniqueIdNode: findNode(tree, $scope.info.uniqueId)
+                    };
+                }
+
                 function selectNode(path, node) {
                     if (!path.length) {
                         $scope.selectNode(node);
@@ -206,6 +226,12 @@ define(["angular"], function () {
             // Always show candidates - let user confirm their choice
             $scope.recordRootCandidates = metadataNode.kids;
             $scope.showRecordRootSelector = true;
+        };
+
+        $scope.acceptPreviousDelimiters = function() {
+            $scope.recordRootNode = $scope.previousDelimiters.recordRootNode;
+            $scope.uniqueIdNode = $scope.previousDelimiters.uniqueIdNode;
+            $scope.confirmUniqueId();
         };
 
         $scope.confirmUniqueId = function() {

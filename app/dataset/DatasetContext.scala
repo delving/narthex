@@ -135,6 +135,17 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
    */
   def archivePreviousUpload(): Unit = {
     val props = archivedProps.flatMap(prop => dsInfo.getLiteralProp(prop).map(prop -> _))
+    // The delimiter page offers recordRoot/uniqueId for re-use. Datasets
+    // delimited before those props were stored only have them in
+    // source_facts.txt, which is about to move away.
+    if (dsInfo.getLiteralProp(GraphProperties.recordRoot).isEmpty) {
+      Try(SourceRepo.sourceFactsFromHomedir(sourceDir)).toOption.filter(_.sourceType == "raw").foreach { facts =>
+        dsInfo.setSingularLiteralProps(
+          GraphProperties.recordRoot -> facts.recordRoot,
+          GraphProperties.uniqueId -> facts.uniqueId
+        )
+      }
+    }
     UploadArchive.archive(rootDir, sipFiles.toSeq)
     props.foreach { case (prop, value) => FileUtils.write(archivedPropFile(prop), value, "UTF-8") }
     dropTree()
