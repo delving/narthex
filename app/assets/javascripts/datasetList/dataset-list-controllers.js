@@ -1305,7 +1305,13 @@ define(["angular"], function () {
                     //
                     // So compare the stamps and start at the first stage whose
                     // input is newer than its output.
-                    var ts = function(v) { return v ? new Date(v).getTime() : 0; };
+                    // The list decorates each state stamp into {d, t, dt};
+                    // new Date() of that object is NaN, every comparison
+                    // below was false, and no command was sent at all.
+                    var ts = function(v) {
+                        if (!v) return 0;
+                        return Date.parse(typeof v === 'string' ? v : v.dt.join('T')) || 0;
+                    };
                     var sourced = ts(ds.stateSourced),
                         processable = ts(ds.stateProcessable),
                         processed = ts(ds.stateProcessed),
