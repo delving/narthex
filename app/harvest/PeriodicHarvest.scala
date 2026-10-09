@@ -21,7 +21,7 @@ import scala.language.postfixOps
 import play.api.Logger
 import akka.actor.{Actor, Props}
 
-import dataset.DatasetActor.{FromScratch, FromScratchIncremental, ModifiedAfter, StartHarvest}
+import dataset.DatasetActor.{FromScratchIncremental, ModifiedAfter, StartHarvest}
 import dataset.DsInfo
 import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
@@ -155,8 +155,13 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
         retryList.filter(_.isTimeForRetry(retryIntervalMinutes)).foreach { info =>
           logger.info(s"PeriodicHarvest: Time for retry harvest of ${info.spec} (attempt #${info.getRetryCount + 1})")
 
-          // Queue the retry harvest - OrgActor handles concurrency limit
-          val strategy = FromScratch()
+          // Queue the retry harvest - OrgActor handles concurrency limit.
+          // FromScratchIncremental, not FromScratch: both fetch everything,
+          // but only this one continues to Make SIP -> Process -> Save. A
+          // plain FromScratch stops after the harvest, which left every
+          // dataset that recovered from an endpoint outage sitting in
+          // "Sourced" with a re-fetched source that was never processed.
+          val strategy = FromScratchIncremental
           logger.info(s"PeriodicHarvest: Queueing retry for ${info.spec}")
           orgContext.orgActor ! EnqueueOperation(info.spec, StartHarvest(strategy, trigger = "retry"), "periodic")
         }
