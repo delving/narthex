@@ -149,6 +149,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   var pmhTarget: Option[(String, String, String)] = None  // (url, set, prefix)
   var nextToken: Option[PMHResumptionToken] = None
   var replayedPages = 0
+  var harvestEnded = false  // finish() or stall abort ran; postStop must not checkpoint again
 
   private def isFullHarvest(strategy: HarvestStrategy) = strategy match {
     case _: FromScratch | FromScratchIncremental => true
@@ -215,6 +216,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
   override def postStop(): Unit = {
     cancelStallTimer()
+    // Stopped mid-harvest (restart/deploy): keep the pages for the next run
+    if (!harvestEnded) saveCheckpoint()
     cleanup()
 
     log.debug(s"Harvester postStop for dataset: ${datasetContext.dsInfo.spec}")
@@ -359,7 +362,14 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     try {
       // lazily create the temp zip file output
       val zipOutput = zipOutputOpt.getOrElse {
-        val newTempFile = File.createTempFile("narthex-harvest", ".zip")
+        // In the dataset dir, not /tmp: /tmp is RAM (tmpfs) on the servers,
+        // and a checkpoint at shutdown must be a rename, not a GB copy.
+        // Leftovers of a killed process are removed here.
+        val rootDir = datasetContext.rootDir
+        Option(rootDir.listFiles()).getOrElse(Array.empty[File])
+          .filter(f => f.getName.startsWith("narthex-harvest") && f.getName.endsWith(".zip"))
+          .foreach(_.delete())
+        val newTempFile = File.createTempFile("narthex-harvest", ".zip", rootDir)
         tempFileOpt = Some(newTempFile)
         val fos = new FileOutputStream(newTempFile)
         try {
@@ -409,6 +419,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   }
 
   def finish(strategy: HarvestStrategy, errorOpt: Option[String]) = {
+    harvestEnded = true
     cancelStallTimer()
     // Close ZIP output stream but keep tempFile for potential use
     zipOutputOpt.foreach { zipOutput =>
@@ -1133,6 +1144,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     case HarvestStallTimeout =>
       val msg = s"Harvest stalled for $datasetContext: no new page received within $pageStallTimeoutMinutes minutes. Aborting harvest."
       log.error(msg)
+      harvestEnded = true
       cancelStallTimer()
       saveCheckpoint()
       cleanup()
