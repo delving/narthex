@@ -19,13 +19,15 @@ import java.io._
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.regex.Pattern
-import java.util.zip.{GZIPInputStream, ZipEntry, ZipOutputStream}
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.util.zip.{GZIPInputStream, GZIPOutputStream, ZipEntry, ZipOutputStream}
 
 import organization.OrgContext
 import eu.delving.metadata.StringUtil
 import harvest.Harvesting.HarvestType
 import org.apache.commons.codec.binary.Base32
 import org.apache.commons.io.input.BOMInputStream
+import org.apache.commons.io.output.TeeOutputStream
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.joda.time.DateTime
 import play.api.Logger
@@ -36,6 +38,7 @@ import services.ProgressReporter
 
 import scala.collection.mutable
 import scala.io.Source
+import scala.util.control.NonFatal
 
 /**
  * This repository maintains a sequence of XML files, together with files containing
@@ -351,11 +354,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
   def clearData(keepNames: Set[String] = Set.empty) = {
     fileList.filterNot(f => keepNames.contains(f.getName)).foreach(FileUtils.deleteQuietly)
     // Also clear cached pockets file
-    val cachedPockets = new File(home, "pockets.xml.gz")
-    if (cachedPockets.exists()) {
-      cachedPockets.delete()
-      logger.info(s"Cleared cached pockets file: ${cachedPockets.getAbsolutePath}")
-    }
+    invalidatePocketCache()
   }
 
   def acceptFile(file: File, progressReporter: ProgressReporter): Option[File] = processFile(VERBATIM_FILTER, progressReporter, { targetFile =>
@@ -522,11 +521,70 @@ class SourceRepo(home: File, orgContext: OrgContext) {
 
   def latestSourceFileOpt: Option[File] = listZipFiles.lastOption
 
+  // ~~~ pockets.xml.gz: the SIP fast-path cache.
+  // It holds the active records of all zips up to the one named in the marker.
+  // Only when that is the newest zip may Make SIP stream it instead of
+  // re-parsing every source zip (an hour for brocade-cat-ehc's 830k records).
+
+  def pocketCacheFile = new File(home, "pockets.xml.gz")
+  private def pocketCacheMarker = new File(home, "pockets.xml.gz.of")
+
+  def pocketCacheIsCurrent: Boolean = pocketCacheFile.exists() && (
+    if (pocketCacheMarker.exists())
+      latestSourceFileOpt.exists(_.getName == FileUtils.readFileToString(pocketCacheMarker, "UTF-8").trim)
+    else listZipFiles.size <= 1 // caches written before the marker existed
+  )
+
+  def markPocketCacheCurrent(): Unit =
+    latestSourceFileOpt.foreach(zip => FileUtils.writeStringToFile(pocketCacheMarker, zip.getName, "UTF-8"))
+
+  def invalidatePocketCache(): Unit = {
+    FileUtils.deleteQuietly(pocketCacheFile)
+    FileUtils.deleteQuietly(pocketCacheMarker)
+    ()
+  }
+
+  /**
+   * Fold a delta harvest's pockets into a current cache, so the next Make SIP
+   * stays on the fast path: drop the records the delta replaces or that are
+   * deleted, append the delta. Line based, no XML parsing: PocketParser and
+   * PocketWriter put every "<pocket id=..>" and "</pocket>" on a line of its own.
+   * Call after the delta zip was accepted (it becomes the marker).
+   */
+  def mergeIntoPocketCache(deltaPockets: File, deltaIds: Set[String]): Unit = {
+    val deleted = deletedIdSet
+    val tmp = new File(home, "pockets.xml.gz.tmp")
+    val out = createWriter(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(tmp), 65536)))
+    try {
+      out.write(s"<$POCKET_LIST>\n")
+      copyPockets(pocketCacheFile, out, id => !deltaIds.contains(id) && !deleted.contains(id))
+      copyPockets(deltaPockets, out, id => !deleted.contains(id))
+      out.write(s"</$POCKET_LIST>\n")
+    } finally out.close()
+    Files.move(tmp.toPath, pocketCacheFile.toPath, REPLACE_EXISTING)
+    markPocketCacheCurrent()
+  }
+
+  private def copyPockets(gz: File, out: Writer, keep: String => Boolean): Unit = {
+    val start = s"""<$POCKET id=\""""
+    val end = s"</$POCKET>"
+    val in = new BufferedReader(new InputStreamReader(
+      new GZIPInputStream(new BufferedInputStream(new FileInputStream(gz), 65536)), "UTF-8"))
+    try {
+      var keeping = false
+      Iterator.continually(in.readLine()).takeWhile(_ != null).foreach { line =>
+        if (line.startsWith(start)) keeping = keep(line.substring(start.length, line.indexOf('"', start.length)))
+        if (keeping) { out.write(line); out.write('\n') }
+        if (line == end) keeping = false
+      }
+    } finally in.close()
+  }
+
   def generatePockets(sourceOutputStream: OutputStream, idFilter: IdFilter, progress: ProgressReporter): Int = {
-    val cachedPockets = new File(home, "pockets.xml.gz")
+    val cachedPockets = pocketCacheFile
     val zipFiles = listZipFiles
 
-    if (cachedPockets.exists() && zipFiles.size <= 1) {
+    if (pocketCacheIsCurrent) {
       // Fast path: stream cached pockets directly (harvest case)
       logger.info(s"Using cached pockets from ${cachedPockets.getName} (${cachedPockets.length()} bytes)")
       val gzIn = new GZIPInputStream(new BufferedInputStream(new FileInputStream(cachedPockets), 65536))
@@ -543,13 +601,16 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       logger.info(s"Streamed $recordCount cached pockets")
       recordCount
     } else {
-      // Slow path: parse from source ZIPs (file upload case)
+      // Slow path: parse from source ZIPs, and write the result as the new
+      // cache on the way (the SIP gets exactly these bytes)
       if (cachedPockets.exists()) {
-        logger.info(s"Ignoring cached pockets from ${cachedPockets.getName}: ${zipFiles.size} source files retained")
+        logger.info(s"Ignoring stale cached pockets from ${cachedPockets.getName}: ${zipFiles.size} source files retained")
       }
-      logger.info("No cached pockets found, parsing from source files")
+      logger.info("No current cached pockets, parsing from source files")
       var recordCount = 0
-      val bufferedOut = new BufferedOutputStream(sourceOutputStream, 65536)  // 64KB buffer for faster I/O
+      val cacheTmp = new File(home, "pockets.xml.gz.tmp")
+      val cacheOut = new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(cacheTmp), 65536))
+      val bufferedOut = new BufferedOutputStream(new TeeOutputStream(sourceOutputStream, cacheOut), 65536)
       val rawOutput = createWriter(bufferedOut)
 
       // Optimization: buffer multiple records before writing to reduce I/O syscalls
@@ -583,9 +644,15 @@ class SourceRepo(home: File, orgContext: OrgContext) {
         }
 
         rawOutput.write(endList)
-      } finally {
-        rawOutput.close()
+      } catch {
+        case NonFatal(e) =>
+          rawOutput.close()
+          cacheTmp.delete()
+          throw e
       }
+      rawOutput.close()
+      Files.move(cacheTmp.toPath, cachedPockets.toPath, REPLACE_EXISTING)
+      markPocketCacheCurrent()
       recordCount
     }
   }

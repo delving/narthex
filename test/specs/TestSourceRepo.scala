@@ -106,4 +106,47 @@ class TestSourceRepo extends AnyFlatSpec with should.Matchers {
     new File(home, "00100.zip").exists() shouldBe true
     new File(home, "deleted.ids").exists() shouldBe true // stays where it is read
   }
+
+  private def gz(file: File, text: String): File = {
+    val out = new java.util.zip.GZIPOutputStream(new FileOutputStream(file))
+    out.write(text.getBytes("UTF-8")); out.close()
+    file
+  }
+
+  private def gunzip(file: File): String =
+    scala.io.Source.fromInputStream(new java.util.zip.GZIPInputStream(new java.io.FileInputStream(file)), "UTF-8").mkString
+
+  private def pockets(ps: (String, String)*): String =
+    ps.map { case (id, body) => s"""<pocket id="$id">\n  <r>$body</r>\n</pocket>\n""" }.mkString("<pockets>\n", "", "</pockets>\n")
+
+  "the pockets cache" should "take in a delta: replaced and deleted records out, delta in" in {
+    val home = fresh("/tmp/narthex-source-repo-cache/source")
+    val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
+    repo.acceptHarvestedFile(harvested(home, 0), Set("a", "b", "c"))
+    gz(repo.pocketCacheFile, pockets("a" -> "a1", "b" -> "b1", "c" -> "c1"))
+    repo.markPocketCacheCurrent()
+    repo.pocketCacheIsCurrent shouldBe true
+
+    FileUtils.writeStringToFile(new File(home, "deleted.ids"), "c", "UTF-8")
+    val delta = gz(new File(home.getParentFile, "delta.xml.gz"), pockets("b" -> "b2", "d" -> "d1"))
+    repo.acceptHarvestedFile(harvested(home, 1), Set("b", "d"))
+    repo.pocketCacheIsCurrent shouldBe false // newer zip than the cache
+
+    repo.mergeIntoPocketCache(delta, Set("b", "d"))
+    gunzip(repo.pocketCacheFile) shouldBe pockets("a" -> "a1", "b" -> "b2", "d" -> "d1")
+    repo.pocketCacheIsCurrent shouldBe true
+  }
+
+  it should "be written by a slow-path Make SIP and used after that" in {
+    val home = fresh("/tmp/narthex-source-repo-slow/source")
+    val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
+    repo.acceptHarvestedFile(harvested(home, 0), Set("1", "2", "3"))
+    repo.acceptHarvestedFile(harvested(home, 1), Set("1", "2", "3"))
+    repo.pocketCacheIsCurrent shouldBe false
+
+    val sip = new java.io.ByteArrayOutputStream()
+    repo.generatePockets(sip, VERBATIM_FILTER, ProgressReporter()) shouldBe 3
+    repo.pocketCacheIsCurrent shouldBe true
+    gunzip(repo.pocketCacheFile) shouldBe sip.toString("UTF-8")
+  }
 }

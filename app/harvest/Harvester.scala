@@ -488,6 +488,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     case _: FromScratch | FromScratchIncremental => true
                     case _ => false
                   }
+                  // Must be asked before the delta zip is accepted (it moves the marker)
+                  val cacheWasCurrent = !fullHarvest && sourceRepo.pocketCacheIsCurrent
                   // A full harvest replaces the source: clear old data only NOW,
                   // after the harvest itself succeeded. Clearing at harvest start
                   // left an hours-long window where a crash/restart lost the
@@ -537,17 +539,18 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     log.info(s"Saved error log: ${errorLogDest.getAbsolutePath}")
                   }
 
-                  // Promote or discard the pocket temp file. pockets.xml.gz (the
+                  // Promote or merge the pocket temp file. pockets.xml.gz (the
                   // SIP fast-path cache) must only ever hold the COMPLETE source:
                   // a full harvest's output becomes the new cache; a delta's
-                  // output is a subset and is discarded, and the pre-delta cache
+                  // output is folded into a current cache, otherwise the cache
                   // is invalidated so SIP generation re-parses the source zips.
-                  val cacheFile = new File(sourceRepo.sourceDir, "pockets.xml.gz")
+                  val cacheFile = sourceRepo.pocketCacheFile
                   val dupFile = new File(sourceRepo.sourceDir, "duplicates.txt")
                   if (fullHarvest) {
                     pocketTempOpt.filter(_.exists()).foreach { tmp =>
                       if (cacheFile.exists()) cacheFile.delete()
                       FileUtils.moveFile(tmp, cacheFile)
+                      sourceRepo.markPocketCacheCurrent()
                     }
                     // Full harvest sees the whole source, so its duplicate list
                     // is authoritative: persist it, or clear a stale one.
@@ -559,9 +562,21 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                       dupFile.delete()
                     }
                   } else {
+                    val merged = (for {
+                      tmp <- pocketTempOpt.filter(_.exists()) if cacheWasCurrent
+                      ids <- harvestedIds
+                    } yield Try(sourceRepo.mergeIntoPocketCache(tmp, ids))) match {
+                      case Some(Success(_)) =>
+                        log.info(s"Merged ${harvestedIds.map(_.size).getOrElse(0)} delta records into pockets cache")
+                        true
+                      case Some(Failure(e)) =>
+                        log.warning(s"Could not merge delta into pockets cache: ${e.getMessage}")
+                        false
+                      case None => false
+                    }
                     pocketTempOpt.filter(_.exists()).foreach(_.delete())
-                    if (cacheFile.exists()) {
-                      cacheFile.delete()
+                    if (!merged && cacheFile.exists()) {
+                      sourceRepo.invalidatePocketCache()
                       log.info("Invalidated pockets cache after delta harvest")
                     }
                     // duplicates.txt untouched: a delta cannot refute the
