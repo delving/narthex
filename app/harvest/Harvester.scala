@@ -489,7 +489,8 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     case _ => false
                   }
                   // Must be asked before the delta zip is accepted (it moves the marker)
-                  val cacheWasCurrent = !fullHarvest && sourceRepo.pocketCacheIsCurrent
+                  val idFilter = datasetContext.dsInfo.getIdFilter // what PocketWriter used
+                  val cacheWasCurrent = !fullHarvest && sourceRepo.pocketCacheIsCurrent(idFilter)
                   // A full harvest replaces the source: clear old data only NOW,
                   // after the harvest itself succeeded. Clearing at harvest start
                   // left an hours-long window where a crash/restart lost the
@@ -550,7 +551,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     pocketTempOpt.filter(_.exists()).foreach { tmp =>
                       if (cacheFile.exists()) cacheFile.delete()
                       FileUtils.moveFile(tmp, cacheFile)
-                      sourceRepo.markPocketCacheCurrent()
+                      sourceRepo.markPocketCacheCurrent(idFilter)
                     }
                     // Full harvest sees the whole source, so its duplicate list
                     // is authoritative: persist it, or clear a stale one.
@@ -565,7 +566,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     val merged = (for {
                       tmp <- pocketTempOpt.filter(_.exists()) if cacheWasCurrent
                       ids <- harvestedIds
-                    } yield Try(sourceRepo.mergeIntoPocketCache(tmp, ids))) match {
+                    } yield Try(sourceRepo.mergeIntoPocketCache(tmp, ids, idFilter))) match {
                       case Some(Success(_)) =>
                         log.info(s"Merged ${harvestedIds.map(_.size).getOrElse(0)} delta records into pockets cache")
                         true

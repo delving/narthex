@@ -124,17 +124,17 @@ class TestSourceRepo extends AnyFlatSpec with should.Matchers {
     val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
     repo.acceptHarvestedFile(harvested(home, 0), Set("a", "b", "c"))
     gz(repo.pocketCacheFile, pockets("a" -> "a1", "b" -> "b1", "c" -> "c1"))
-    repo.markPocketCacheCurrent()
-    repo.pocketCacheIsCurrent shouldBe true
+    repo.markPocketCacheCurrent(VERBATIM_FILTER)
+    repo.pocketCacheIsCurrent(VERBATIM_FILTER) shouldBe true
 
     FileUtils.writeStringToFile(new File(home, "deleted.ids"), "c", "UTF-8")
     val delta = gz(new File(home.getParentFile, "delta.xml.gz"), pockets("b" -> "b2", "d" -> "d1"))
     repo.acceptHarvestedFile(harvested(home, 1), Set("b", "d"))
-    repo.pocketCacheIsCurrent shouldBe false // newer zip than the cache
+    repo.pocketCacheIsCurrent(VERBATIM_FILTER) shouldBe false // newer zip than the cache
 
-    repo.mergeIntoPocketCache(delta, Set("b", "d"))
+    repo.mergeIntoPocketCache(delta, Set("b", "d"), VERBATIM_FILTER)
     gunzip(repo.pocketCacheFile) shouldBe pockets("a" -> "a1", "b" -> "b2", "d" -> "d1")
-    repo.pocketCacheIsCurrent shouldBe true
+    repo.pocketCacheIsCurrent(VERBATIM_FILTER) shouldBe true
   }
 
   it should "be written by a slow-path Make SIP and used after that" in {
@@ -142,11 +142,21 @@ class TestSourceRepo extends AnyFlatSpec with should.Matchers {
     val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
     repo.acceptHarvestedFile(harvested(home, 0), Set("1", "2", "3"))
     repo.acceptHarvestedFile(harvested(home, 1), Set("1", "2", "3"))
-    repo.pocketCacheIsCurrent shouldBe false
+    repo.pocketCacheIsCurrent(VERBATIM_FILTER) shouldBe false
 
     val sip = new java.io.ByteArrayOutputStream()
     repo.generatePockets(sip, VERBATIM_FILTER, ProgressReporter()) shouldBe 3
-    repo.pocketCacheIsCurrent shouldBe true
+    repo.pocketCacheIsCurrent(VERBATIM_FILTER) shouldBe true
     gunzip(repo.pocketCacheFile) shouldBe sip.toString("UTF-8")
+  }
+
+  it should "not count as current for another id filter" in {
+    val home = fresh("/tmp/narthex-source-repo-filter/source")
+    val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
+    repo.acceptHarvestedFile(harvested(home, 0), Set("1", "2", "3"))
+    gz(repo.pocketCacheFile, pockets("1" -> "x"))
+    repo.markPocketCacheCurrent(VERBATIM_FILTER)
+    repo.pocketCacheIsCurrent(VERBATIM_FILTER) shouldBe true
+    repo.pocketCacheIsCurrent(SHA256_FILTER) shouldBe false
   }
 }

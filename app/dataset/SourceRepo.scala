@@ -522,21 +522,25 @@ class SourceRepo(home: File, orgContext: OrgContext) {
   def latestSourceFileOpt: Option[File] = listZipFiles.lastOption
 
   // ~~~ pockets.xml.gz: the SIP fast-path cache.
-  // It holds the active records of all zips up to the one named in the marker.
+  // It holds the active records of all zips up to the one named in the marker,
+  // with ids made by the id filter named there too.
   // Only when that is the newest zip may Make SIP stream it instead of
   // re-parsing every source zip (an hour for brocade-cat-ehc's 830k records).
 
   def pocketCacheFile = new File(home, "pockets.xml.gz")
   private def pocketCacheMarker = new File(home, "pockets.xml.gz.of")
 
-  def pocketCacheIsCurrent: Boolean = pocketCacheFile.exists() && (
+  private def markerText(idFilter: IdFilter): Option[String] = latestSourceFileOpt.map(zip =>
+    s"${zip.getName}\n${idFilter.filterType}\n${idFilter.filterExpression.getOrElse("")}")
+
+  def pocketCacheIsCurrent(idFilter: IdFilter): Boolean = pocketCacheFile.exists() && (
     if (pocketCacheMarker.exists())
-      latestSourceFileOpt.exists(_.getName == FileUtils.readFileToString(pocketCacheMarker, "UTF-8").trim)
+      markerText(idFilter).contains(FileUtils.readFileToString(pocketCacheMarker, "UTF-8"))
     else listZipFiles.size <= 1 // caches written before the marker existed
   )
 
-  def markPocketCacheCurrent(): Unit =
-    latestSourceFileOpt.foreach(zip => FileUtils.writeStringToFile(pocketCacheMarker, zip.getName, "UTF-8"))
+  def markPocketCacheCurrent(idFilter: IdFilter): Unit =
+    markerText(idFilter).foreach(FileUtils.writeStringToFile(pocketCacheMarker, _, "UTF-8"))
 
   def invalidatePocketCache(): Unit = {
     FileUtils.deleteQuietly(pocketCacheFile)
@@ -551,7 +555,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
    * PocketWriter put every "<pocket id=..>" and "</pocket>" on a line of its own.
    * Call after the delta zip was accepted (it becomes the marker).
    */
-  def mergeIntoPocketCache(deltaPockets: File, deltaIds: Set[String]): Unit = {
+  def mergeIntoPocketCache(deltaPockets: File, deltaIds: Set[String], idFilter: IdFilter): Unit = {
     val deleted = deletedIdSet
     val tmp = new File(home, "pockets.xml.gz.tmp")
     val out = createWriter(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(tmp), 65536)))
@@ -562,7 +566,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       out.write(s"</$POCKET_LIST>\n")
     } finally out.close()
     Files.move(tmp.toPath, pocketCacheFile.toPath, REPLACE_EXISTING)
-    markPocketCacheCurrent()
+    markPocketCacheCurrent(idFilter)
   }
 
   private def copyPockets(gz: File, out: Writer, keep: String => Boolean): Unit = {
@@ -584,7 +588,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
     val cachedPockets = pocketCacheFile
     val zipFiles = listZipFiles
 
-    if (pocketCacheIsCurrent) {
+    if (pocketCacheIsCurrent(idFilter)) {
       // Fast path: stream cached pockets directly (harvest case)
       logger.info(s"Using cached pockets from ${cachedPockets.getName} (${cachedPockets.length()} bytes)")
       val gzIn = new GZIPInputStream(new BufferedInputStream(new FileInputStream(cachedPockets), 65536))
@@ -652,7 +656,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       }
       rawOutput.close()
       Files.move(cacheTmp.toPath, cachedPockets.toPath, REPLACE_EXISTING)
-      markPocketCacheCurrent()
+      markPocketCacheCurrent(idFilter)
       recordCount
     }
   }
