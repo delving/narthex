@@ -50,7 +50,9 @@ object PocketParser {
 
   case class Pocket(id: String, text: String, namespaces: Map[String, String]) {
 
-    val IdPattern = ".*?<pocket id=\"(.*?)\" .*".r
+    // Unanchored find, no leading/trailing ".*": those made every line
+    // backtrack quadratically when the tag did not match.
+    val IdPattern = "<pocket id=\"([^\"\\n]*)\" ".r
 
     def getText: String = {
       IdPattern.findFirstMatchIn(text) match {

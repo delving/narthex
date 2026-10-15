@@ -93,4 +93,20 @@ class TestPocketParser extends AnyFlatSpec with should.Matchers with MockitoSuga
     assert(outputCreated)
   }
 
+  "Pocket.getText" should "clean the id in the pocket tag" in {
+    val text = "<pocket id=\"foo:bar\" mod=\"x\">\n<r>foo:bar</r>\n</pocket>\n"
+    Pocket("foo:bar", text, Map.empty).getText should include ("<pocket id=\"foo-bar\" ")
+  }
+
+  it should "stay linear on a long single-line record" in {
+    // Regression: brocade-cat-ehc spent ~1 hour per run generating 2418
+    // pockets; the old ".*?<pocket id=..." pattern backtracked quadratically
+    // over every line when the tag had no space after the id (the normal
+    // "<pocket id=\"x\">" form written by PocketParser).
+    val text = "<pocket id=\"x\">\n<r>" + ("a" * 200000) + "</r>\n</pocket>\n"
+    val start = System.nanoTime()
+    Pocket("x", text, Map.empty).getText shouldBe text
+    ((System.nanoTime() - start) / 1000000) should be < 500L
+  }
+
 }
