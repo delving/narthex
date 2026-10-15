@@ -110,6 +110,12 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
       mapping.RepoSipMapper.build(this).orElse(zipBackedSipMapperOpt)
     else zipBackedSipMapperOpt
 
+  /** Whether the run should continue to Process. A mapping that does not
+    * compile counts as present: ProcessStage then fails the run with the
+    * compile error. Letting the exception escape here crashed the dataset
+    * actor and left it "Generating" forever (adlib-collect-test, 2026-10). */
+  def hasMapper: Boolean = scala.util.Try(sipMapperOpt.isDefined).getOrElse(true)
+
   private def zipBackedSipMapperOpt: Option[SipMapper] =
     sipRepo.latestSipOpt.flatMap(_.createSipMapper)
 

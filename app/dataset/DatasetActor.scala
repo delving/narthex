@@ -937,7 +937,7 @@ class DatasetActor(val datasetContext: DatasetContext,
           case Some(file) =>
             // Always regenerate SIP after incremental harvest to keep pockets.xml current
             log.info(s"Incremental harvest complete, regenerating SIP from all source files")
-            val continuation = PipelinePlan.afterHarvest(datasetContext.sipMapperOpt.isDefined, mod, file)
+            val continuation = PipelinePlan.afterHarvest(datasetContext.hasMapper, mod, file)
             val runId = harvestRunIdOpt.getOrElse(beginPlannedRun(continuation, trigger = "harvest"))
             harvestRunIdOpt.foreach { id =>
               val replanned = PipelinePlan.harvestThen(continuation)
@@ -1000,7 +1000,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             // intent rode the strategy; the chain is a planned run.
             if (autoProcess) {
               log.info(s"Auto-continuing to Make SIP → Process for ${dsInfo.spec}")
-              val continuation = PipelinePlan.afterFirstHarvestAutoProcess(datasetContext.sipMapperOpt.isDefined)
+              val continuation = PipelinePlan.afterFirstHarvestAutoProcess(datasetContext.hasMapper)
               val runId = harvestRunIdOpt.getOrElse(beginPlannedRun(continuation, trigger = "discovery"))
               harvestRunIdOpt.foreach { id =>
                 orgContext.recordRegistry.updateRunPlan(dsInfo.spec, id, PipelinePlan.harvestThen(continuation).toJson)
@@ -1116,7 +1116,7 @@ class DatasetActor(val datasetContext: DatasetContext,
       // reprocess + re-send).
       openPlan() match {
         case Some((runId, plan)) if plan.nextAfter(PipelinePlan.STAGE_GENERATE_SIP).contains(PipelinePlan.STAGE_PROCESS)
-            && datasetContext.sipMapperOpt.isDefined =>
+            && datasetContext.hasMapper =>
           orgContext.recordRegistry.stageCompleted(dsInfo.spec, runId, PipelinePlan.STAGE_GENERATE_SIP)
           val scheduledOpt = plan.scheduledForProcessing
           scheduledOpt.foreach(s => log.info(s"Incremental delta processing: ${s.file.getName} (${dsInfo.spec})"))

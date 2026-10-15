@@ -75,7 +75,10 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
     val sourceFacts = datasetContext.sourceRepoOpt
       .map(_.sourceFacts)
       .getOrElse(return StageFailed(s"No source facts for $datasetContext"))
-    val sipMapper = datasetContext.sipMapperOpt.getOrElse {
+    val sipMapper = scala.util.Try(datasetContext.sipMapperOpt).fold(
+      e => return StageFailed(s"The mapping for $spec does not compile: ${ProcessStage.compileError(e)}"),
+      identity
+    ).getOrElse {
       val prefix = scala.util.Try(SipGenerationFacts(dsInfo).prefix).getOrElse("?")
       return StageFailed(
         s"No mapping available for $spec (prefix '$prefix'): the latest SIP has no mapping file. " +
@@ -323,5 +326,20 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
     }
 
     ProcessedRecords(validRecords, invalidRecords, scheduledOptOutput, runIdOpt)
+  }
+}
+
+object ProcessStage {
+
+  private val GroovyError = """Script\d+\.groovy: \d+: ([^\r\n]+)""".r
+
+  /** The Groovy compiler's own line ("Duplicated named parameter 'rdf:resource'
+    * found @ line 475, column 16."), shortened: "Unexpected input" quotes the
+    * whole script before it. */
+  def compileError(e: Throwable): String = {
+    val messages = Iterator.iterate(e)(_.getCause).takeWhile(_ != null).flatMap(t => Option(t.getMessage)).toList
+    val line = messages.flatMap(m => GroovyError.findFirstMatchIn(m).map(_.group(1))).headOption
+      .getOrElse(messages.headOption.getOrElse(e.getClass.getSimpleName))
+    if (line.length <= 200) line else s"${line.take(120)} … ${line.takeRight(40)}"
   }
 }
