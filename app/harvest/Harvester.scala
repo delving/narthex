@@ -27,7 +27,7 @@ import akka.pattern.pipe
 import dataset.DatasetActor._
 import dataset.DatasetContext
 import harvest.Harvester.{HarvestAdLib, HarvestComplete, HarvestPMH, HarvestDownloadLink, HarvestJSON, AdLibSingleRecordHarvest, HarvestStallTimeout, SingleRecordRecovered, SingleRecordError}
-import harvest.Harvesting.{AdLibHarvestPage, HarvestError, JsonHarvestConfig, JsonHarvestPage, NoRecordsMatch, PMHHarvestPage}
+import harvest.Harvesting.{AdLibHarvestPage, HarvestError, JsonHarvestConfig, JsonHarvestPage, NoRecordsMatch, PMHHarvestPage, PMHResumptionToken}
 import harvest.PocketWriter
 import nxutil.Utils.actorWork
 import org.apache.commons.io.FileUtils
@@ -97,6 +97,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
   private var stallTimer: Option[Cancellable] = None
 
   private def resetStallTimer(strategy: HarvestStrategy): Unit = {
+    currentStrategy = Some(strategy)
     stallTimer.foreach(_.cancel())
     stallTimer = Some(
       context.system.scheduler.scheduleOnce(pageStallTimeoutMinutes.minutes, self, HarvestStallTimeout)(
@@ -142,6 +143,46 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
 
   // Background pocket writer for concurrent pocket generation during harvest
   var pocketWriterOpt: Option[PocketWriter] = None
+
+  // Resume state for full PMH harvests (see HarvestCheckpoint)
+  var currentStrategy: Option[HarvestStrategy] = None
+  var pmhTarget: Option[(String, String, String)] = None  // (url, set, prefix)
+  var nextToken: Option[PMHResumptionToken] = None
+  var replayedPages = 0
+
+  private def isFullHarvest(strategy: HarvestStrategy) = strategy match {
+    case _: FromScratch | FromScratchIncremental => true
+    case _ => false
+  }
+
+  /** Called when a harvest fails: park the pages so far for the next retry. */
+  private def saveCheckpoint(): Unit = {
+    val rootDir = datasetContext.rootDir
+    val target = for {
+      strategy <- currentStrategy if isFullHarvest(strategy)
+      (url, set, prefix) <- pmhTarget
+      token <- nextToken
+      pages <- tempFileOpt if pageCount > replayedPages
+    } yield (url, set, prefix, token, pages)
+    target match {
+      case Some((url, set, prefix, token, pages)) =>
+        zipOutputOpt.foreach(z => Try(z.close()))
+        zipOutputOpt = None
+        Try(HarvestCheckpoint.save(rootDir, pages, HarvestCheckpoint.State(
+          url, set, prefix, token.value, token.currentRecord, token.totalRecords,
+          deletedRecordIds, System.currentTimeMillis()))) match {
+          case Success(_) =>
+            tempFileOpt = None // moved into the checkpoint
+            log.info(s"Saved harvest checkpoint for $datasetContext at page $pageCount (${token.value})")
+          case Failure(e) => log.warning(s"Could not save harvest checkpoint: ${e.getMessage}")
+        }
+      case None if replayedPages > 0 =>
+        // resumed but not one new page: the token itself is the problem
+        log.info(s"Resume from checkpoint made no progress, discarding it for $datasetContext")
+        HarvestCheckpoint.delete(rootDir)
+      case None => ()
+    }
+  }
 
   private def cleanup(): Unit = {
     zipOutputOpt.foreach { zipOutput =>
@@ -516,6 +557,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
                     // full-source defect list.
                   }
                   log.info(s"Zip file accepted: $fileOption")
+                  if (fullHarvest) HarvestCheckpoint.delete(datasetContext.rootDir)
                   context.parent ! HarvestComplete(strategy, fileOption)
                 } onComplete {
                   case Success(v) => v
@@ -528,6 +570,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
             }
         }
         case Some(message) =>
+          saveCheckpoint()
           context.parent ! WorkFailure(message)
     }
   }
@@ -771,8 +814,6 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     }
 
     case HarvestPMH(strategy: HarvestStrategy, raw_url, set, prefix, recordId) => actorWork(context) {
-      // Start stall timer - will abort if no page received within timeout
-      resetStallTimer(strategy)
       // Reset counters for new harvest
       pageCount = 0
       harvestedRecords = 0
@@ -781,11 +822,29 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       maxTotalPages = 0
       deletedRecordIds = List.empty
       totalDeletedCount = 0
+      replayedPages = 0
 
       val url = s"${raw_url.stripSuffix("?")}?"
+      pmhTarget = Some((url, set, prefix))
       log.info(s"Harvesting $strategy: $url $set $prefix to $datasetContext")
       val harvestRecord = if (!recordId.isEmpty) Option(recordId) else None
-      val futurePage = fetchPMHPage(1, timeout, wsApi, strategy, url, set, prefix, None, harvestRecord)
+
+      // A full harvest that failed earlier continues where it stopped
+      val resumeFrom = if (isFullHarvest(strategy) && harvestRecord.isEmpty)
+        HarvestCheckpoint.load(datasetContext.rootDir, url, set, prefix) else None
+      resumeFrom.foreach { case (state, pages) =>
+        replayedPages = HarvestCheckpoint.replay(pages)(addPage)
+        harvestedRecords = state.cursor
+        maxTotalRecords = state.total
+        deletedRecordIds = state.deletedIds
+        totalDeletedCount = state.deletedIds.size
+        log.info(s"Resuming $strategy harvest of $datasetContext from checkpoint: $replayedPages pages replayed, continuing at record ${state.cursor}/${state.total}")
+      }
+      nextToken = resumeFrom.map { case (state, _) => PMHResumptionToken(state.token, state.cursor, state.total, prefix) }
+
+      // Start stall timer only now: replaying a large checkpoint takes a while
+      resetStallTimer(strategy)
+      val futurePage = fetchPMHPage(pageCount + 1, timeout, wsApi, strategy, url, set, prefix, nextToken, harvestRecord)
       handleFailure(futurePage, strategy, "pmh harvest")
       strategy match {
         case Sample =>
@@ -877,6 +936,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
     case PMHHarvestPage(records, url, set, prefix, total, strategy, resumptionToken, pageDeletedIds, pageDeletedCount, _) => actorWork(context) {
       resetStallTimer(strategy)
       val pageNumber = addPage(records)
+      nextToken = resumptionToken
       log.info(s"Harvest Page $pageNumber to $datasetContext: $resumptionToken")
 
       // Accumulate deleted record IDs
@@ -1074,6 +1134,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       val msg = s"Harvest stalled for $datasetContext: no new page received within $pageStallTimeoutMinutes minutes. Aborting harvest."
       log.error(msg)
       cancelStallTimer()
+      saveCheckpoint()
       cleanup()
       context.parent ! WorkFailure(msg)
   }
