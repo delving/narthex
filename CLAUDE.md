@@ -111,3 +111,9 @@ When bumping the version, **update both files**:
 The `main.js` version must be a static string (not a variable) due to RequireJS r.js optimizer limitations. The optimizer parses the config and cannot evaluate dynamic expressions.
 - use `make complile` for building. otherwise you get java build errors
 - always use 'make compile' to compile. Never sbt directly.
+
+## NixOS dev shell
+On NixOS sbt/JDK 21/node/maven come from `flake.nix` (loaded by direnv via a local, gitignored `.envrc` with `use flake`).
+Agent Bash shells don't run the direnv hook, so prefix build commands: `direnv exec . make compile`, `direnv exec . make deploy ...`.
+sip-core 1.4.1-SNAPSHOT is resolved from `~/.m2`: after sip-creator changes run `direnv exec . bash -c 'cd ../sip-creator && mvn -q -pl sip-core -am install -DskipTests'`.
+If sbt reports `not found: ~/.m2/.../X.jar` (pom without jar in ~/.m2), fetch it: `direnv exec . mvn -q dependency:get -Dartifact=g:a:v -Dtransitive=false`.
