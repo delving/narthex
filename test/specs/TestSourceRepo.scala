@@ -13,6 +13,8 @@ import services.{FileHandling, ProgressReporter}
 
 import scala.collection.mutable
 import scala.xml.XML
+import organization.OrgContext
+import org.scalatestplus.mockito.MockitoSugar.mock
 
 
 class TestSourceRepo extends AnyFlatSpec with should.Matchers {
@@ -69,4 +71,39 @@ class TestSourceRepo extends AnyFlatSpec with should.Matchers {
   }
 
 
+
+  private val thingFacts = SourceFacts("test", "/envelope/list/thing", "/envelope/list/thing/@which", None)
+
+  private def harvested(dir: File, n: Int): File = {
+    val copy = new File(dir.getParentFile, s"harvest-$n.zip")
+    FileUtils.copyFile(resourceFile("a"), copy)
+    copy
+  }
+
+  "a source repo" should "drop files that a later file fully replaces" in {
+    val home = fresh("/tmp/narthex-source-repo-gc/source")
+    val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
+    repo.acceptHarvestedFile(harvested(home, 0), Set("1", "2", "3"))
+    repo.acceptHarvestedFile(harvested(home, 1), Set("1", "2"))
+    repo.acceptHarvestedFile(harvested(home, 2), Set("3"))
+
+    // 00000 is now fully replaced, 00001 and 00002 still carry active ids
+    new File(home, "00000.zip").exists() shouldBe false
+    new File(home, "00000.ids").exists() shouldBe false
+    new File(home, "00000.ids_00001.ids").exists() shouldBe false
+    new File(home, "00001.zip").exists() shouldBe true
+    new File(home, "00002.zip").exists() shouldBe true
+  }
+
+  it should "let the 100th file supersede the files moved into a subdirectory" in {
+    val home = fresh("/tmp/narthex-source-repo-boundary/source")
+    val repo = SourceRepo.createClean(home, thingFacts, mock[OrgContext])
+    FileUtils.writeStringToFile(new File(home, "deleted.ids"), "gone", "UTF-8")
+    (0 until 100).foreach(n => repo.acceptHarvestedFile(harvested(home, n), Set(s"id$n")))
+    repo.acceptHarvestedFile(harvested(home, 100), Set("id0", "id100"))
+
+    new File(home, "00000").listFiles().map(_.getName) should not contain "00000.zip" // replaced and dropped
+    new File(home, "00100.zip").exists() shouldBe true
+    new File(home, "deleted.ids").exists() shouldBe true // stays where it is read
+  }
 }

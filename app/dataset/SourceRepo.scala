@@ -177,9 +177,14 @@ class SourceRepo(home: File, orgContext: OrgContext) {
     val all = home.listFiles()
     val (files, dirs) = all.partition(_.isFile)
     val sub = newSubdirectory(dirs)
-    files.filter(_.getName != SOURCE_FACTS_FILE).foreach(file =>
+    // only the numbered zip/ids/act files: deleted.ids, pockets.xml.gz etc.
+    // are read from home and were lost when moved along
+    files.filter(_.getName.headOption.exists(_.isDigit)).foreach(file =>
       Files.move(file.toPath, new File(sub, file.getName).toPath))
-    Seq.empty[File]
+    // The moved files are still older than the one being added and must get
+    // their intersections; returning nothing here meant every 100th file
+    // superseded none of its predecessors.
+    listZipFiles
   }
 
   private def getFileNumber(file: File): Int = {
@@ -223,6 +228,26 @@ class SourceRepo(home: File, orgContext: OrgContext) {
   }
 
   private def listZipFiles = fileList.filter(f => f.isFile && f.getName.endsWith(".zip")).sortBy(_.getName)
+
+  /**
+   * Remove source files every record of which a later file replaced (.act == 0).
+   * A date-granular endpoint harvested hourly re-delivers the whole day each
+   * time, so these pile up (brocade-cat-ehc: 519 of 551 zips) and every Make
+   * SIP still parsed them. Safe: an "M.ids_N.ids" file keeps listing M's
+   * superseded ids after N is gone. The newest zip is never removed, so its
+   * number is never reused.
+   */
+  def dropSupersededFiles(): Int = {
+    val superseded = listZipFiles.dropRight(1).filter { zip =>
+      val act = createActiveIdsFile(zip)
+      act.exists() && FileUtils.readFileToString(act, "UTF-8").trim == "0"
+    }
+    superseded.foreach { zip =>
+      (avoidFiles(zip) :+ createIdsFile(zip) :+ createActiveIdsFile(zip) :+ zip).foreach(_.delete())
+    }
+    if (superseded.nonEmpty) logger.info(s"Dropped ${superseded.size} fully superseded source files from $home")
+    superseded.size
+  }
 
   private def processFile(idFilter: IdFilter, progress: ProgressReporter, provideZipFile: File => File) = {
 
@@ -291,6 +316,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
           source.close()
         }
       }
+      dropSupersededFiles()
       Some(file)
     }
   }
@@ -431,6 +457,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
       }
 
       logger.info(s"Accepted ${recordIds.size} records from harvest (no parsing needed)")
+      dropSupersededFiles()
       Some(targetFile)
     }
   }
