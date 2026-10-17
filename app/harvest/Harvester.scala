@@ -74,6 +74,15 @@ object Harvester {
 
   case object HarvestStallTimeout
 
+  // URL.openStream() has no timeouts: an endpoint that never answers (e.g. a dead IPv6 route,
+  // brabantse-gebouwen 2026-10-16) hangs the harvest forever instead of failing it.
+  def openDownload(url: java.net.URL, connectTimeoutMs: Int = 30000, readTimeoutMs: Int = 300000): java.io.InputStream = {
+    val conn = url.openConnection()
+    conn.setConnectTimeout(connectTimeoutMs)
+    conn.setReadTimeout(readTimeoutMs)
+    conn.getInputStream
+  }
+
   /** Internal message for thread-safe single-record recovery result handling */
   sealed trait SingleRecordResult
   case class SingleRecordRecovered(records: String) extends SingleRecordResult
@@ -929,16 +938,17 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       val url = new java.net.URL(downloadLink)
       var reader: java.io.InputStream = null
       var writer: java.io.OutputStream = null
-      try {
-        reader = url.openStream()
+      val downloaded = try {
+        reader = Harvester.openDownload(url)
         writer = new FileOutputStream(file)
         writeFile(reader, writer)
         log.info(s"Written download to ${file.toString()}")
-
+        true
       } catch {
         case e: Throwable => {
-          e.printStackTrace()
+          log.error(s"Download of $downloadLink failed", e)
           finish(strategy, Some(e.toString()))
+          false
         }
       } finally {
         if (reader != null) {
@@ -950,7 +960,7 @@ class Harvester(timeout: Long, datasetContext: DatasetContext, wsApi: WSClient,
       }
 
       // TODO: finish the progress bar
-      strategy match {
+      if (downloaded) strategy match {
         case Sample =>
           finish(strategy, None)
         case _ =>
