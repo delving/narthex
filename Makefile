@@ -1,5 +1,5 @@
 # Makefile for Narthex
-.PHONY: compile dist run run-nk package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org editor-build editor-dev
+.PHONY: compile dist release run run-nk package deploy deploy-no-restart bump-version set-version fpm-rpm fpm-build-rpm fpm-rpm-fuseki fpm-build-fuseki-rpm deploy-fuseki deploy-jena-tools deploy-fuseki-migrate fuseki-compact purge-org list-org editor-build editor-dev
 
 NAME:=narthex
 VERSION:=$(shell sh -c 'grep "ThisBuild / version" version.sbt | cut -d\" -f2')
@@ -16,8 +16,9 @@ JENA_DIR:=/opt/hub3/jena
 FUSEKI_USER:=admin
 FUSEKI_PASS:=pw123
 
-# Java 21 for better Metaspace management and Groovy 4.x compatibility
-JAVA_HOME:=/usr/lib/jvm/java-21-openjdk
+# Java 21 for better Metaspace management and Groovy 4.x compatibility.
+# ?= so the nix devShell's JAVA_HOME wins; the path is the RHEL/Debian default.
+JAVA_HOME?=/usr/lib/jvm/java-21-openjdk
 export JAVA_HOME
 export PATH:=$(JAVA_HOME)/bin:$(PATH)
 
@@ -81,6 +82,13 @@ editor-dev:
 dist: editor-build
 	@echo "=== Building Narthex distribution ==="
 	sbt clean dist
+
+# Publish the dist zip as a GitHub release asset for the pushed tag v$(VERSION).
+# nixops (my.narthex) fetches it from there by version + hash.
+release: dist
+	gh release create v$(VERSION) target/universal/narthex-$(VERSION).zip \
+		--verify-tag --title "v$(VERSION)" --notes "Narthex $(VERSION)"
+	@echo "nix hash: $$(nix hash file target/universal/narthex-$(VERSION).zip)"
 
 # Java 21 module access for XStream reflection
 JAVA21_OPENS:=-J--add-opens=java.base/java.util=ALL-UNNAMED \
