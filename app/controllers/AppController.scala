@@ -366,6 +366,20 @@ class AppController @Inject() (
   }
 
   /**
+   * Run history with stages and their error text, newest first. Read-only:
+   * gives Orchestra the per-stage history and keeps failures reviewable
+   * after a later successful run clears them from the dataset info.
+   */
+  def datasetRuns(spec: String, days: Int) = Action { request =>
+    import services.RecordRegistry.runDetailWrites
+    // spec comes from the URL path: reject anything that could traverse
+    if (!spec.matches("[A-Za-z0-9_.-]+")) BadRequest(Json.obj("error" -> "invalid spec"))
+    else if (!orgContext.datasetsDb.exists(spec)) NotFound(Json.obj("error" -> s"unknown dataset $spec"))
+    else if (!orgContext.narthexConfig.registryEnabled) Ok(Json.obj("registry" -> false, "runs" -> Json.arr()))
+    else Ok(Json.obj("registry" -> true, "runs" -> orgContext.recordRegistry.runHistory(spec, days)))
+  }
+
+  /**
    * Manually trigger a daily trend snapshot for all datasets.
    */
   def triggerTrendSnapshot = Action.async { request =>
