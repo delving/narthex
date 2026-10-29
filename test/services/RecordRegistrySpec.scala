@@ -425,6 +425,32 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.runStatus(spec, fresh) shouldBe Some(RUN_RUNNING)
   }
 
+  it should "list run history newest first with stages and their errors" in {
+    val ok = registry.beginRun(spec, KIND_FULL, trigger = Some("manual"))
+    registry.stageStarted(spec, ok, "process", Some("""{"kind":"full"}"""))
+    registry.stageCompleted(spec, ok, "process", Some("""{"valid":10}"""))
+    registry.completeRun(spec, ok, sentCount = 3)
+
+    val bad = registry.beginRun(spec, KIND_INCREMENT, trigger = Some("periodic"))
+    registry.stageStarted(spec, bad, "save")
+    registry.failOpenRuns(spec, "hub3 down")
+
+    val runs = registry.runHistory(spec, 30)
+    runs.map(_.runId) shouldBe Seq(bad, ok)
+
+    val failed = runs.head
+    failed.trigger shouldBe Some("periodic")
+    failed.status shouldBe RUN_FAILED
+    failed.stages.map(s => (s.stage, s.status, s.error)) shouldBe Seq(("save", "failed", Some("hub3 down")))
+
+    val done = runs.last
+    done.sent shouldBe 3
+    done.stages.map(s => (s.stage, s.input, s.output, s.error)) shouldBe
+      Seq(("process", Some("""{"kind":"full"}"""), Some("""{"valid":10}"""), None))
+
+    registry.runHistory("never-seen", 30) shouldBe empty
+  }
+
   it should "replan and discard runs (harvest joins the run)" in {
     val runId = registry.beginRun(spec, KIND_INCREMENT, trigger = Some("periodic"), plan = Some("""{"stages":["harvest"]}"""))
     registry.runPlan(spec, runId) shouldBe Some("""{"stages":["harvest"]}""")

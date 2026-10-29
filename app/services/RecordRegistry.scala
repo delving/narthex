@@ -67,6 +67,38 @@ object RecordRegistry {
     failedError: Option[String]
   )
 
+  /** One run_stages row with its error text, for the runs API. */
+  case class StageDetail(
+    stage: String,
+    status: String,
+    startedAt: Option[String],
+    completedAt: Option[String],
+    input: Option[String],
+    output: Option[String],
+    error: Option[String]
+  )
+
+  /**
+   * One run with its stages, for the runs API. Unlike RunSummary it keeps
+   * the trigger, the note and every stage's error, so a failure stays
+   * reviewable after later runs succeed.
+   */
+  case class RunDetail(
+    runId: Long,
+    kind: String,
+    trigger: Option[String],
+    startedAt: String,
+    completedAt: Option[String],
+    status: String,
+    note: Option[String],
+    seen: Int,
+    added: Int,
+    changed: Int,
+    deleted: Int,
+    sent: Int,
+    stages: Seq[StageDetail]
+  )
+
   /** Records not yet confirmed in Hub3 — explains indexed-count lag to the UI. */
   case class PendingCounts(pendingIndex: Int, pendingDrops: Int)
 
@@ -74,6 +106,8 @@ object RecordRegistry {
   implicit val runSummaryWrites: OWrites[RunSummary] = Json.writes[RunSummary]
   implicit val dailyRunDiffWrites: OWrites[DailyRunDiff] = Json.writes[DailyRunDiff]
   implicit val pendingCountsWrites: OWrites[PendingCounts] = Json.writes[PendingCounts]
+  implicit val stageDetailWrites: OWrites[StageDetail] = Json.writes[StageDetail]
+  implicit val runDetailWrites: OWrites[RunDetail] = Json.writes[RunDetail]
 
   private val TS_FORMAT =
     DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC)
@@ -164,6 +198,10 @@ class RecordRegistry(datasetsDir: File) {
 
   def listRuns(specName: String, sinceDays: Int): Seq[RunSummary] =
     if (dbFileExists(specName)) spec(specName).listRuns(sinceDays) else Seq.empty
+
+  /** Runs of the last `sinceDays` days, newest first, each with its stages. */
+  def runHistory(specName: String, sinceDays: Int): Seq[RunDetail] =
+    if (dbFileExists(specName)) spec(specName).runHistory(sinceDays) else Seq.empty
 
   def dailyRunDiffs(specName: String, sinceDays: Int): Seq[DailyRunDiff] =
     if (dbFileExists(specName)) spec(specName).dailyRunDiffs(sinceDays) else Seq.empty
@@ -790,6 +828,68 @@ private[services] class SpecRegistry(val datasetDir: File) {
             seen = rs.getInt(9),
             sent = rs.getInt(10),
             baseline = rs.getString(11) == NOTE_BASELINE
+          )
+        }
+        buf.toSeq
+      } finally rs.close()
+    } finally ps.close()
+  }
+
+  def runHistory(sinceDays: Int): Seq[RunDetail] = synchronized {
+    val since = isoDaysAgo(sinceDays)
+    val stages = scala.collection.mutable.Map.empty[Long, Vector[StageDetail]].withDefaultValue(Vector.empty)
+    val sps = conn.prepareStatement(
+      """SELECT s.run_id, s.stage, s.status, s.started_at, s.completed_at, s.input, s.output, s.error
+           FROM run_stages s JOIN runs r ON r.run_id = s.run_id
+          WHERE r.started_at >= ?
+          ORDER BY s.run_id, s.started_at""")
+    try {
+      sps.setString(1, since)
+      val rs = sps.executeQuery()
+      try {
+        while (rs.next()) {
+          val runId = rs.getLong(1)
+          stages(runId) = stages(runId) :+ StageDetail(
+            stage = rs.getString(2),
+            status = rs.getString(3),
+            startedAt = Option(rs.getString(4)),
+            completedAt = Option(rs.getString(5)),
+            input = Option(rs.getString(6)),
+            output = Option(rs.getString(7)),
+            error = Option(rs.getString(8))
+          )
+        }
+      } finally rs.close()
+    } finally sps.close()
+
+    val ps = conn.prepareStatement(
+      """SELECT run_id, kind, run_trigger, started_at, completed_at, status, note,
+                COALESCE(seen_count, 0), COALESCE(added_count, 0), COALESCE(changed_count, 0),
+                COALESCE(deleted_count, 0), COALESCE(sent_count, 0)
+           FROM runs
+          WHERE started_at >= ?
+          ORDER BY run_id DESC""")
+    try {
+      ps.setString(1, since)
+      val rs = ps.executeQuery()
+      try {
+        val buf = scala.collection.mutable.ArrayBuffer.empty[RunDetail]
+        while (rs.next()) {
+          val runId = rs.getLong(1)
+          buf += RunDetail(
+            runId = runId,
+            kind = rs.getString(2),
+            trigger = Option(rs.getString(3)),
+            startedAt = rs.getString(4),
+            completedAt = Option(rs.getString(5)),
+            status = rs.getString(6),
+            note = Option(rs.getString(7)),
+            seen = rs.getInt(8),
+            added = rs.getInt(9),
+            changed = rs.getInt(10),
+            deleted = rs.getInt(11),
+            sent = rs.getInt(12),
+            stages = stages(runId)
           )
         }
         buf.toSeq
