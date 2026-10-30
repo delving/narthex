@@ -14,6 +14,12 @@ class ProcessStageCompileErrorSpec extends AnyFlatSpec with Matchers {
     ProcessStage.compileError(e) should startWith("Duplicated named parameter 'rdf:resource'")
   }
 
+  it should "find the compiler's line in a current mapping that does not build" in {
+    val reason = "mapping does not build against rec-def 'edm': startup failed:\nScript1.groovy: 12: The current parameter list already contains a parameter of the name _record\n"
+    val e = new RuntimeException(s"The current mapping for enb-111-objecten: $reason")
+    ProcessStage.compileError(e) should startWith("The current parameter list already contains")
+  }
+
   it should "keep a quoted-script message short" in {
     val e = compileFailure("x = (\n" + ("'a' : 1,\n" * 200) + "\n")
     ProcessStage.compileError(e).length should be <= 200

@@ -51,6 +51,7 @@ import mapping.DefaultMappingRepo
 import mapping.DefaultMappingRepo._
 import mapping.DatasetMappingRepo
 import mapping.RepoSipMapper
+import dataset.pipeline.ProcessStage
 import mapping.DatasetMappingRepo._
 import organization.OrgActor.DatasetMessage
 import web.Utils
@@ -2082,6 +2083,10 @@ $nodeMappingsXml
 
   // ====== Mapping Editor Preview Endpoints =====
 
+  /** The preview answer when the dataset's mapping does not build. */
+  private def mappingBuildFailure(spec: String, e: Throwable) =
+    Ok(Json.obj("success" -> false, "spec" -> spec, "error" -> ProcessStage.compileError(e)))
+
   /**
    * Execute mapping on a sample record and return the transformed output.
    * Used for live preview in the mapping editor.
@@ -2095,12 +2100,14 @@ $nodeMappingsXml
       NotFound(Json.obj("error" -> "No source repository found for dataset"))
     } else {
       // Check for SIP mapper
-      val sipMapperOpt = datasetContext.sipMapperOpt
-      if (sipMapperOpt.isEmpty) {
+      val sipMapperTry = Try(datasetContext.sipMapperOpt)
+      if (sipMapperTry.isFailure) {
+        mappingBuildFailure(spec, sipMapperTry.failed.get)
+      } else if (sipMapperTry.get.isEmpty) {
         NotFound(Json.obj("error" -> "No mapping found for dataset. Please ensure a mapping file exists."))
       } else {
         val sourceRepo = sourceRepoOpt.get
-        val sipMapper = sipMapperOpt.get
+        val sipMapper = sipMapperTry.get.get
         val idFilter = datasetContext.dsInfo.getIdFilter
 
         // Get sample records (cache this for efficiency in real usage)
@@ -2151,10 +2158,12 @@ $nodeMappingsXml
       case None =>
         NotFound(Json.obj("error" -> "No source repository found for dataset"))
       case Some(sourceRepo) =>
-        datasetContext.sipMapperOpt match {
-          case None =>
+        Try(datasetContext.sipMapperOpt) match {
+          case Failure(e) =>
+            mappingBuildFailure(spec, e)
+          case Success(None) =>
             NotFound(Json.obj("error" -> "No mapping found for dataset"))
-          case Some(sipMapper) =>
+          case Success(Some(sipMapper)) =>
             val idFilter = datasetContext.dsInfo.getIdFilter
 
             sourceRepo.getRecordById(recordId, idFilter) match {
