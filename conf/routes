@@ -151,6 +151,7 @@ POST        /narthex/app/dataset/:spec/generate-groovy                       con
 POST        /narthex/app/dataset/:spec/generate-mapping-code                 controllers.AppController.generateMappingCode(spec)
 + nocsrf
 POST        /narthex/app/dataset/:spec/preview-mapping-code                  controllers.AppController.previewMappingCode(spec)
+POST        /narthex/app/dataset/:spec/preview-unsaved-mapping               controllers.AppController.previewUnsavedMapping(spec)
 
 # Dataset Discovery - OAI-PMH Sources
 GET         /narthex/app/discovery/sources                                   controllers.DiscoveryController.listSources
