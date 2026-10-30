@@ -23,7 +23,7 @@ import java.util.zip.GZIPOutputStream
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.{Success, Failure}
+import scala.util.{Success, Failure, Try}
 import play.api.Logging
 import play.api.cache.AsyncCacheApi
 import play.api.libs.json._
@@ -50,6 +50,7 @@ import harvest.Harvesting.HarvestType.harvestTypeFromString
 import mapping.DefaultMappingRepo
 import mapping.DefaultMappingRepo._
 import mapping.DatasetMappingRepo
+import mapping.RepoSipMapper
 import mapping.DatasetMappingRepo._
 import organization.OrgActor.DatasetMessage
 import web.Utils
@@ -2180,6 +2181,62 @@ $nodeMappingsXml
                       "errorType" -> ex.getClass.getSimpleName,
                       "mappingPrefix" -> sipMapper.prefix
                     ))
+                }
+            }
+        }
+    }
+  }
+
+  /**
+   * Preview an unsaved mapping from the web-based mapping editor: the same
+   * JSON that save-mapping accepts, run over one source record without
+   * storing anything. Lets the editor show what its edits make of a record
+   * before they are saved.
+   *
+   * Request body: the save-mapping JSON plus `recordIndex` (zero-based) or
+   * `recordId`; with neither, the first record.
+   *
+   * Returns the shape of preview-mapping: `success`, `recordId`, `inputXml`,
+   * and `outputXml`, or `error` when the mapping does not build or run. 404
+   * when the dataset has no source or the record is not found, 400 without a
+   * prefix.
+   */
+  def previewUnsavedMapping(spec: String) = Action(parse.json) { request =>
+    val datasetContext = orgContext.datasetContext(spec)
+    val body = request.body
+    (body \ "prefix").asOpt[String] match {
+      case None => BadRequest(Json.obj("error" -> "prefix is required"))
+      case Some(prefix) =>
+        datasetContext.sourceRepoOpt match {
+          case None =>
+            NotFound(Json.obj("error" -> "No source repository found for dataset"))
+          case Some(sourceRepo) =>
+            val idFilter = datasetContext.dsInfo.getIdFilter
+            val recordIndex = (body \ "recordIndex").asOpt[Int].getOrElse(0)
+            val pocketOpt = (body \ "recordId").asOpt[String] match {
+              case Some(id) => sourceRepo.getRecordById(id, idFilter)
+              case None => sourceRepo.getSampleRecords(recordIndex + 1, idFilter).lift(recordIndex)
+            }
+            pocketOpt match {
+              case None => NotFound(Json.obj("error" -> "Record not found"))
+              case Some(pocket) =>
+                val base = Json.obj(
+                  "spec" -> spec,
+                  "recordId" -> pocket.id,
+                  "inputXml" -> pocket.text,
+                  "mappingPrefix" -> prefix
+                ) ++ (if ((body \ "recordId").isDefined) Json.obj() else Json.obj("recordIndex" -> recordIndex))
+                // The cause chain: a Groovy compile error says what and where only below the top.
+                def why(e: Throwable): String = Iterator.iterate(e)(_.getCause).takeWhile(_ != null).take(5)
+                  .map(x => Option(x.getMessage).getOrElse(x.getClass.getSimpleName)).toSeq.distinct.mkString("\n")
+                val result = Try(convertJsonToMappingXml(body)).toEither.left.map(why)
+                  .flatMap(xml => RepoSipMapper.fromXml(datasetContext, prefix, xml))
+                  .flatMap(_.executeMapping(pocket).toEither.left.map(why))
+                result match {
+                  case Right(outputPocket) =>
+                    Ok(base ++ Json.obj("success" -> true, "outputXml" -> outputPocket.text))
+                  case Left(error) =>
+                    Ok(base ++ Json.obj("success" -> false, "error" -> error))
                 }
             }
         }

@@ -64,35 +64,53 @@ object RepoSipMapper {
             logger.info(s"RepoSipMapper: no current mapping for $spec (prefix '${info.prefix}')")
             None
           case Some(xml) =>
-            orgContext.sipFactory.prefixRepo(info.prefix, dsInfo.getRecDefVersionHash) match {
-              case None =>
-                logger.warn(s"RepoSipMapper: no rec-def available for prefix '${info.prefix}' — no repo-backed mapper for $spec")
+            fromXml(datasetContext, info.prefix, xml) match {
+              case Right(mapper) => Some(mapper)
+              case Left(reason) =>
+                logger.warn(s"RepoSipMapper: no repo-backed mapper for $spec: $reason")
                 None
-              case Some(prefixRepo) =>
-                Try {
-                  val tree = Sip.loadRecDefTree(prefixRepo.recordDefinition)
-                  val in = new ByteArrayInputStream(xml.getBytes("UTF-8"))
-                  val recMapping = try RecMapping.read(in, tree) finally in.close()
-                  // Facts come from the dataset, not from whatever the stored
-                  // XML happens to carry (same rewrite generation performs).
-                  prefixRepo.toMap(facts).entrySet().asScala.foreach { e =>
-                    recMapping.setFact(e.getKey, e.getValue)
-                  }
-                  new PocketMappingEngine(
-                    spec = spec,
-                    prefix = info.prefix,
-                    recDefTree = tree,
-                    recMapping = recMapping,
-                    validatorOpt = None, // XSD validation is off by default (Sip.XSD_VALIDATION)
-                    orgId = orgContext.appConfig.orgId
-                  )
-                } match {
-                  case Success(mapper) => Some(mapper)
-                  case Failure(e) =>
-                    logger.error(s"RepoSipMapper: current mapping for $spec does not build against rec-def '${info.prefix}': ${e.getMessage}")
-                    None
-                }
             }
+        }
+    }
+  }
+
+  /**
+   * Build a SipMapper from mapping XML that need not be stored anywhere: the
+   * repo's current version (build) or an editor's unsaved mapping (preview).
+   * The rec-def is the dataset's pinned (or current) one for the prefix, and
+   * the facts come from dsInfo, never from the XML.
+   *
+   * @return the mapper, or Left with a reason when the prefix has no rec-def
+   *         or the XML does not build against it
+   */
+  def fromXml(datasetContext: DatasetContext, prefix: String, xml: String): Either[String, SipMapper] = {
+    val dsInfo = datasetContext.dsInfo
+    val orgContext = datasetContext.orgContext
+    orgContext.sipFactory.prefixRepo(prefix, dsInfo.getRecDefVersionHash) match {
+      case None => Left(s"no rec-def available for prefix '$prefix'")
+      case Some(prefixRepo) =>
+        Try {
+          val tree = Sip.loadRecDefTree(prefixRepo.recordDefinition)
+          val in = new ByteArrayInputStream(xml.getBytes("UTF-8"))
+          val recMapping = try RecMapping.read(in, tree) finally in.close()
+          // Facts come from the dataset, not from whatever the XML happens
+          // to carry (same rewrite generation performs).
+          prefixRepo.toMap(SipGenerationFacts(dsInfo)).entrySet().asScala.foreach { e =>
+            recMapping.setFact(e.getKey, e.getValue)
+          }
+          new PocketMappingEngine(
+            spec = dsInfo.spec,
+            prefix = prefix,
+            recDefTree = tree,
+            recMapping = recMapping,
+            validatorOpt = None, // XSD validation is off by default (Sip.XSD_VALIDATION)
+            orgId = orgContext.appConfig.orgId
+          ): SipMapper
+        } match {
+          case Success(mapper) => Right(mapper)
+          case Failure(e) =>
+            val causes = Iterator.iterate(e)(_.getCause).takeWhile(_ != null).take(5).map(_.getMessage).toSeq.distinct
+            Left(s"mapping does not build against rec-def '$prefix': ${causes.mkString("\n")}")
         }
     }
   }
