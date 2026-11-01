@@ -21,6 +21,7 @@ GET         /narthex/socket/dataset                                          con
 GET         /narthex/app/dataset-list                                        controllers.AppController.listDatasets
 GET         /narthex/app/dataset-list-light                                  controllers.AppController.listDatasetsLight
 GET         /narthex/app/active-datasets                                     controllers.AppController.listActiveDatasets
+GET         /narthex/app/dataset-types                                       controllers.AppController.datasetTypes
 + nocsrf
 POST        /narthex/app/cancel-queue/:spec                                  controllers.AppController.cancelQueuedOperation(spec)
 GET         /narthex/app/index-stats/wrong-count                             controllers.AppController.indexStatsWrongCount
