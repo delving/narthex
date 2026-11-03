@@ -31,7 +31,6 @@ _rpms
 tags
 
 # Config files with credentials
-conf/brabantcloud.conf
 GEMINI.md
 
 # Node.js
@@ -45,3 +44,6 @@ editor/package-lock.json
 
 # Built editor files (build on deploy)
 public/editor/
+
+# Every conf file carries credentials; keep local copies only
+conf/*.conf
