@@ -162,19 +162,22 @@ define(["angular"], function (angular) {
 
         // =============== Upload to Existing Mapping ===============
 
-        $scope.uploadMapping = function (prefix, name) {
+        // The notes live on the mapping row: a bare ng-model inside ng-repeat
+        // writes to the child scope, so $scope.uploadNotes stayed empty (#3501).
+        $scope.uploadMapping = function (prefix, mapping) {
+            var name = mapping.name;
             if (!$scope.selectedFile) {
                 alert('Please select a file to upload');
                 return;
             }
 
-            defaultMappingsService.uploadDefaultMapping(prefix, name, $scope.selectedFile, $scope.uploadNotes).then(function (data) {
+            defaultMappingsService.uploadDefaultMapping(prefix, name, $scope.selectedFile, mapping.uploadNotes).then(function (data) {
                 if (data && data.duplicate) {
                     alert('This file is identical to existing version ' + data.hash +
                         ' — no new version was created. That version is now set as current.');
                 }
                 $scope.selectedFile = null;
-                $scope.uploadNotes = '';
+                mapping.uploadNotes = '';
                 loadMappings();
                 loadMappingVersions(prefix, name);
             });

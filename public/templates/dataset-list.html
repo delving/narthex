@@ -57,6 +57,9 @@
                     <li role="menuitem">
                         <a href data-ng-click="datasetListOrder('lastmodified')">Date last modified</a>
                     </li>
+                    <li role="menuitem">
+                        <a href data-ng-click="datasetListOrder('lastchecked')">Last checked</a>
+                    </li>
                 </ul>
             </span>
         </div>
@@ -304,7 +307,8 @@
                 <th class="index-warning" title="Last index verification: records actually in the index against the number expected. Empty means the two matched.">Index</th>
                 <th class="activity">Activity</th>
                 <th class="status">Status</th>
-                <th class="date-time" title="When the dataset last reached its current state (data actually changed). Harvest runs without changes don't move this — see the Activity Log for all activity.">Last changed</th>
+                <th class="date-time" title="When the dataset last reached its current state (data actually changed). Harvest runs without changes don't move this — see Last checked.">Last changed</th>
+                <th class="date-time" title="When the source was last checked: the most recent harvest attempt, also when it brought nothing new.">Last checked</th>
             </tr>
         </thead>
     </table>
@@ -490,9 +494,12 @@
                                     <span ng-switch-default>Empty</span>
                                 </span>
                             </td>
-                            <td class="date-time"
-                                title="Last checked (harvest attempt): {{ dataset.harvestPreviousTime ? (dataset.harvestPreviousTime | date: 'yyyy/MM/dd HH:mm') : 'n/a' }}">
+                            <td class="date-time">
                                 {{ dataset.stateCurrent.date | date: 'yyyy/MM/dd HH:mm' }}
+                            </td>
+                            <td class="date-time">
+                                <span ng-if="dataset.harvestPreviousTime">{{ dataset.harvestPreviousTime | date: 'yyyy/MM/dd HH:mm' }}</span>
+                                <span class="text-muted" ng-if="!dataset.harvestPreviousTime">-</span>
                             </td>
                         </tr>
                     </tbody>
