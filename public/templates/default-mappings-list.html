@@ -218,9 +218,9 @@
                                                    onchange="angular.element(this).scope().onFileSelect(this.files)">
                                         </label>
                                         <input type="text" class="form-control input-sm" style="width: 120px; display: inline-block;"
-                                               ng-model="uploadNotes" placeholder="Notes">
+                                               ng-model="mapping.uploadNotes" placeholder="Notes">
                                         <button type="button" class="btn btn-primary btn-xs"
-                                                ng-click="uploadMapping(prefixData.prefix, mapping.name)">
+                                                ng-click="uploadMapping(prefixData.prefix, mapping)">
                                             <i class="fa fa-upload"></i> Upload
                                         </button>
                                     </div>

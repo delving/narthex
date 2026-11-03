@@ -432,6 +432,11 @@ define(["angular"], function () {
                     $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.stateCurrent.date}).reverse();	
                     $scope.currentSortOrder = orderBy;	
                     break;	
+                case "lastchecked":
+                    // ISO strings sort chronologically; never-checked sets ('') end last after reverse
+                    $scope.datasets = _.sortBy($scope.datasets, function (ds) {return ds.harvestPreviousTime || ''}).reverse();
+                    $scope.currentSortOrder = orderBy;
+                    break;
                 default:	
                     $scope.datasets = _.sortBy($scope.datasets, 'datasetSpec');	
                     $scope.currentSortOrder = 'spec';	
@@ -456,7 +461,8 @@ define(["angular"], function () {
             var labels = {
                 'spec': 'Spec',
                 'state': 'State',
-                'lastmodified': 'Date last modified'
+                'lastmodified': 'Date last modified',
+                'lastchecked': 'Last checked'
             };
             return labels[order] || order;
         };
