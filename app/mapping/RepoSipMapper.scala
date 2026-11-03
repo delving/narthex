@@ -38,7 +38,9 @@ import dataset.SipFactory.SipGenerationFacts
  *
  * Returns None (with a logged reason) when the repo has no current mapping
  * for the dataset's prefix — the caller may fall back to the legacy
- * zip-backed mapper while narthex.mapping.repoBacked rolls out.
+ * zip-backed mapper while narthex.mapping.repoBacked rolls out. A current
+ * mapping that does not build throws instead: falling back would run an
+ * older mapping without anyone noticing.
  */
 object RepoSipMapper {
 
@@ -67,8 +69,7 @@ object RepoSipMapper {
             fromXml(datasetContext, info.prefix, xml) match {
               case Right(mapper) => Some(mapper)
               case Left(reason) =>
-                logger.warn(s"RepoSipMapper: no repo-backed mapper for $spec: $reason")
-                None
+                throw new RuntimeException(s"The current mapping for $spec: $reason")
             }
         }
     }

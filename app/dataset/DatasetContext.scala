@@ -104,7 +104,9 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
 
   // Phase A4a single-owner: with narthex.mapping.repoBacked the mapper comes
   // from the DatasetMappingRepo + RecDefRepo; the newest SIP zip is only the
-  // legacy fallback during rollout. Without the flag, zip-backed as before.
+  // legacy fallback during rollout, for a dataset with no current mapping. A
+  // current mapping that does not build throws, it never falls back. Without
+  // the flag, zip-backed as before.
   def sipMapperOpt: Option[SipMapper] =
     if (orgContext.narthexConfig.mappingRepoBacked)
       mapping.RepoSipMapper.build(this).orElse(zipBackedSipMapperOpt)
