@@ -2216,8 +2216,9 @@ $nodeMappingsXml
    * storing anything. Lets the editor show what its edits make of a record
    * before they are saved.
    *
-   * Request body: the save-mapping JSON plus `recordIndex` (zero-based) or
-   * `recordId`; with neither, the first record.
+   * Request body: the save-mapping JSON, or `mappingXml` with a mapping in
+   * stored XML form, plus `recordIndex` (zero-based) or `recordId`; with
+   * neither, the first record.
    *
    * Returns the shape of preview-mapping: `success`, `recordId`, `inputXml`,
    * and `outputXml`, or `error` when the mapping does not build or run. 404
@@ -2252,7 +2253,13 @@ $nodeMappingsXml
                 // The cause chain: a Groovy compile error says what and where only below the top.
                 def why(e: Throwable): String = Iterator.iterate(e)(_.getCause).takeWhile(_ != null).take(5)
                   .map(x => Option(x.getMessage).getOrElse(x.getClass.getSimpleName)).toSeq.distinct.mkString("\n")
-                val result = Try(convertJsonToMappingXml(body)).toEither.left.map(why)
+                // `mappingXml` runs a stored-format mapping as is (e.g. a default mapping
+                // tried against this dataset); otherwise the editor's save-mapping JSON.
+                val xmlOrError = (body \ "mappingXml").asOpt[String] match {
+                  case Some(xml) => Right(xml)
+                  case None => Try(convertJsonToMappingXml(body)).toEither.left.map(why)
+                }
+                val result = xmlOrError
                   .flatMap(xml => RepoSipMapper.fromXml(datasetContext, prefix, xml))
                   .flatMap(_.executeMapping(pocket).toEither.left.map(why))
                 result match {
