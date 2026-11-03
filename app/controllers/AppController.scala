@@ -122,6 +122,15 @@ class AppController @Inject() (
     })
   }
 
+  /**
+   * The dataset types this deployment offers (`datasetTypes` in its config),
+   * for clients that set a dataset's `datasetType` and cannot read them from
+   * the index page. Empty when the deployment configures none.
+   */
+  def datasetTypes = Action { request =>
+    Ok(Json.obj("datasetTypes" -> orgContext.narthexConfig.supportedDatasetTypes))
+  }
+
   def listActiveDatasets = Action.async { request =>
     import scala.concurrent.duration._
     import akka.pattern.ask
