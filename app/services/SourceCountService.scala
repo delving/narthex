@@ -111,7 +111,7 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
               val drift = total - local
               if (drift != 0) {
                 logger.warn(s"SourceCount drift for ${ds.spec}: remote=$total local=$local (drift=$drift, dupExtras=$dupExtras)")
-                maybeRepair(dsInfo, drift, total)
+                maybeRepair(dsInfo, drift)
               }
             }
           }.recover { case e =>
@@ -142,14 +142,15 @@ class SourceCountService(orgContext: OrgContext)(implicit ec: ExecutionContext) 
 
   private val REPAIR_COOLDOWN_HOURS = 48
 
-  private def maybeRepair(dsInfo: DsInfo, drift: Int, remoteTotal: Int): Unit = {
+  private def maybeRepair(dsInfo: DsInfo, drift: Int): Unit = {
     val cfg = orgContext.narthexConfig
     if (!cfg.sourceCheckAutoRepair) return
     if (math.abs(drift) < cfg.sourceCheckRepairThreshold) return
-    // A remote total of 0 is depublication territory — never auto-full-harvest
-    // on that signal; the normal harvest cycle's completeListSize=0 attestation
-    // path owns depublication.
-    if (remoteTotal == 0) return
+    // A remote total of 0 repairs too: endpoints that don't report deletes
+    // (Memorix: deletedRecord=no) never surface a depublication to an
+    // incremental harvest, so without this it waits for the weekly full
+    // refresh (enb-83, #3684). The full harvest's noRecordsMatch path then
+    // depublishes — the same decision, days earlier.
     // Cooldown: a set whose drift survives a repair (endpoint counts
     // differently, stale completeListSize, defect we don't model yet) must
     // not be full-harvested every day.
