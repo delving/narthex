@@ -1645,20 +1645,25 @@ class AppController @Inject() (
             InternalServerError(Json.obj("problem" -> s"Failed to load tree for $prefix/$hash"))
           case Some(newTree) =>
             val results = specs.map { spec =>
-              val ctx = orgContext.datasetContext(spec)
-              val mappingRepo = ctx.datasetMappingRepo
-              val dsInfo = ctx.dsInfo
-              val factsMap = Sip.factsToMap(SipFactory.SipGenerationFacts(dsInfo))
-              val resJson = mappingRepo.getXml("current") match {
-                case None =>
-                  Json.obj("spec" -> spec, "ok" -> false, "problem" -> "no current mapping")
-                case Some(xml) =>
-                  Sip.cloneMappingForNewTree(xml, newTree, resolved.version.schemaVersion, factsMap) match {
-                    case Right(_) => Json.obj("spec" -> spec, "ok" -> true)
-                    case Left(err) => Json.obj("spec" -> spec, "ok" -> false, "problem" -> err)
-                  }
+              // Per dataset, as bulkSetRecDefVersion: one unknown spec must not fail the others.
+              try {
+                val ctx = orgContext.datasetContext(spec)
+                val mappingRepo = ctx.datasetMappingRepo
+                val dsInfo = ctx.dsInfo
+                val factsMap = Sip.factsToMap(SipFactory.SipGenerationFacts(dsInfo))
+                mappingRepo.getXml("current") match {
+                  case None =>
+                    Json.obj("spec" -> spec, "ok" -> false, "problem" -> "no current mapping")
+                  case Some(xml) =>
+                    Sip.cloneMappingForNewTree(xml, newTree, resolved.version.schemaVersion, factsMap) match {
+                      case Right(_) => Json.obj("spec" -> spec, "ok" -> true)
+                      case Left(err) => Json.obj("spec" -> spec, "ok" -> false, "problem" -> err)
+                    }
+                }
+              } catch {
+                case e: Exception =>
+                  Json.obj("spec" -> spec, "ok" -> false, "problem" -> Option(e.getMessage).getOrElse(e.getClass.getSimpleName).toString)
               }
-              resJson
             }
             Ok(Json.obj(
               "prefix" -> prefix,
