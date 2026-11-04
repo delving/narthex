@@ -1475,7 +1475,7 @@ define(["angular"], function () {
     // these lists must match with DsInfo.scala
 
     var metadataFields = [
-        "datasetName", "datasetDescription", "datasetAggregator", "datasetOwner", "datasetLanguage", "datasetRights", "datasetType", "datasetTags", "edmType", "datasetDataProviderURL"
+        "datasetName", "datasetDescription", "datasetAggregator", "datasetOwner", "datasetLanguage", "datasetRights", "datasetType", "datasetTags", "edmType", "datasetDataProviderURL", "datasetIsShownAtTemplate"
     ];
 
     var harvestFields = [

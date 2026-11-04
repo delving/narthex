@@ -122,7 +122,8 @@ class DsInfoSerializationSpec extends AnyFlatSpec with should.Matchers {
     val saveableMetadataFields = Set(
       "datasetName", "datasetDescription", "datasetAggregator",
       "datasetOwner", "datasetLanguage", "datasetRights",
-      "datasetType", "datasetTags", "edmType", "datasetDataProviderURL"
+      "datasetType", "datasetTags", "edmType", "datasetDataProviderURL",
+      "datasetIsShownAtTemplate"
     )
 
     val missing = saveableMetadataFields -- webSocketFieldNames

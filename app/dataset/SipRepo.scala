@@ -265,6 +265,7 @@ object Sip {
     map.put("type", facts.edmType)
     map.put("dataType", facts.dataType)
     map.put("orgId", facts.orgId)
+    map.put("isShownAtTemplate", facts.isShownAtTemplate)
     map
   }
 
