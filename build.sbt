@@ -102,7 +102,7 @@ libraryDependencies ++= Seq(
 )
 
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
-libraryDependencies += "eu.delving" % "sip-core" % "1.4.2-SNAPSHOT" exclude("org.apache.jena", "jena-arq") exclude("org.slf4j", "slf4j-api")
+libraryDependencies += "eu.delving" % "sip-core" % "1.4.1-RC1" exclude("org.apache.jena", "jena-arq") exclude("org.slf4j", "slf4j-api")
 
 dependencyOverrides ++= Seq(
   // Currently necessary for running on JDK 17
