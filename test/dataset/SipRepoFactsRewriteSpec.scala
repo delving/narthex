@@ -114,6 +114,27 @@ class SipRepoFactsRewriteSpec extends AnyFlatSpec with should.Matchers {
     facts.get("orgId") shouldBe Some("brabantcloud")
   }
 
+  // #3615: the default mappings read `isShownAtTemplate` as a Groovy
+  // variable, so the fact has to be in every mapping, empty or not.
+  it should "write the isShownAt template as a fact" in {
+    val template = "https://www.goedespoorwaspik.nl/collectie/?diw-id={hubId}"
+    val bytesOpt = Sip.rewriteFactsInMappingXml(
+      templateXml("enb-test-bidprentje"),
+      recDefTree(),
+      Sip.factsToMap(targetFacts.copy(isShownAtTemplate = template))
+    )
+    parseFacts(bytesOpt.get).get("isShownAtTemplate") shouldBe Some(template)
+  }
+
+  it should "write an empty isShownAt template when the dataset has none" in {
+    val bytesOpt = Sip.rewriteFactsInMappingXml(
+      templateXml("enb-test-bidprentje"),
+      recDefTree(),
+      Sip.factsToMap(targetFacts)
+    )
+    parseFacts(bytesOpt.get).get("isShownAtTemplate") shouldBe Some("")
+  }
+
   it should "return None when the customMappingXml can't be parsed" in {
     val result = Sip.rewriteFactsInMappingXml(
       "<not-rec-mapping/>",

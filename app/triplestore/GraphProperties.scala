@@ -62,6 +62,8 @@ object GraphProperties {
   val datasetDescription = NXProp("datasetDescription")
   val datasetOwner = NXProp("datasetOwner")
   val datasetDataProviderURL = NXProp("datasetDataProviderURL")
+  // Record link on the provider's own site, with {hubId}/{id}/{spec} placeholders (#3615)
+  val datasetIsShownAtTemplate = NXProp("datasetIsShownAtTemplate")
   val datasetAggregator = NXProp("datasetAggregator")
   val datasetType = NXProp("datasetType")
   val datasetTags = NXProp("datasetTags")

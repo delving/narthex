@@ -235,6 +235,7 @@ object DsInfo {
       StringField("datasetTags", datasetTags),
       StringField("edmType", edmType),
       StringField("datasetDataProviderURL", datasetDataProviderURL),
+      StringField("datasetIsShownAtTemplate", datasetIsShownAtTemplate),
 
       // Record counts
       IntField("datasetRecordCount", datasetRecordCount),

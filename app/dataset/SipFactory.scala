@@ -51,7 +51,10 @@ object SipFactory {
     rights: String,
     edmType: String,
     dataType: String,
-    orgId: String
+    orgId: String,
+    // Empty unless the dataset links records to its own site (#3615); the
+    // default mappings fall back to the aggregation URI then.
+    isShownAtTemplate: String = ""
     )
 
   object SipGenerationFacts {
@@ -68,7 +71,8 @@ object SipFactory {
         rights = (meta \ "rights").text,
         edmType = (meta \ "edmType").text,
         dataType = (meta \ "type").text,
-        orgId = (meta \ "orgId").text
+        orgId = (meta \ "orgId").text,
+        isShownAtTemplate = (meta \ "isShownAtTemplate").text
       )
       val factsString =
         s"""NodeSeq->spec=${facts.spec}
@@ -105,7 +109,8 @@ object SipFactory {
         // wiped a hand-edited orgId from the user's current mapping every
         // time SIP regeneration ran, so processing kept emitting records
         // with an empty orgId.
-        orgId = Option(dsInfo.orgId).filter(_.nonEmpty).getOrElse(info(orgId))
+        orgId = Option(dsInfo.orgId).filter(_.nonEmpty).getOrElse(info(orgId)),
+        isShownAtTemplate = info(datasetIsShownAtTemplate)
       )
       val factsString =
         s"""DsInfo->spec=${facts.spec}
@@ -228,6 +233,7 @@ class SipPrefixRepo(
          |dataType=${facts.dataType}
          |baseUrl=${rdfBaseUrl}
          |orgId=${orgId}
+         |isShownAtTemplate=${facts.isShownAtTemplate}
          |""".stripMargin
     zos.write(factsString.getBytes("UTF-8"))
     zos.closeEntry()
@@ -247,6 +253,7 @@ class SipPrefixRepo(
     map.put("orgId", facts.orgId)
     map.put("type", facts.edmType)
     map.put("dataType", facts.dataType)
+    map.put("isShownAtTemplate", facts.isShownAtTemplate)
     map
   }
 

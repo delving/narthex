@@ -1386,6 +1386,15 @@
                     <input id="meta_dataProviderURL" name="meta_dataProviderURL" class="form-control" data-ng-model="dataset.edit.datasetDataProviderURL"/>
                 </div>
             </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label" for="meta_isShownAtTemplate">isShownAt template (record link)</label>
+                <div class="col-sm-9">
+                    <input id="meta_isShownAtTemplate" name="meta_isShownAtTemplate" class="form-control"
+                           placeholder="https://www.example.nl/collectie/?diw-id={hubId}"
+                           data-ng-model="dataset.edit.datasetIsShownAtTemplate"/>
+                    <p class="help-block">Link from each record to the provider's own site. Placeholders: {hubId} (orgId_spec_id), {id} (record id), {spec}. Empty: the default link to the record in Brabant Cloud. Takes effect at the next processing.</p>
+                </div>
+            </div>
             <div class="form-group" ng-class="{'has-error' : metadataform.meta_language.$invalid, 'has-success' : metadataform.meta_language.$valid && !metadataform.meta_language.$pristine }">
                 <label class="col-sm-3 control-label" for="meta_language">Language</label>
                 <div class="col-sm-9">
