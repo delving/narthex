@@ -115,5 +115,5 @@ The `main.js` version must be a static string (not a variable) due to RequireJS 
 ## NixOS dev shell
 On NixOS sbt/JDK 21/node/maven come from `flake.nix` (loaded by direnv via a local, gitignored `.envrc` with `use flake`).
 Agent Bash shells don't run the direnv hook, so prefix build commands: `direnv exec . make compile`, `direnv exec . make deploy ...`.
-sip-core 1.4.1-SNAPSHOT is resolved from `~/.m2`: after sip-creator changes run `direnv exec . bash -c 'cd ../sip-creator && mvn -q -pl sip-core -am install -DskipTests'`.
+sip-core is pinned to the sip-creator release `1.4.1-RC1`, resolved from `~/.m2`. Install it from the tag: `git -C ../sip-creator worktree add ../sip-creator/.worktrees/rc1 v1.4.1-RC1` then `direnv exec . bash -c 'cd ../sip-creator/.worktrees/rc1 && mvn -q -pl sip-core -am install -DskipTests'`. To build against unreleased sip-core work, set `build.sbt` to `1.4.1-SNAPSHOT` and install from sip-creator `main` the same way.
 If sbt reports `not found: ~/.m2/.../X.jar` (pom without jar in ~/.m2), fetch it: `direnv exec . mvn -q dependency:get -Dartifact=g:a:v -Dtransitive=false`.
