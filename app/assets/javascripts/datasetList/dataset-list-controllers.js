@@ -561,7 +561,12 @@ define(["angular"], function () {
             // read Disabled, not whatever artifact happens to be newest.
             var disabled = _.find(states, function (s) { return s.name === 'stateDisabled'; });
             if (disabled) return disabled;
-            var cur = _.max(states, function (state) { return state.date; });
+            // On a tie the later pipeline step wins (states are in pipeline
+            // order): after Make SIP, Processable carries the SIP's own mtime,
+            // and _.max kept the first, Mappable (#3572).
+            var cur = _.reduce(states, function (best, state) {
+                return (!best || state.date >= best.date) ? state : best;
+            }, undefined);
             return (cur && cur.name) ? cur : undefined;
         }
 
