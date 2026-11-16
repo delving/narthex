@@ -142,7 +142,8 @@ class PocketParser(facts: SourceFacts,
   def parse(source: Source,
             avoid: Set[String],
             output: Pocket => Unit,
-            progress: ProgressReporter): Int = {
+            progress: ProgressReporter,
+            stop: () => Boolean = () => false): Int = {
     val events = new XMLEventReader(source)
     var depth = 0
     // Optimize: pre-allocate StringBuilder with reasonable initial capacity like Java version
@@ -334,7 +335,9 @@ class PocketParser(facts: SourceFacts,
       }
     }
 
-    while (events.hasNext) {
+    // `stop` lets a caller that needs only a few records end the parse early;
+    // without it a preview of record 0 read the whole source (15 s, #185).
+    while (!stop() && events.hasNext) {
       progress.sendValue(Some(recordCount))
       
       // Memory monitoring: log memory usage every 10,000 records for large files
@@ -366,6 +369,7 @@ class PocketParser(facts: SourceFacts,
           namespaceMap = Map.empty
       }
     }
+    if (stop()) events.stop() // ends the reader's producer thread
     recordCount
   }
 
