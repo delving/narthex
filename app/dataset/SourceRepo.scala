@@ -695,7 +695,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
             records += pocket
             collected += 1
           }
-        }, ProgressReporter())
+        }, ProgressReporter(), () => collected >= count)
       } finally {
         source.close()
       }
@@ -729,7 +729,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
           if (found.isEmpty && pocket.id == recordId) {
             found = Some(pocket)
           }
-        }, ProgressReporter())
+        }, ProgressReporter(), () => found.isDefined)
       } finally {
         source.close()
       }
@@ -768,7 +768,7 @@ class SourceRepo(home: File, orgContext: OrgContext) {
             records += pocket
             collected += 1
           }
-        }, ProgressReporter())
+        }, ProgressReporter(), () => collected >= limit)
       } finally {
         source.close()
       }

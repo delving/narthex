@@ -47,6 +47,17 @@ class TestPocketParser extends AnyFlatSpec with should.Matchers with MockitoSuga
 
 
 
+  behavior of "a parse with a stop condition"
+
+  it should "end after the records the caller asked for (#185)" in {
+    val three = (1 to 3).map(i => s"""  <pocket id="p$i"><record><titel>t$i</titel></record></pocket>""").mkString("<pockets>\n", "\n", "\n</pockets>\n")
+    val pocketParser = new PocketParser(SourceRepo.readSourceFacts(factsSource), idFilter, mock[OrgContext])
+    val seen = scala.collection.mutable.ListBuffer[String]()
+    val count = pocketParser.parse(Source.fromString(three), Set.empty, p => seen += p.id, reporter, () => seen.size >= 1)
+    seen.toList shouldBe List("p1")
+    count shouldBe 1
+  }
+
   behavior of "an object id containing an illegal character"
 
   it should "replace the colon with a dash" in {
