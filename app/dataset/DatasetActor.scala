@@ -1757,10 +1757,17 @@ class DatasetActor(val datasetContext: DatasetContext,
           // Set retry state in dataset properties (preserve current count)
           dsInfo.setInRetry(message, currentRetryCount)
 
-          // Log the error but don't send email yet (will send after max retries or manual stop)
           exceptionOpt match {
             case Some(exception) => log.error(exception, message)
             case None            => log.error(message)
+          }
+
+          // Mail on the first failure: the next mail only comes after
+          // maxRetries (default 40 x 60 min), so until then nobody heard of
+          // it (#3614).
+          if (currentRetryCount == 0) {
+            mailService.sendProcessingErrorMessage(dsInfo.spec,
+              s"Harvest failed, retrying every ${orgContext.appConfig.harvestRetryIntervalMinutes} min (max $maxRetries): $message", exceptionOpt)
           }
 
           // The Idle transition frees the lease so PeriodicHarvest can
