@@ -1914,8 +1914,12 @@ class AppController @Inject() (
       val locked = (request.body \ "locked").asOpt[Boolean].getOrElse(false)
       val description = (request.body \ "description").asOpt[String]
 
-      // Convert JSON to XML
-      val mappingXml = convertJsonToMappingXml(request.body)
+      // The editor JSON has no dyn-opts; take them from the current version,
+      // or the skos:Concept[x]-style paths that need them stop producing output.
+      val dynOpts = repo.getXml("current")
+        .map(x => AppController.dynOptsXml(scala.xml.XML.loadString(x)))
+        .getOrElse("<dyn-opts/>")
+      val mappingXml = convertJsonToMappingXml(request.body, dynOpts)
 
       // Round-trip guard: the folder-current version is what SIP generation
       // and processing execute, and what SIP-Creator must be able to open.
@@ -1980,7 +1984,7 @@ class AppController @Inject() (
    * Convert JSON mapping data back to XML format.
    * This is the reverse of convertMappingToJson.
    */
-  private def convertJsonToMappingXml(json: JsValue): String = {
+  private def convertJsonToMappingXml(json: JsValue, dynOptsXml: String = "<dyn-opts/>"): String = {
     val prefix = (json \ "prefix").as[String]
     val schemaVersion = (json \ "schemaVersion").asOpt[String].getOrElse("1.0")
     val locked = (json \ "locked").asOpt[Boolean].getOrElse(false)
@@ -2072,7 +2076,7 @@ ${childElements.toString.stripSuffix("\n")}
 <rec-mapping prefix="$prefix" schemaVersion="$schemaVersion" locked="$locked">
 $factsXml
 $functionsXml
-  <dyn-opts/>
+  $dynOptsXml
 $nodeMappingsXml
 </rec-mapping>
 """
@@ -2796,6 +2800,10 @@ $nodeMappingsXml
 }
 
 object AppController {
+
+  /** The `<dyn-opts>` element of a rec-mapping as XML text; `<dyn-opts/>` when absent. */
+  def dynOptsXml(xml: scala.xml.Elem): String =
+    (xml \ "dyn-opts").headOption.map(_.toString).getOrElse("<dyn-opts/>")
 
   /** Facts of a rec-mapping: `<entry><string>key</string><string>value</string></entry>`.
     * Reading them as `entry/@key` collapsed every fact into one entry with an
