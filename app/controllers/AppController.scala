@@ -702,12 +702,7 @@ class AppController @Inject() (
     val schemaVersion = (xml \ "@schemaVersion").text
     val locked = (xml \ "@locked").text == "true"
 
-    // Extract facts
-    val facts = (xml \ "facts" \ "entry").map { entry =>
-      val key = (entry \ "@key").text
-      val value = entry.text
-      key -> value
-    }.toMap
+    val facts = AppController.mappingFacts(xml)
 
     // Extract custom functions
     val functions = (xml \ "functions" \ "mapping-function").map { fn =>
@@ -2798,4 +2793,19 @@ $nodeMappingsXml
     }.toMap
   }
 
+}
+
+object AppController {
+
+  /** Facts of a rec-mapping: `<entry><string>key</string><string>value</string></entry>`.
+    * Reading them as `entry/@key` collapsed every fact into one entry with an
+    * empty key, and an editor save then wrote that back, dropping the facts. */
+  def mappingFacts(xml: scala.xml.Elem): Map[String, String] =
+    (xml \ "facts" \ "entry").flatMap { entry =>
+      (entry \ "string").map(_.text) match {
+        case Seq(key, value) => Some(key -> value)
+        case Seq(key)        => Some(key -> "")
+        case _               => None
+      }
+    }.toMap
 }
