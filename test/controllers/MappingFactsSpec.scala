@@ -17,4 +17,15 @@ class MappingFactsSpec extends AnyFlatSpec with Matchers {
     AppController.mappingFacts(xml) shouldBe Map(
       "provider" -> "Erfgoed Brabant", "type" -> "", "language" -> "NL")
   }
+
+  "dynOptsXml" should "keep the dyn-opts that skos:Concept[x] paths depend on" in {
+    val xml =
+      <rec-mapping prefix="edm">
+        <dyn-opts>
+          <dyn-opt path="/edm:RDF/skos:Concept" value="gewijdAan"/>
+        </dyn-opts>
+      </rec-mapping>
+    AppController.dynOptsXml(xml) should include ("""value="gewijdAan"""")
+    AppController.dynOptsXml(<rec-mapping/>) shouldBe "<dyn-opts/>"
+  }
 }
