@@ -368,6 +368,9 @@ object DsInfo {
     harvestType: Option[String],
     harvestDownloadURL: Option[String],
     harvestIncrementalMode: Option[String],
+    // Last harvest attempt, also one that brought nothing new — the
+    // 'Last checked' column (#3498).
+    harvestPreviousTime: Option[String],
     processedIncrementalValid: Option[Int],
     processedIncrementalInvalid: Option[Int],
     delimitersSet: Option[String],
@@ -424,6 +427,7 @@ object DsInfo {
       "harvestType" -> ds.harvestType,
       "harvestDownloadURL" -> ds.harvestDownloadURL,
       "harvestIncrementalMode" -> ds.harvestIncrementalMode,
+      "harvestPreviousTime" -> ds.harvestPreviousTime,
       "processedIncrementalValid" -> ds.processedIncrementalValid,
       "processedIncrementalInvalid" -> ds.processedIncrementalInvalid,
       "delimitersSet" -> ds.delimitersSet,
@@ -496,6 +500,7 @@ object DsInfo {
         harvestType = s(harvestType),
         harvestDownloadURL = s(harvestDownloadURL),
         harvestIncrementalMode = s(harvestIncrementalMode),
+        harvestPreviousTime = s(harvestPreviousTime),
         processedIncrementalValid = i(processedIncrementalValid),
         processedIncrementalInvalid = i(processedIncrementalInvalid),
         delimitersSet = s(delimitersSet),
