@@ -94,14 +94,32 @@ object DsInfo {
   implicit val dsInfoWrites: Writes[DsInfo] = new Writes[DsInfo] {
     // Phase D2 (decision 2026-07-10): flat JSON straight from the props
     // row — the JSON-LD/Jena serialization is gone with Fuseki.
-    def writes(dsInfo: DsInfo): JsValue = {
-      import play.api.libs.json.{JsObject => PJsObject, JsString => PJsString}
-      val props = dsInfo.orgContext.datasetsDb.props(dsInfo.spec)
-      PJsObject(
-        List("datasetSpec" -> PJsString(dsInfo.spec), "uri" -> PJsString(dsInfo.uri)) ++
-          props.toList.sortBy(_._1).map { case (k, v) => k -> (PJsString(v): JsValue) }
-      )
-    }
+    def writes(dsInfo: DsInfo): JsValue =
+      propsJson(dsInfo.spec, dsInfo.uri, dsInfo.orgContext.datasetsDb.props(dsInfo.spec), dsInfo.orgId)
+  }
+
+  /**
+   * The flat JSON of one dataset (`dataset-list`, `info`): spec and URI, then
+   * the stored props sorted by key.
+   *
+   * `orgId` is an instance setting, the same for every dataset on this
+   * Narthex. It is stored only by `createDsInfo`, so datasets created before
+   * that, or carried over from Fuseki, have none in their props. The stored
+   * value wins when present; otherwise the instance's `orgId` fills the gap,
+   * as `toSimpleJson` already does. Nothing is written back.
+   *
+   * @param spec  the dataset spec
+   * @param uri   the dataset URI
+   * @param props the stored props row from `datasetsDb`
+   * @param orgId the instance's `orgId` (`appConfig.orgId`)
+   */
+  def propsJson(spec: String, uri: String, props: Map[String, String], orgId: String): JsObject = {
+    import play.api.libs.json.{JsString => PJsString}
+    val withOrg = if (props.contains(GraphProperties.orgId.name)) props else props + (GraphProperties.orgId.name -> orgId)
+    JsObject(
+      List("datasetSpec" -> PJsString(spec), "uri" -> PJsString(uri)) ++
+        withOrg.toList.sortBy(_._1).map { case (k, v) => k -> (PJsString(v): JsValue) }
+    )
   }
 
   /**
