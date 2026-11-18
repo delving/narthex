@@ -1026,6 +1026,9 @@ class DatasetActor(val datasetContext: DatasetContext,
             // routine "no changes since".
             log.info(s"Full harvest (FromScratchIncremental) returned noRecordsMatch for ${dsInfo.spec} — full depublication: dropping index + derived artifacts (config and mapping kept)")
             dsInfo.markDepublished()
+            // An empty full pass is still the full pass: without the stamp the
+            // nightly refresh re-queues the set every minute of its window.
+            dsInfo.setSingularLiteralProps(triplestore.GraphProperties.lastFullHarvestTime -> dsInfo.now)
             completeHarvestRun()
             scala.util.Try(Await.ready(datasetContext.dropIndex, 2.minutes))
               .recover { case ex: Throwable =>
