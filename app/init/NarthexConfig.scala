@@ -119,6 +119,15 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOptional[Int]("narthex.harvest.fullRefreshDays").getOrElse(0)
   logger.info(s"narthex.harvest.fullRefreshDays: $harvestFullRefreshDays")
 
+  /** Night window ("HH:mm-HH:mm", local time, not across midnight) for the
+    * full refresh. Each dataset gets a fixed slot in it, spread by spec, so
+    * the full harvests are staggered instead of piling up (#3684). Unset =
+    * the refresh rides the next incremental tick, at whatever hour. */
+  def harvestFullRefreshWindow: Option[(Int, Int)] = configuration
+    .getOptional[String]("narthex.harvest.fullRefreshWindow")
+    .flatMap(NarthexConfig.parseWindow)
+  logger.info(s"narthex.harvest.fullRefreshWindow: $harvestFullRefreshWindow")
+
   def sourceCheckEnabled: Boolean = configuration
     .getOptional[Boolean]("narthex.sourceCheck.enabled").getOrElse(true)
   def sourceCheckAutoRepair: Boolean = configuration
@@ -240,4 +249,18 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
   private def configStringNoSlash(name: String) =
     configString(name).replaceAll("\\/$", "")
 
+}
+
+object NarthexConfig {
+  /** "01:00-06:00" -> (60, 360) minutes since midnight; None when malformed
+    * or when the window crosses midnight. */
+  def parseWindow(s: String): Option[(Int, Int)] = {
+    val Hm = """(\d{1,2}):(\d{2})""".r
+    s.split("-").map(_.trim) match {
+      case Array(Hm(h1, m1), Hm(h2, m2)) =>
+        val (from, to) = (h1.toInt * 60 + m1.toInt, h2.toInt * 60 + m2.toInt)
+        if (from < to && to <= 24 * 60) Some((from, to)) else None
+      case _ => None
+    }
+  }
 }

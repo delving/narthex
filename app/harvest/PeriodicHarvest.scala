@@ -20,6 +20,7 @@ import scala.util.{Failure, Success}
 import scala.language.postfixOps
 import play.api.Logger
 import akka.actor.{Actor, Props}
+import org.joda.time.DateTime
 
 import dataset.DatasetActor.{FromScratchIncremental, ModifiedAfter, StartHarvest}
 import dataset.DsInfo
@@ -27,7 +28,7 @@ import dataset.DsInfo.{DsState, withDsInfo}
 import harvest.PeriodicHarvest.ScanForHarvests
 import organization.OrgActor.EnqueueOperation
 import organization.OrgContext
-import triplestore.GraphProperties.{harvestDateOnly, harvestFullRefreshDays, lastFullHarvestTime}
+import triplestore.GraphProperties.{datasetErrorTime, harvestDateOnly, harvestFullRefreshDays, harvestInRetry, lastFullHarvestTime}
 import triplestore.TripleStore
 
 object PeriodicHarvest {
@@ -37,6 +38,23 @@ object PeriodicHarvest {
   def props(orgContext: OrgContext) = Props(new PeriodicHarvest(orgContext))
 
   val harvestingAllowed = List(DsState.SAVED, DsState.INCREMENTAL_SAVED)
+
+  /** The dataset's fixed full-refresh moment on `day`: the window start plus
+    * an offset from the spec's hash, so the sets spread over the window. */
+  def refreshSlot(spec: String, day: org.joda.time.LocalDate, window: (Int, Int)): DateTime =
+    day.toDateTimeAtStartOfDay.plusMinutes(window._1 + Math.floorMod(spec.hashCode, window._2 - window._1))
+
+  /** Due once per `refreshDays`, from the slot until the window ends. A
+    * failure after the slot stops it until tomorrow — otherwise the minute
+    * scan would re-queue a broken endpoint all night. */
+  def nightlyRefreshDue(now: DateTime, spec: String, window: (Int, Int), refreshDays: Int,
+                        lastFull: Option[DateTime], lastError: Option[DateTime]): Boolean = {
+    val slot = refreshSlot(spec, now.toLocalDate, window)
+    val windowEnd = now.withTimeAtStartOfDay.plusMinutes(window._2)
+    refreshDays > 0 && !now.isBefore(slot) && now.isBefore(windowEnd) &&
+      lastFull.forall(_.isBefore(slot.minusDays(refreshDays - 1))) &&
+      lastError.forall(_.isBefore(slot))
+  }
 }
 
 class PeriodicHarvest(orgContext: OrgContext) extends Actor {
@@ -120,7 +138,7 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
                   // only records that actually changed.
                   val refreshDays = info.getLiteralProp(harvestFullRefreshDays).flatMap(_.toIntOption)
                     .getOrElse(orgContext.narthexConfig.harvestFullRefreshDays)
-                  val fullRefreshDue = refreshDays > 0 && harvestCron.incremental &&
+                  val fullRefreshDue = refreshWindow.isEmpty && refreshDays > 0 && harvestCron.incremental &&
                     info.getLiteralProp(lastFullHarvestTime).map(services.Temporal.stringToTime)
                       .forall(_.isBefore(org.joda.time.DateTime.now.minusDays(refreshDays)))
                   if (fullRefreshDue)
@@ -134,11 +152,35 @@ class PeriodicHarvest(orgContext: OrgContext) extends Actor {
             }
           }
 
+          refreshWindow.foreach(scheduleNightlyRefresh(datasetsWithPreviousTime, _))
+
           // Check for datasets in retry mode
           checkRetryHarvests()
 
         case Failure(_) => ()
       }
+  }
+
+  private def refreshWindow = orgContext.narthexConfig.harvestFullRefreshWindow
+
+  /** Staggered nightly full refresh (#3684): incremental sets get their full
+    * harvest at their own slot in the window. Re-queueing every minute is
+    * harmless: OrgActor ignores a spec that is already leased or queued, and
+    * the finished harvest stamps lastFullHarvestTime. */
+  private def scheduleNightlyRefresh(datasets: Seq[DsInfo], window: (Int, Int)): Unit = {
+    val now = DateTime.now
+    def time(info: DsInfo, prop: triplestore.GraphProperties.NXProp) =
+      info.getLiteralProp(prop).flatMap(v => scala.util.Try(services.Temporal.stringToTime(v)).toOption)
+    datasets.filter(_.currentHarvestCron.incremental).foreach { info =>
+      val refreshDays = info.getLiteralProp(harvestFullRefreshDays).flatMap(_.toIntOption)
+        .getOrElse(orgContext.narthexConfig.harvestFullRefreshDays)
+      val due = PeriodicHarvest.nightlyRefreshDue(now, info.spec, window, refreshDays,
+        time(info, lastFullHarvestTime), time(info, datasetErrorTime))
+      if (due && info.getCurrentOperation.isEmpty && !info.getBooleanProp(harvestInRetry)) {
+        logger.info(s"$info: nightly full refresh due (slot ${PeriodicHarvest.refreshSlot(info.spec, now.toLocalDate, window)}) — queueing FromScratchIncremental")
+        orgContext.orgActor ! EnqueueOperation(info.spec, StartHarvest(FromScratchIncremental, trigger = "periodic"), "periodic")
+      }
+    }
   }
 
   /**
