@@ -218,3 +218,22 @@ class DsInfoSerializationSpec extends AnyFlatSpec with should.Matchers {
     fieldTypes should contain("NonEmptyField")
   }
 }
+
+/**
+ * `dataset-list` and `info` serialize through `DsInfo.propsJson`; `orgId`
+ * must be there even for datasets whose props never stored it.
+ */
+class DsInfoPropsJsonSpec extends AnyFlatSpec with should.Matchers {
+
+  "propsJson" should "fill orgId from the instance when the props lack it" in {
+    val json = DsInfo.propsJson("old-spec", "http://x/old-spec", Map("datasetName" -> "Old"), "brabant")
+    (json \ "orgId").as[String] shouldBe "brabant"
+    (json \ "datasetName").as[String] shouldBe "Old"
+    (json \ "datasetSpec").as[String] shouldBe "old-spec"
+  }
+
+  it should "keep a stored orgId" in {
+    val json = DsInfo.propsJson("s", "u", Map("orgId" -> "stored"), "instance")
+    (json \ "orgId").as[String] shouldBe "stored"
+  }
+}
