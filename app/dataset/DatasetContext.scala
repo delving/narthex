@@ -356,8 +356,8 @@ class DatasetContext(val orgContext: OrgContext, val dsInfo: DsInfo) {
   }
 
   def disableDataSet = {
+    dsInfo.dropDatasetIndex // before the state: a failed index service depublish must not leave it marked disabled
     dsInfo.setState(DISABLED)
-    dsInfo.dropDatasetIndex
     dsInfo.dropDatasetRecords
   }
 

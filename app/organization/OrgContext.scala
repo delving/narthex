@@ -30,7 +30,7 @@ import init.NarthexConfig
 import play.api.cache.SyncCacheApi
 import play.api.libs.ws.WSClient
 import play.api.Logging
-import services.{IndexStatsService, MailService, RecordRegistry, TrendTrackingService}
+import services.{IndexStatsService, IndexServiceApi, IndexServiceClient, MailService, RecordRegistry, TrendTrackingService}
 import triplestore.GraphProperties._
 import triplestore.TripleStore
 
@@ -67,6 +67,12 @@ class OrgContext @Inject() (
   // Phase D2: the dataset registry (datasets.db) — Fuseki's replacement
   lazy val datasetsDb = new services.DatasetsDb(orgRoot)
   val crunchWhiteSpace = narthexConfig.crunchWhiteSpace
+
+  // Index service job client for datasets flagged externalIndex; None unless both url and token are set
+  lazy val indexServiceApi: Option[IndexServiceApi] = for {
+    url <- narthexConfig.indexServiceUrl
+    token <- narthexConfig.indexServiceToken
+  } yield new IndexServiceClient(wsApi, url, token)(ec)
 
   lazy val sipFactory = new SipFactory(factoryDir, orgRoot, narthexConfig.rdfBaseUrl, wsApi, narthexConfig.orgId)
 
@@ -229,7 +235,7 @@ class OrgContext @Inject() (
             // seen == hub3 (with nothing pending) means the registry mirror is
             // accurate; a persistent diff means it is missing or over-dropping
             // records and the revision sweep is still doing the real work.
-            if (narthexConfig.registryEnabled) {
+            if (RecordRegistry.stampRegistry(dsInfo, narthexConfig)) {
               for {
                 hub3Count <- hub3CountOpt
                 seen <- recordRegistry.seenCountIfExists(dsInfo.spec)

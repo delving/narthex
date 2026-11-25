@@ -209,6 +209,7 @@ object GraphProperties {
   val publishOAIPMH = NXProp("publishOAIPMH", booleanProp)
   val publishIndex = NXProp("publishIndex", booleanProp)
   val publishLOD = NXProp("publishLOD", booleanProp)
+  val externalIndex = NXProp("externalIndex", booleanProp)
   val categoriesInclude = NXProp("categoriesInclude", booleanProp)
 
   val skosSpec = NXProp("skosSpec")

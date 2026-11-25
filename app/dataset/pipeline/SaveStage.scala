@@ -16,9 +16,12 @@
 
 package dataset.pipeline
 
+import java.io.File
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 import org.joda.time.DateTime
 import play.api.Logger
@@ -28,7 +31,7 @@ import dataset.DatasetActor.Scheduled
 import dataset.DsInfo.Hub3BulkApiException
 import dataset.PipelinePlan
 import dataset.ProcessedRepo.GraphChunk
-import services.ActivityLogger
+import services.{ActivityLogger, IndexServiceApi, IndexJobRequest, IndexJobStatus, IndexServiceRejected, IndexServiceUnreachable, ProgressReporter}
 import services.ProgressReporter.InterruptedException
 import services.ProgressReporter.ProgressState
 import services.Temporal._
@@ -67,6 +70,7 @@ case class SaveStage(
   private val dropBatchSize = 10000
 
   def run(ctx: StageContext): StageResult = {
+    if (ctx.datasetContext.dsInfo.getBooleanProp(triplestore.GraphProperties.externalIndex)) return runIndexService(ctx)
     val datasetContext = ctx.datasetContext
     val orgContext = ctx.orgContext
     val dsInfo = datasetContext.dsInfo
@@ -318,5 +322,291 @@ case class SaveStage(
     } finally {
       reader.close()
     }
+  }
+
+  /**
+   * Save for an externalIndex dataset: the index service owns the index, so the stage
+   * hands it one job naming the processed files and waits for it. No hub3
+   * bulk, revision sweep, reconcile or registry Hub3-state calls; only the
+   * run bookkeeping stays so narthex's UI keeps working.
+   */
+  private[pipeline] def runIndexService(ctx: StageContext,
+                                  sleep: FiniteDuration => Unit = d => Thread.sleep(d.toMillis),
+                                  now: () => Long = () => System.currentTimeMillis()): StageResult = {
+    val orgContext = ctx.orgContext
+    val datasetContext = ctx.datasetContext
+    val dsInfo = datasetContext.dsInfo
+    val spec = ctx.spec
+    val org = orgContext.narthexConfig.orgId
+    val registry = orgContext.recordRegistry
+
+    if (orgContext.indexServiceApi.isEmpty)
+      return StageFailed(s"externalIndex is set but indexService.url / indexService.token are not configured for org $org")
+    val api = orgContext.indexServiceApi.get
+    SaveStage.ensurePublished(ctx, sleep).foreach(f => return f)
+
+    val notProcessed = scheduledOpt.map(_.file).filterNot(f => f.getName.endsWith(".xml") || f.getName.endsWith(".xml.zst"))
+    if (notProcessed.isDefined)
+      return StageFailed(s"Save received non-processed file ${notProcessed.get.getName}; expected .xml or .xml.zst")
+
+    val incremental = saveModeOpt.map(_ == PipelinePlan.IncrementalFileSend)
+      .getOrElse(scheduledOpt.exists(_.modifiedAfter.isDefined))
+    val files =
+      if (incremental) scheduledOpt.map(_.file).toList
+      else datasetContext.processedRepo.listXmlFiles
+    if (files.isEmpty) return StageFailed("no processed files")
+    val deletedIdsFile = new File(datasetContext.sourceDir, "deleted.ids")
+
+    val paths = files.map(SaveStage.relativeToHome(orgContext.root, org, _))
+    val deletedIdsPath =
+      if (deletedIdsFile.exists()) Some(SaveStage.relativeToHome(orgContext.root, org, deletedIdsFile)) else None
+    val outside = (paths ++ deletedIdsPath).collectFirst { case Left(err) => err }
+    if (outside.isDefined) return StageFailed(s"index service save: ${outside.get}")
+
+    val request = SaveStage.jobRequest(dsInfo, if (incremental) "incremental" else "full",
+      paths.collect { case Right(p) => p }, deletedIdsPath.flatMap(_.toOption))
+
+    registryRunId.foreach { runId =>
+      registry.stageStarted(spec, runId, "save", Some(Json.stringify(Json.obj(
+        "indexService" -> true, "mode" -> request.mode, "files" -> request.files.size))))
+    }
+
+    val (jobIdOpt, result) = SaveStage.postAndPoll(api, org, spec, request,
+      orgContext.narthexConfig.indexServicePollSeconds.seconds, ctx.progressReporter, sleep, now,
+      orgContext.narthexConfig.indexServiceStuckMinutes.minutes)
+    result match {
+      case GraphsSaved(n) =>
+        registryRunId.foreach { runId =>
+          registry.stageCompleted(spec, runId, "save", Some(Json.stringify(Json.obj("indexJob" -> jobIdOpt, "sent" -> n))))
+          registry.stageStarted(spec, runId, "reconcile", None)
+          registry.stageCompleted(spec, runId, "reconcile", Some(Json.stringify(Json.obj("indexService" -> true))))
+          scala.util.Try(registry.completeRun(spec, runId, n))
+            .recover { case ex: Throwable => logger.warn(s"Registry: completeRun failed for run $runId: ${ex.getMessage}") }
+        }
+        logger.info(s"index service job ${jobIdOpt.getOrElse("?")} done for $spec ($n records)")
+      case _ =>
+    }
+    result
+  }
+}
+
+object SaveStage {
+
+  private val logger = Logger(getClass)
+
+  /**
+   * A dataset depublished by delete / noRecordsMatch only comes back through a publish; the index service's
+   * is a no-op when already published. A DISABLED dataset stays hidden. Failure fails the stage.
+   */
+  private[pipeline] def ensurePublished(ctx: StageContext, sleep: FiniteDuration => Unit): Option[StageFailed] = {
+    val dsInfo = ctx.datasetContext.dsInfo
+    if (dsInfo.isDisabled) None
+    else services.IndexVisibility.set(ctx.orgContext.indexServiceApi.get, ctx.orgContext.narthexConfig.orgId, ctx.spec,
+      s"narthex@$hostname", published = true, ms => sleep(ms.millis)) match {
+      case Right(_) => None
+      case Left(err) => Some(StageFailed(services.IndexVisibility.describe(err, published = true)))
+    }
+  }
+
+  /** A failed job's stage message; mass_delete names its remedy. */
+  private[pipeline] def failedMessage(jobId: String, org: String, spec: String, error: Option[String]): String =
+    error match {
+      case Some("mass_delete") =>
+        s"index service job $jobId failed: mass_delete: this full delivery would drop more than 10% of $spec's live records. " +
+          s"If the dataset really shrank, staff re-post the same job to the index service: " +
+          "POST …/jobs with \"force\": true"
+      case other => s"index service job $jobId failed: ${other.getOrElse("(no error given)")}"
+    }
+
+  /** One Await per index service call; IndexServiceClient retries internally for a few seconds. */
+  private[pipeline] val indexServicePatience = 2.minutes
+  private[pipeline] val unreachableLimit = 10.minutes
+
+  private[dataset] lazy val hostname: String =
+    scala.util.Try(java.net.InetAddress.getLocalHost.getHostName).getOrElse("unknown")
+
+  private[pipeline] def rejectedMessage(rej: IndexServiceRejected, org: String): String = {
+    val hint = rej.code match {
+      case "forbidden" | "unauthorized" => s" — check indexService.token for org $org"
+      case _ => ""
+    }
+    s"index service rejected the request (HTTP ${rej.status} ${rej.code}): ${rej.message}$hint"
+  }
+
+  /** A path relative to narthex home, which the index service resolves under its
+    * configured root; it only accepts paths under <home>/<org>/. */
+  private[pipeline] def relativeToHome(homeDir: File, org: String, f: File): Either[String, String] = {
+    val home = homeDir.toPath.toAbsolutePath.normalize
+    val rel = home.relativize(f.toPath.toAbsolutePath.normalize)
+    if (rel.startsWith(org) && rel.getNameCount > 1) Right(rel.toString)
+    else Left(s"${f.getPath} is not under ${home.resolve(org)}")
+  }
+
+  private[pipeline] def jobRequest(dsInfo: dataset.DsInfo, mode: String, files: Seq[String], deletedIds: Option[String]): IndexJobRequest =
+    IndexJobRequest(
+      mode = mode,
+      files = files,
+      deletedIds = deletedIds,
+      docType = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetType).getOrElse("narthex_record"),
+      docTags = dsInfo.getLiteralProp(triplestore.GraphProperties.datasetTags).getOrElse(""),
+      agent = s"narthex@$hostname",
+      force = false)
+
+  /** Post a job and poll it to the end: (jobId once posted, result). An interrupt fails it. */
+  private[pipeline] def postAndPoll(api: IndexServiceApi, org: String, spec: String, request: IndexJobRequest,
+                                    interval: FiniteDuration, reporter: ProgressReporter,
+                                    sleep: FiniteDuration => Unit, now: () => Long,
+                                    stuckLimit: FiniteDuration): (Option[String], StageResult) =
+    try {
+      reporter.checkInterrupt()
+      scala.util.Try(Await.result(api.postJob(org, spec, request), indexServicePatience)) match {
+        case scala.util.Success(Right(jobId)) =>
+          logger.info(s"index service job $jobId posted for $spec (${request.mode}, ${request.files.size} files, deletedIds=${request.deletedIds.isDefined})")
+          (Some(jobId), pollIndexJob(api, org, spec, jobId, interval, reporter, sleep, now, stuckLimit))
+        case scala.util.Success(Left(rej: IndexServiceRejected)) => (None, StageFailed(rejectedMessage(rej, org)))
+        case scala.util.Success(Left(IndexServiceUnreachable(msg))) => (None, StageFailed(s"index service unreachable posting the job for $spec: $msg"))
+        case scala.util.Failure(NonFatal(e)) => (None, StageFailed(s"index service unreachable posting the job for $spec: ${e.getMessage}"))
+        case scala.util.Failure(e) => throw e
+      }
+    } catch {
+      case _: InterruptedException => (None, StageFailed("Save operation interrupted by user"))
+    }
+
+  /**
+   * Deletes-only harvest of an externalIndex dataset: post an incremental job
+   * with no files and source/deleted.ids, unless deleted.ids is unchanged
+   * (size + mtime, in source/deleted.ids.indexed, written after a finished
+   * job) since the last post. None = nothing posted; the harvest run is
+   * discarded as a no-op, as the registry path does on a quiet tick.
+   */
+  def indexServiceDeletesOnly(ctx: StageContext, harvestRunIdOpt: Option[Long],
+                        sleep: FiniteDuration => Unit = d => Thread.sleep(d.toMillis),
+                        now: () => Long = () => System.currentTimeMillis()): Option[StageResult] = {
+    val orgContext = ctx.orgContext
+    val spec = ctx.spec
+    val org = orgContext.narthexConfig.orgId
+    val registry = orgContext.recordRegistry
+    val deletedIds = new File(ctx.datasetContext.sourceDir, "deleted.ids")
+    val marker = new File(ctx.datasetContext.sourceDir, "deleted.ids.indexed")
+    val stamp = if (deletedIds.isFile) Some(s"${deletedIds.length}:${deletedIds.lastModified}") else None
+    val previous = scala.util.Try(java.nio.file.Files.readString(marker.toPath).trim).toOption
+    def discard(): Unit = harvestRunIdOpt.foreach(id => scala.util.Try(registry.discardRun(spec, id)))
+
+    if (stamp.isEmpty || stamp == previous) { discard(); return None }
+    if (orgContext.indexServiceApi.isEmpty) {
+      val msg = s"externalIndex is set but indexService.url / indexService.token are not configured for org $org"
+      harvestRunIdOpt.foreach(id => scala.util.Try(registry.failRun(spec, id, msg)))
+      return Some(StageFailed(msg))
+    }
+    val path = relativeToHome(orgContext.root, org, deletedIds) match {
+      case Right(p) => p
+      case Left(err) => discard(); return Some(StageFailed(s"index service deletes: $err"))
+    }
+
+    ensurePublished(ctx, sleep).foreach { f =>
+      harvestRunIdOpt.foreach(id => scala.util.Try(registry.failRun(spec, id, f.message.take(500))))
+      return Some(f)
+    }
+
+    val runId = harvestRunIdOpt.getOrElse(registry.beginRun(spec, services.RecordRegistry.KIND_INCREMENT))
+    harvestRunIdOpt.foreach(id => registry.updateRunPlan(spec, id, PipelinePlan.harvestDeletesOnly.toJson))
+    registry.stageStarted(spec, runId, "reconcile", Some(Json.stringify(Json.obj("deletesOnly" -> true, "indexService" -> true))))
+
+    val (jobIdOpt, result) = postAndPoll(orgContext.indexServiceApi.get, org, spec,
+      jobRequest(ctx.datasetContext.dsInfo, "incremental", Nil, Some(path)),
+      orgContext.narthexConfig.indexServicePollSeconds.seconds, ctx.progressReporter, sleep, now,
+      orgContext.narthexConfig.indexServiceStuckMinutes.minutes)
+    result match {
+      case GraphsSaved(_) =>
+        java.nio.file.Files.writeString(marker.toPath, stamp.get)
+        registry.stageCompleted(spec, runId, "reconcile", Some(Json.stringify(Json.obj("indexJob" -> jobIdOpt))))
+        registry.completeRun(spec, runId)
+        logger.info(s"index service deletes-only job ${jobIdOpt.getOrElse("?")} done for $spec")
+      case StageFailed(msg) =>
+        // This run only: a full save of the same spec may be running too.
+        scala.util.Try(registry.failRun(spec, runId, msg.take(500)))
+      case _ =>
+    }
+    Some(result)
+  }
+
+  /**
+   * Poll an index service job until it finishes. Checks for an interrupt before each
+   * poll (the InterruptedException propagates; the index service job runs on).
+   * Unreachable polls are retried until they have lasted `unreachableLimit`
+   * in a row, measured with `now`. While the job is indexing, a target that
+   * has been failed or dirty for `stuckLimit` (indexService.stuckMinutes)
+   * fails the stage; the index service keeps retrying the target on its own.
+   */
+  def pollIndexJob(api: IndexServiceApi, org: String, spec: String, jobId: String, interval: FiniteDuration,
+                    reporter: ProgressReporter, sleep: FiniteDuration => Unit, now: () => Long,
+                    stuckLimit: FiniteDuration): StageResult = {
+    var unreachableSince: Option[Long] = None
+    var stuckSince: Option[Long] = None
+    var lastTargets = Map.empty[String, String]
+    var unknownLogged = false
+    while (true) {
+      reporter.checkInterrupt()
+      val outcome: Either[String, IndexJobStatus] =
+        try Await.result(api.jobStatus(org, spec, jobId), indexServicePatience) match {
+          case Right(st) => Right(st)
+          case Left(rej: IndexServiceRejected) => return StageFailed(rejectedMessage(rej, org))
+          case Left(IndexServiceUnreachable(msg)) => Left(msg)
+        } catch {
+          case e: InterruptedException => throw e
+          case NonFatal(e) => Left(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+        }
+      outcome match {
+        case Right(st) =>
+          unreachableSince = None
+          st.state match {
+            case "done" | "unchanged" =>
+              val saved = st.counts.getOrElse("received", 0L) - st.counts.getOrElse("refused", 0L)
+              return GraphsSaved(math.min(saved, Int.MaxValue.toLong).toInt)
+            case "failed" =>
+              return StageFailed(failedMessage(jobId, org, spec, st.error))
+            case "indexing" =>
+              // No text channel on the reporter: targets ok out of all
+              // targets as the value, and each target's state in the log.
+              if (st.targets.nonEmpty) {
+                reporter.setMaximum(st.targets.size)
+                reporter.sendValue(Some(st.targets.values.count(_.state == "ok")))
+              }
+              val targets = st.targets.map { case (t, ts) => t -> (ts.state + ts.error.map(e => s" ($e)").getOrElse("")) }
+              if (targets != lastTargets) {
+                val line = targets.toSeq.sorted.map { case (t, s) => s"$t=$s" }.mkString(", ")
+                if (targets.values.exists(_.startsWith("failed"))) logger.warn(s"index service job $jobId for $spec indexing: $line")
+                else logger.info(s"index service job $jobId for $spec indexing: $line")
+                lastTargets = targets
+              }
+              val bad = st.targets.toSeq.sortBy(_._1).find { case (_, ts) => ts.state == "failed" || ts.state == "dirty" }
+              if (bad.isEmpty) stuckSince = None
+              else {
+                if (stuckSince.isEmpty) stuckSince = Some(now())
+                if (now() - stuckSince.get >= stuckLimit.toMillis) {
+                  val (t, ts) = bad.get
+                  return StageFailed(s"index service job $jobId for $spec: index target $t has been ${ts.state} for " +
+                    s"${stuckLimit.toMinutes} minutes: ${ts.error.getOrElse("(no error given)")}; the index service job carries on " +
+                    s"and retries the target (GET /datasets/$org/$spec/index)")
+                }
+              }
+            case "queued" | "ingesting" =>
+            case other =>
+              if (!unknownLogged) {
+                logger.warn(s"index service job $jobId for $spec: unknown state '$other', still polling")
+                unknownLogged = true
+              }
+          }
+        case Left(msg) =>
+          if (unreachableSince.isEmpty) {
+            logger.warn(s"index service unreachable polling job $jobId for $spec, retrying for up to ${unreachableLimit.toMinutes} minutes: $msg")
+            unreachableSince = Some(now())
+          }
+          if (now() - unreachableSince.get >= unreachableLimit.toMillis)
+            return StageFailed(s"index service unreachable for ${unreachableLimit.toMinutes} minutes while polling job $jobId for $spec: $msg")
+      }
+      sleep(interval)
+    }
+    throw new IllegalStateException("unreachable")
   }
 }

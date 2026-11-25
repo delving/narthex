@@ -236,6 +236,15 @@ class RecordRegistrySpec extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     registry.runStatus(spec, run2) shouldBe Some(RUN_COMPLETED)
   }
 
+  it should "fail only the named run via failRun" in {
+    val run = registry.beginRun(spec, KIND_FULL)
+    registry.failRun(spec, run + 1, "not mine") shouldBe false
+    registry.runStatus(spec, run) shouldBe Some(RUN_RUNNING)
+    registry.failRun(spec, run, "boom") shouldBe true
+    registry.runStatus(spec, run) shouldBe Some(RUN_FAILED)
+    registry.failRun(spec, run, "again") shouldBe false
+  }
+
   it should "self-heal stale running runs on beginRun as superseded, not failed" in {
     val stale = registry.beginRun(spec, KIND_FULL)   // never closed (crash)
     val fresh = registry.beginRun(spec, KIND_FULL)
