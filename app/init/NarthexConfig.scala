@@ -93,6 +93,32 @@ class NarthexConfig @Inject() (configuration: Configuration) extends Logging {
     .getOrElse(40)
   logger.info(s"narthex.harvest.maxRetries: $harvestMaxRetries")
 
+  // External index service (index owner for datasets flagged externalIndex)
+  def indexServiceUrl: Option[String] = configuration
+    .getOptional[String]("indexService.url")
+    .map(_.trim.replaceAll("/+$", ""))
+    .filter(_.nonEmpty)
+  logger.info(s"indexService.url: ${indexServiceUrl.getOrElse("[not set]")}")
+
+  def indexServiceToken: Option[String] = configuration
+    .getOptional[String]("indexService.token")
+    .map(_.trim)
+    .filter(_.nonEmpty)
+  logger.info(s"indexService.token: ${if (indexServiceToken.isDefined) "[configured]" else "[not set]"}")
+
+  def indexServicePollSeconds: Int = configuration
+    .getOptional[Int]("indexService.pollSeconds")
+    .map(math.max(1, _))
+    .getOrElse(5)
+  logger.info(s"indexService.pollSeconds: $indexServicePollSeconds")
+
+  /** A save fails once an index target has been failed or dirty this long while its job is indexing. */
+  def indexServiceStuckMinutes: Int = configuration
+    .getOptional[Int]("indexService.stuckMinutes")
+    .map(math.max(1, _))
+    .getOrElse(30)
+  logger.info(s"indexService.stuckMinutes: $indexServiceStuckMinutes")
+
   // Trend tracking configuration
   def enableTrendTracking: Boolean = configuration
     .getOptional[Boolean]("narthex.trends.enabled")
