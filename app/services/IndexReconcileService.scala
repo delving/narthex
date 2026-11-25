@@ -22,7 +22,13 @@ class IndexReconcileService(orgContext: OrgContext)(implicit ec: ExecutionContex
   /** Fetch indexed ids, diff, reset sent-state for missing. Does NOT save —
     * the caller decides (manual action returns the result; the auto path
     * triggers a save when something was reset). */
-  def reconcile(spec: String): Future[ReconcileResult] = {
+  def reconcile(spec: String): Future[ReconcileResult] =
+    if (IndexReconcileService.externalIndexed(orgContext, spec)) Future.failed(new ExternalIndexException(
+      s"$spec is indexed by the external index service (externalIndex): the registry does not track its index, so reconcile is refused; " +
+        "use the index service's resync route"))
+    else reconcileWithHub3(spec)
+
+  private def reconcileWithHub3(spec: String): Future[ReconcileResult] = {
     val orgId = orgContext.appConfig.orgId
     val url = s"${orgContext.appConfig.naveApiUrl}/api/admin/index-ids/$orgId/$spec"
     orgContext.wsApi.url(url)
@@ -65,4 +71,13 @@ class IndexReconcileService(orgContext: OrgContext)(implicit ec: ExecutionContex
         dropF.map(_ => ReconcileResult(spec, indexed, expected, reset, orphanIds.size, missing.take(10).toSeq))
       }
   }
+}
+
+/** Raised for an operation that would act on a externally owned index through hub3 or the registry. */
+class ExternalIndexException(message: String) extends RuntimeException(message)
+
+object IndexReconcileService {
+  /** The dataset's externalIndex flag, read as DsInfo.getBooleanProp does. */
+  def externalIndexed(orgContext: OrgContext, spec: String): Boolean =
+    orgContext.datasetsDb.getProp(spec, triplestore.GraphProperties.externalIndex.name).contains("true")
 }

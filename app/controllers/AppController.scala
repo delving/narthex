@@ -209,7 +209,10 @@ class AppController @Inject() (
       Ok(Json.obj("spec" -> r.spec, "indexed" -> r.indexed, "expected" -> r.expected,
         "missingReset" -> r.missingReset, "orphansInIndex" -> r.orphansInIndex,
         "missingSample" -> r.missingSample, "saveTriggered" -> (r.missingReset > 0)))
-    }.recover { case e => InternalServerError(Json.obj("error" -> e.getMessage)) }
+    }.recover {
+      case e: services.ExternalIndexException => Conflict(Json.obj("error" -> e.getMessage))
+      case e => InternalServerError(Json.obj("error" -> e.getMessage))
+    }
   }
 
   /**
@@ -844,9 +847,14 @@ class AppController @Inject() (
     * order-preserving RDF/XML switch) while content hashes stay identical,
     * which a normal save legitimately skips as "nothing changed". */
   def resendAllRecords(spec: String) = Action { request =>
-    val marked = orgContext.recordRegistry.markAllForResend(spec)
-    orgContext.orgActor ! DatasetMessage(spec, Command("start saving"))
-    Ok(Json.obj("marked" -> marked, "saveStarted" -> true))
+    if (services.IndexReconcileService.externalIndexed(orgContext, spec))
+      Conflict(Json.obj("error" ->
+        s"$spec is indexed by the external index service (externalIndex): use the index service's resync route"))
+    else {
+      val marked = orgContext.recordRegistry.markAllForResend(spec)
+      orgContext.orgActor ! DatasetMessage(spec, Command("start saving"))
+      Ok(Json.obj("marked" -> marked, "saveStarted" -> true))
+    }
   }
 
   def fastSave(spec: String) = Action { request =>
@@ -2677,7 +2685,7 @@ $nodeMappingsXml
 
         // 5. Registry backfill: external processing IS the process step;
         //    without (id, hash) rows a registry-owned save sends nothing.
-        if (orgContext.narthexConfig.registryEnabled) {
+        if (services.RecordRegistry.stampRegistry(datasetContext.dsInfo, orgContext.narthexConfig)) {
           scala.util.Try(dataset.pipeline.RegistryBackfill.fromProcessedOutput(datasetContext, orgContext))
             .recover { case ex: Throwable =>
               logger.warn(s"Registry backfill failed for $spec (save will send nothing until reprocessed/reuploaded): ${ex.getMessage}")

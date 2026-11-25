@@ -340,6 +340,7 @@ object DsInfo {
       BoolField("publishOAIPMH", publishOAIPMH),
       BoolField("publishIndex", publishIndex),
       BoolField("publishLOD", publishLOD),
+      BoolField("externalIndex", externalIndex),
 
       // Indexing results from Hub3 webhook
       IntField("indexingRecordsIndexed", indexingRecordsIndexed),
@@ -816,8 +817,31 @@ class DsInfo(
   def getUriProp(prop: NXProp): Option[String] =
     orgContext.datasetsDb.getProp(spec, prop.name)
 
+  /**
+   * the index service owns the index of an externalIndex dataset: depublish/publish go to the index service and never
+   * to hub3. A failure throws, so the caller stops before touching anything else.
+   */
+  def isDisabled: Boolean = getLiteralProp(NXProp(DsState.DISABLED.toString, GraphProperties.timeProp)).isDefined
+
+  def usesIndexService: Boolean = getBooleanProp(externalIndex)
+
+  def setIndexPublished(published: Boolean): Unit = {
+    val api = orgContext.indexServiceApi.getOrElse(throw new RuntimeException(
+      s"externalIndex is set but indexService.url / indexService.token are not configured for org $orgId"))
+    services.IndexVisibility.set(api, orgId, spec, s"narthex@${dataset.pipeline.SaveStage.hostname}", published) match {
+      case Right(_) => ()
+      case Left(err) => throw new RuntimeException(services.IndexVisibility.describe(err, published))
+    }
+  }
+
+  /** Enable a disabled dataset: an external-index dataset is published first, and stays DISABLED if that fails. */
+  def enableDataset(): Unit = {
+    if (usesIndexService) setIndexPublished(true)
+    removeState(DsState.DISABLED)
+  }
+
   def dropDataset = {
-    removeNaveDataSet()
+    if (usesIndexService) setIndexPublished(false) else removeNaveDataSet()
     orgContext.datasetsDb.deleteDataset(spec)
     Future.successful(true)
   }
@@ -828,7 +852,7 @@ class DsInfo(
   }
 
   def dropDatasetIndex = {
-    disableInNaveIndex()
+    if (usesIndexService) setIndexPublished(false) else disableInNaveIndex()
     true
   }
 

@@ -508,7 +508,7 @@ class DatasetActor(val datasetContext: DatasetContext,
             "disabled dataset"
 
           case "enable dataset" =>
-            dsInfo.removeState(DISABLED)
+            dsInfo.enableDataset()
             broadcastIdleState()
             "enabled dataset"
 
@@ -1228,7 +1228,8 @@ class DatasetActor(val datasetContext: DatasetContext,
   // The harvest's own run is replanned to [harvest, reconcile] and reused;
   // a sync that turns out to be a no-op discards it (quiet-tick noise guard).
   private def syncTombstonesOnly(harvestRunIdOpt: Option[Long]): Unit =
-    if (!orgContext.narthexConfig.registryEnabled) {
+    if (dsInfo.getBooleanProp(externalIndex)) syncDeletesToIndexService(harvestRunIdOpt)
+    else if (!services.RecordRegistry.stampRegistry(dsInfo, orgContext.narthexConfig)) {
       // Registry semantics off: nothing to sync, don't leave the run open.
       harvestRunIdOpt.foreach(id => scala.util.Try(orgContext.recordRegistry.discardRun(dsInfo.spec, id)))
     } else {
@@ -1276,6 +1277,31 @@ class DatasetActor(val datasetContext: DatasetContext,
       }.recover { case ex: Throwable =>
         log.warning(s"Registry: tombstones-only sync failed for ${dsInfo.spec}: ${ex.getMessage}")
       }
+    }
+
+  // Deletes-only harvest of an externalIndex dataset: the index service owns the index, so
+  // hand it deleted.ids as a job (off the actor thread; the job is polled).
+  // One at a time: a tick while a job is still out posts nothing.
+  private val indexServiceDeletesInFlight = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+  private def syncDeletesToIndexService(harvestRunIdOpt: Option[Long]): Unit =
+    if (!indexServiceDeletesInFlight.compareAndSet(false, true)) {
+      harvestRunIdOpt.foreach(id => scala.util.Try(orgContext.recordRegistry.discardRun(dsInfo.spec, id)))
+    } else {
+      import services.ProgressReporter
+      val ctx = pipeline.StageContext(datasetContext, orgContext, ProgressReporter())
+      val spec = dsInfo.spec
+      scala.concurrent.Future(pipeline.SaveStage.indexServiceDeletesOnly(ctx, harvestRunIdOpt))(harvestingExecutionContext)
+        .onComplete { outcome =>
+          indexServiceDeletesInFlight.set(false)
+          outcome match {
+            case scala.util.Success(Some(pipeline.StageFailed(msg))) =>
+              log.warning(s"index service deletes-only sync failed for $spec, retried on the next tick: $msg")
+            case scala.util.Failure(ex) =>
+              log.warning(s"index service deletes-only sync failed for $spec, retried on the next tick: ${ex.getMessage}")
+            case _ =>
+          }
+        }(harvestingExecutionContext)
     }
 
   // Run a synchronous PipelineStage on the harvesting dispatcher and
@@ -1599,7 +1625,11 @@ class DatasetActor(val datasetContext: DatasetContext,
           val cooledDown = dsInfo.getLiteralProp(indexReconcileLastTime)
             .map(services.Temporal.stringToTime)
             .forall(_.isBefore(new org.joda.time.DateTime().minusHours(1)))
-          if (cooledDown) {
+          if (dsInfo.getBooleanProp(externalIndex)) {
+            // the external index service owns this index; the registry's seen set is frozen, so a
+            // reconcile would drop externally indexed docs as orphans.
+            log.info(s"Index verify gap of $silentGap for ${dsInfo.spec} — externalIndex dataset, not reconciling against the registry")
+          } else if (cooledDown) {
             dsInfo.setSingularLiteralProps(indexReconcileLastTime ->
               services.Temporal.timeToString(new org.joda.time.DateTime()))
             val spec = dsInfo.spec

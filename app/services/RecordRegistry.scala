@@ -12,6 +12,11 @@ import org.apache.commons.io.FileUtils
 import play.api.Logger
 
 object RecordRegistry {
+  /** Whether Hub3-state registry semantics (seen/tombstone stamping, health) apply to this dataset:
+    * off for an externalIndex dataset, whose index state the index service owns. Run bookkeeping is not gated. */
+  def stampRegistry(dsInfo: dataset.DsInfo, config: init.NarthexConfig): Boolean =
+    config.registryEnabled && !dsInfo.getBooleanProp(triplestore.GraphProperties.externalIndex)
+
   val SCHEMA_VERSION = "4"
   val DB_FILENAME = "records.db"
 
@@ -288,6 +293,10 @@ class RecordRegistry(datasetsDir: File) {
 
   def failOpenRuns(specName: String, note: String): Int =
     spec(specName).failOpenRuns(note)
+
+  /** Fail one run (if still running), leaving any other open run alone. */
+  def failRun(specName: String, runId: Long, note: String): Boolean =
+    spec(specName).failRun(runId, note)
 
   def runStatus(specName: String, runId: Long): Option[String] =
     spec(specName).runStatus(runId)
@@ -965,6 +974,33 @@ private[services] class SpecRegistry(val datasetDir: File) {
   def failOpenRuns(note: String): Int = synchronized {
     commitTx {
       markOpenRunsFailed(note)
+    }
+  }
+
+  def failRun(runId: Long, note: String): Boolean = synchronized {
+    commitTx {
+      val psStages = conn.prepareStatement(
+        """UPDATE run_stages SET status = 'failed', completed_at = ?, error = ?
+            WHERE status = 'running' AND run_id = ?
+              AND run_id IN (SELECT run_id FROM runs WHERE status = ?)""")
+      try {
+        psStages.setString(1, nowIso())
+        psStages.setString(2, note)
+        psStages.setLong(3, runId)
+        psStages.setString(4, RUN_RUNNING)
+        psStages.executeUpdate()
+      } finally psStages.close()
+      val ps = conn.prepareStatement(
+        """UPDATE runs SET completed_at = ?, status = ?, note = ?, current_stage = NULL
+            WHERE run_id = ? AND status = ?""")
+      try {
+        ps.setString(1, nowIso())
+        ps.setString(2, RUN_FAILED)
+        ps.setString(3, note)
+        ps.setLong(4, runId)
+        ps.setString(5, RUN_RUNNING)
+        ps.executeUpdate() > 0
+      } finally ps.close()
     }
   }
 

@@ -94,7 +94,7 @@ case class ProcessStage(scheduledOpt: Option[Scheduled]) extends PipelineStage {
       datasetContext.processedRepo.clear()
     }
 
-    val registryEnabled = orgContext.narthexConfig.registryEnabled
+    val registryEnabled = RecordRegistry.stampRegistry(dsInfo, orgContext.narthexConfig)
     val registry = orgContext.recordRegistry
     val registryKind =
       if (isIncrementalHarvest) RecordRegistry.KIND_INCREMENT
