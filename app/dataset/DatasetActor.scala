@@ -804,7 +804,7 @@ class DatasetActor(val datasetContext: DatasetContext,
         beginAnalyzeRun("processed")
         val analyzer = createChildActor(
           Analyzer.props(datasetContext), "analyzer-processed")
-        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.xmlFile,
+        analyzer ! AnalyzeFile(datasetContext.processedRepo.baseOutput.actualXmlFile,
                                AnalysisType.PROCESSED)
         goto(Analyzing) using Active(dsInfo.spec, Some(analyzer), SPLITTING)
       } else {
