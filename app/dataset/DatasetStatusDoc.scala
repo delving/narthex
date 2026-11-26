@@ -96,7 +96,11 @@ object DatasetStatusDoc {
     if (p.raw.isDefined) b += "analyze_raw"
     if (p.raw.isDefined && p.rawAnalyzed.isDefined && !delimitersValid) b += "delimit"
     if ((delimitersValid || facts.harvestType.isDefined) && p.sourced.isEmpty) b += "first_harvest"
-    if (p.sourced.isDefined) { b += "generate_sip"; b += "fast_save" }
+    if (p.sourced.isDefined) b += "generate_sip"
+    // Fast save starts from the furthest artifact on disk (AppController.fastSave);
+    // without a source it re-saves the processed output. Gating it on the
+    // source alone left a processed-only dataset (mip) with no way to save.
+    if (p.sourced.isDefined || p.processed.isDefined) b += "fast_save"
     // Source analysis reads source.xml.gz out of the latest SIP zip
     // (DatasetActor.StartSourceAnalysis) — offering it before a SIP exists
     // gave a button that silently did nothing (#3572 klacht 2).

@@ -45,6 +45,13 @@ class DatasetStatusDocSpec extends AnyFlatSpec with Matchers {
     actions(blank.copy(sourced = Some(t0), mappable = Some(t0)), PHASE_IDLE, noFacts) should contain ("analyze_source")
   }
 
+  it should "offer fast save on processed output without a source" in {
+    val processedOnly = actions(blank.copy(processed = Some(t0)), PHASE_IDLE, noFacts)
+    processedOnly should contain ("fast_save")
+    processedOnly should contain noneOf ("generate_sip", "process")
+    actions(blank, PHASE_IDLE, noFacts) should not contain "fast_save"
+  }
+
   it should "offer process when source + mapping exist" in {
     actions(blank.copy(sourced = Some(t0), processable = Some(t0)), PHASE_IDLE, noFacts) should contain("process")
   }
