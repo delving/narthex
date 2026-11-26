@@ -94,6 +94,10 @@ object RepoSipMapper {
           val tree = Sip.loadRecDefTree(prefixRepo.recordDefinition)
           val in = new ByteArrayInputStream(xml.getBytes("UTF-8"))
           val recMapping = try RecMapping.read(in, tree) finally in.close()
+          // A node-mapping outside the rec-def would be dropped silently, and
+          // every record would go out without those fields.
+          val dropped = Sip.droppedNodeMappings(xml, recMapping)
+          if (dropped.nonEmpty) throw new IllegalStateException(Sip.droppedNodeMappingsMessage(dropped))
           // Facts come from the dataset, not from whatever the XML happens
           // to carry (same rewrite generation performs).
           prefixRepo.toMap(SipGenerationFacts(dsInfo)).entrySet().asScala.foreach { e =>
