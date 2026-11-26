@@ -623,9 +623,8 @@ define(["angular"], function () {
         }
 
         $scope.hasAction = function (dataset, action) {
-            // The backend curates actions for every phase — including
-            // during runs (linear model: upstream/redo actions stay, only
-            // consumers of the running stage's output hide).
+            // The backend curates actions for every phase; while a job runs
+            // or waits in the queue it offers only cancel.
             return !dataset.actions || dataset.actions.indexOf(action) >= 0;
         };
 

@@ -1748,18 +1748,18 @@ class DatasetActor(val datasetContext: DatasetContext,
         // Set the interrupt flag so next ProgressTick will trigger interruption
         // The child actor will check this flag and stop gracefully
         stay() using active.copy(interrupt = true)
-      } else if (active.childOpt.isEmpty) {
-        // A pipeline stage runs as a Future (runStageAsync) and always reports
-        // back. Resetting here orphaned it: its completion then arrived in Idle
-        // and was dropped, leaving the run open, and the freed lease let a
-        // second job start on the same files (mip, "start source analysis"
-        // clicked during processing, 2026-11-26).
-        log.warning(s"Ignoring command $commandName: a ${active.progressState} stage is running")
+      } else if (active.childOpt.forall(childActors.contains)) {
+        // Work is running: a pipeline stage as a Future (runStageAsync, no
+        // child) or a live child actor. Both report back. Resetting here
+        // orphaned the work: its completion arrived in Idle and was dropped,
+        // leaving the run open, and the freed lease let a second job start on
+        // the same files (mip, "start source analysis" clicked during
+        // processing, 2026-11-26). Stopping a run is what interrupt is for.
+        log.warning(s"Ignoring command $commandName: ${active.progressState} is running")
         stay()
       } else {
-        log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
-        // kill active actors; the Idle transition frees the lease
-        active.childOpt.foreach(_ ! PoisonPill)
+        // The child is gone without reporting back: the actor is stuck.
+        log.warning(s"Active unhandled Command name: $commandName with a terminated child (reset to idle/dormant)")
         goto(Idle) using Dormant
       }
 
