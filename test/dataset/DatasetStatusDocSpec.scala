@@ -15,20 +15,11 @@ class DatasetStatusDocSpec extends AnyFlatSpec with Matchers {
   private val blank = ProjectedStatus(None, None, None, None, None, None, None, None, None, None, None)
   private val noFacts = Facts(delimitersSet = None, errorMessage = None, inRetry = false)
 
-  "actions" should "keep upstream actions during a run, hiding consumers of its output" in {
+  "actions" should "offer only cancel while a job runs or waits in the queue" in {
     val s = blank.copy(sourced = Some(t0), mappable = Some(t0), processable = Some(t0), processed = Some(t0), analyzed = Some(t0))
-    // While processing: redo of earlier steps stays; analyze_processed and
-    // save consume this run's output and hide. Cancel always offered.
-    val during = actions(s, PHASE_RUNNING, noFacts, runningStage = Some("process"))
-    during should contain allOf ("cancel", "analyze_source", "generate_sip", "fast_save", "process")
-    during should contain noneOf ("analyze_processed", "save")
-    // While generating the SIP: process consumes the pockets being rebuilt
-    val genning = actions(s, PHASE_RUNNING, noFacts, runningStage = Some("generate_sip"))
-    genning should contain ("analyze_source")
-    genning should not contain "process"
-    // Queued job hasn't mutated anything: everything stays, plus cancel
-    val queued = actions(s, PHASE_QUEUED, noFacts)
-    queued should contain allOf ("cancel", "save")
+    actions(s, PHASE_RUNNING, noFacts) shouldBe Seq("cancel")
+    actions(s, PHASE_QUEUED, noFacts) shouldBe Seq("cancel")
+    actions(s, PHASE_IDLE, noFacts) should contain allOf ("generate_sip", "process", "save")
   }
 
   it should "offer only enable when disabled" in {
@@ -43,6 +34,13 @@ class DatasetStatusDocSpec extends AnyFlatSpec with Matchers {
     // only offered once a SIP exists (#3572).
     idle should not contain "analyze_source"
     actions(blank.copy(sourced = Some(t0), mappable = Some(t0)), PHASE_IDLE, noFacts) should contain ("analyze_source")
+  }
+
+  it should "offer fast save on processed output without a source" in {
+    val processedOnly = actions(blank.copy(processed = Some(t0)), PHASE_IDLE, noFacts)
+    processedOnly should contain ("fast_save")
+    processedOnly should contain noneOf ("generate_sip", "process")
+    actions(blank, PHASE_IDLE, noFacts) should not contain "fast_save"
   }
 
   it should "offer process when source + mapping exist" in {

@@ -54,6 +54,17 @@ object DatasetActor {
 
   private val logger = Logger(getClass)
 
+  /** The harvest type to harvest with, or why a harvest cannot start: an
+    * unknown type, or no endpoint. A harvest without an endpoint can only
+    * fail, and mip (harvest type pmh, no URL) lost its source to one. */
+  def harvestTypeToStart(spec: String, harvestTypeProp: String, url: String, downloadUrl: String): Either[String, HarvestType] =
+    harvestTypeFromString(harvestTypeProp) match {
+      case None => Left(s"Unable to harvest $spec: unknown harvest type [$harvestTypeProp]")
+      case Some(ht) if (if (ht == DOWNLOAD) downloadUrl else url).trim.isEmpty =>
+        Left(s"Unable to harvest $spec: no harvest URL set for harvest type $ht")
+      case Some(ht) => Right(ht)
+    }
+
   // state machine
 
   sealed trait DatasetActorState
@@ -316,10 +327,12 @@ class DatasetActor(val datasetContext: DatasetContext,
   }
 
   /** Prepare source repo, build kickoff message, create harvester actor and send kickoff.
-    * Returns Some(harvesterRef) on success, None if harvest type is unknown. */
-  private def prepareAndStartHarvest(strategy: HarvestStrategy, trigger: String = "manual"): Option[ActorRef] = {
+    * Returns the harvester on success, or why the harvest cannot start: an
+    * unknown harvest type, or no endpoint to harvest from. */
+  private def prepareAndStartHarvest(strategy: HarvestStrategy, trigger: String = "manual"): Either[String, ActorRef] = {
     def prop(p: NXProp) = dsInfo.getLiteralProp(p).getOrElse("")
-    harvestTypeFromString(prop(harvestType)).map { ht =>
+    // Refused before anything is touched (harvestTypeToStart).
+    harvestTypeToStart(dsInfo.spec, prop(harvestType), prop(harvestURL), prop(harvestDownloadURL)).map { ht =>
       datasetContext.dropTree()
 
       // The harvest joins the run (Phase A3a): the run starts with only the
@@ -755,12 +768,14 @@ class DatasetActor(val datasetContext: DatasetContext,
       // Auto-enable: remove disabled state when starting any workflow
       dsInfo.removeState(DISABLED)
       prepareAndStartHarvest(strategy, trigger) match {
-        case Some(harvester) =>
+        case Right(harvester) =>
           ensureWorkflowTracking(trigger)
           workflowStartTime = Some(new DateTime())
           goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
-        case None =>
-          stay() using InError("Unable to determine harvest type")
+        case Left(problem) =>
+          log.warning(problem)
+          dsInfo.setError(problem)
+          stay() using InError(problem)
       }
 
     // Handle StartHarvest when not in Dormant state (e.g., after previous harvest completed and dataset is in PROCESSED state)
@@ -1435,12 +1450,12 @@ class DatasetActor(val datasetContext: DatasetContext,
       val newCount = dsInfo.incrementRetryCount()
 
       prepareAndStartHarvest(strategy, trigger = "retry") match {
-        case Some(harvester) =>
+        case Right(harvester) =>
           ensureWorkflowTracking("retry")
           workflowStartTime = Some(new DateTime())
           goto(Harvesting) using Active(dsInfo.spec, Some(harvester), HARVESTING)
-        case None =>
-          log.error(s"Unable to determine harvest type for retry")
+        case Left(problem) =>
+          log.error(s"Retry harvest cannot start: $problem")
           stay() using InRetry(message, newCount)
       }
 
@@ -1733,10 +1748,18 @@ class DatasetActor(val datasetContext: DatasetContext,
         // Set the interrupt flag so next ProgressTick will trigger interruption
         // The child actor will check this flag and stop gracefully
         stay() using active.copy(interrupt = true)
+      } else if (active.childOpt.forall(childActors.contains)) {
+        // Work is running: a pipeline stage as a Future (runStageAsync, no
+        // child) or a live child actor. Both report back. Resetting here
+        // orphaned the work: its completion arrived in Idle and was dropped,
+        // leaving the run open, and the freed lease let a second job start on
+        // the same files (mip, "start source analysis" clicked during
+        // processing, 2026-11-26). Stopping a run is what interrupt is for.
+        log.warning(s"Ignoring command $commandName: ${active.progressState} is running")
+        stay()
       } else {
-        log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
-        // kill active actors; the Idle transition frees the lease
-        active.childOpt.foreach(_ ! PoisonPill)
+        // The child is gone without reporting back: the actor is stuck.
+        log.warning(s"Active unhandled Command name: $commandName with a terminated child (reset to idle/dormant)")
         goto(Idle) using Dormant
       }
 

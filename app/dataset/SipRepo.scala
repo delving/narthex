@@ -168,21 +168,54 @@ object Sip {
     finally in.close()
   }
 
+  private val NodeMappingOutputPath = """<node-mapping\b[^>]*\boutputPath="([^"]*)"""".r
+
+  /**
+   * Output paths of the node-mappings in `mappingXml` that `recMapping`, read
+   * from it, no longer holds. RecMapping.read silently drops a node-mapping
+   * whose output path is not in the record definition; serializing or running
+   * that mapping loses those fields without a word (mip lost nave:MipResource
+   * this way, 2026-11-26). Empty when nothing was dropped.
+   */
+  def droppedNodeMappings(mappingXml: String, recMapping: RecMapping): Seq[String] = {
+    val inXml = NodeMappingOutputPath.findAllMatchIn(mappingXml).map(_.group(1)).toSeq
+    val kept = recMapping.getNodeMappings.asScala.map(_.outputPath.toString)
+    if (inXml.size <= kept.size) Seq.empty
+    else {
+      // The count decides; the names are best effort for the message.
+      val missing = inXml.filterNot(kept.toSet).distinct
+      if (missing.nonEmpty) missing else Seq(s"${inXml.size - kept.size} node-mapping(s)")
+    }
+  }
+
+  def droppedNodeMappingsMessage(dropped: Seq[String]): String =
+    s"the record definition has no node for ${dropped.size} mapped output path(s), which would be dropped: " +
+      dropped.take(10).mkString(", ") + (if (dropped.size > 10) ", ..." else "")
+
   /**
    * Re-parse a customMappingXml string, overwrite its `<facts>` entries from
    * `factsMap`, and serialize back. Returns None if the mapping cannot be
-   * parsed against the given RecDefTree (caller should fall back to verbatim
-   * write + log a warning).
+   * parsed against the given RecDefTree, or would lose node-mappings to it
+   * (caller should fall back to verbatim write + log a warning).
    */
   def rewriteFactsInMappingXml(
     customXml: String,
     recDefTree: RecDefTree,
     factsMap: java.util.Map[String, String]
-  ): Option[Array[Byte]] = {
+  ): Option[Array[Byte]] = rewriteFactsInMappingXmlOrReason(customXml, recDefTree, factsMap).toOption
+
+  /** As rewriteFactsInMappingXml, with the reason when it cannot. */
+  def rewriteFactsInMappingXmlOrReason(
+    customXml: String,
+    recDefTree: RecDefTree,
+    factsMap: java.util.Map[String, String]
+  ): Either[String, Array[Byte]] = {
     Try {
       val in = new ByteArrayInputStream(customXml.getBytes("UTF-8"))
       try {
         val recMapping = RecMapping.read(in, recDefTree)
+        val dropped = droppedNodeMappings(customXml, recMapping)
+        if (dropped.nonEmpty) throw new IllegalStateException(droppedNodeMappingsMessage(dropped))
         factsMap.entrySet().asScala.foreach { e =>
           recMapping.setFact(e.getKey, e.getValue)
         }
@@ -190,7 +223,7 @@ object Sip {
         RecMapping.write(baos, recMapping)
         baos.toByteArray
       } finally in.close()
-    }.toOption
+    }.toEither.left.map(e => Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
   }
 
   /**
@@ -535,10 +568,10 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
                   // replace stale values copied from the template.
                   logger.debug(s"Using custom mapping XML for ${sipMapping.fileName}")
                   val factsMap = sipPrefixRepoOpt.map(_.toMap(facts)).getOrElse(Sip.factsToMap(facts))
-                  Sip.rewriteFactsInMappingXml(customXml, sipMapping.recDefTree, factsMap) match {
-                    case Some(bytes) =>
+                  Sip.rewriteFactsInMappingXmlOrReason(customXml, sipMapping.recDefTree, factsMap) match {
+                    case Right(bytes) =>
                       zos.write(bytes)
-                    case None =>
+                    case Left(reason) =>
                       // Writing an unparseable mapping verbatim corrupts the
                       // SIP (observed: crmter mapping packaged as
                       // mapping_ace.xml — every later generation fails on
@@ -546,7 +579,7 @@ class Sip(val dsInfoSpec: String, rdfBaseUrl: String, val file: File) {
                       // the caller keeps the previous SIP intact.
                       zos.close()
                       throw new RuntimeException(
-                        s"Custom mapping XML does not parse against the record definition of ${sipMapping.fileName} — refusing to package it")
+                        s"Custom mapping XML does not fit the record definition of ${sipMapping.fileName} — refusing to package it: $reason")
                   }
 
                 case None =>

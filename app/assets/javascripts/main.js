@@ -23,7 +23,7 @@
     // Increase timeout for slower connections/browsers (default is 7 seconds)
     waitSeconds: 30,
     // Cache busting: static version for r.js build (update when making releases)
-    urlArgs: "v=0.8.9.158",
+    urlArgs: "v=0.8.9.159",
     // Packages = top-level folders; loads a contained file named "main.js"
     packages: [
       "common", "datasetList", "dataset", "datasetDelimiter", "defaultMappings", "recdefs", "stats", "discovery", "indexStats", "trends"

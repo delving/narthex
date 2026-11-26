@@ -61,27 +61,13 @@ object DatasetStatusDoc {
   val PHASE_ERROR = "error"
   val PHASE_DISABLED = "disabled"
 
-  // Pipeline rank of the artifact each action CONSUMES — an action hides
-  // while a run is producing (replacing) that artifact or anything before
-  // it. Earlier/redo actions stay visible (the linear model: from analyzed
-  // you can still re-run make-sip).
-  private val actionDependsRank = Map(
-    "analyze_raw" -> 0, "delimit" -> 1, "first_harvest" -> 1,
-    "analyze_source" -> 2, "generate_sip" -> 2, "fast_save" -> 2,
-    "process" -> 4, "analyze_processed" -> 6, "save" -> 7, "disable" -> 0)
-  private val stageOutputRank = Map(
-    "harvest" -> 2, "generate_sip" -> 4, "process" -> 6,
-    "analyze" -> 7, "save" -> 8, "reconcile" -> 8)
-
   /** Pure: which workflow actions are valid right now. */
-  def actions(p: ProjectedStatus, phase: String, facts: Facts, runningStage: Option[String] = None): Seq[String] = phase match {
-    case PHASE_RUNNING | PHASE_QUEUED =>
-      // Linear model: upstream actions remain (they re-run earlier steps);
-      // only actions depending on what this run is producing hide. A queued
-      // job hasn't started mutating anything yet — everything stays.
-      val outputRank = runningStage.flatMap(stageOutputRank.get).getOrElse(Int.MaxValue)
-      val base = workflowActions(p, facts).filter(a => actionDependsRank.getOrElse(a, 0) < outputRank)
-      "cancel" +: base
+  def actions(p: ProjectedStatus, phase: String, facts: Facts): Seq[String] = phase match {
+    // A running or queued job only offers cancel. Other actions cannot run
+    // alongside it: OrgActor drops a second leased job without a word, and a
+    // light command (an analysis) used to reset the actor under the running
+    // stage (mip, 2026-11-26). Showing them promised what could not happen.
+    case PHASE_RUNNING | PHASE_QUEUED => Seq("cancel")
     case PHASE_DISABLED => Seq("enable")
     case _ => workflowActions(p, facts)
   }
@@ -96,7 +82,11 @@ object DatasetStatusDoc {
     if (p.raw.isDefined) b += "analyze_raw"
     if (p.raw.isDefined && p.rawAnalyzed.isDefined && !delimitersValid) b += "delimit"
     if ((delimitersValid || facts.harvestType.isDefined) && p.sourced.isEmpty) b += "first_harvest"
-    if (p.sourced.isDefined) { b += "generate_sip"; b += "fast_save" }
+    if (p.sourced.isDefined) b += "generate_sip"
+    // Fast save starts from the furthest artifact on disk (AppController.fastSave);
+    // without a source it re-saves the processed output. Gating it on the
+    // source alone left a processed-only dataset (mip) with no way to save.
+    if (p.sourced.isDefined || p.processed.isDefined) b += "fast_save"
     // Source analysis reads source.xml.gz out of the latest SIP zip
     // (DatasetActor.StartSourceAnalysis) — offering it before a SIP exists
     // gave a button that silently did nothing (#3572 klacht 2).
@@ -271,14 +261,13 @@ object DatasetStatusDoc {
   def fields(orgContext: OrgContext, spec: String, p: ProjectedStatus, facts: Facts): Seq[(String, JsValue)] = {
     val ph = phase(orgContext, spec, p, facts)
     val runJs = runJson(orgContext, spec)
-    val runningStage = runJs.flatMap(js => (js \ "stage").asOpt[String])
     val queuePosition: JsValue =
       if (ph == PHASE_QUEUED)
         JsNumber(orgContext.jobQueue.queued().indexWhere(_.spec == spec) + 1)
       else JsNull
     Seq(
       "phase" -> JsString(ph),
-      "actions" -> Json.toJson(actions(p, ph, facts, runningStage)),
+      "actions" -> Json.toJson(actions(p, ph, facts)),
       "lastStep" -> lastStep(p).map(JsString(_)).getOrElse[JsValue](JsNull),
       "run" -> runJs.getOrElse[JsValue](JsNull),
       "queuePosition" -> queuePosition,

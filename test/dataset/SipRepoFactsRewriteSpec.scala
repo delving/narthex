@@ -143,4 +143,42 @@ class SipRepoFactsRewriteSpec extends AnyFlatSpec with should.Matchers {
     )
     result shouldBe None
   }
+
+  // mip, 2026-11-26: a mapping field the record definition lacks was dropped
+  // silently on every generation, and the stripped mapping became current.
+  private def mappingWith(outputPaths: String*): String =
+    s"""<rec-mapping prefix="edm" schemaVersion="5.2.3" locked="true">
+       |  <facts/>
+       |  <functions/>
+       |  <node-mappings>
+       |${outputPaths.map(p => s"""    <node-mapping inputPath="/input/record/title" outputPath="$p"/>""").mkString("\n")}
+       |  </node-mappings>
+       |</rec-mapping>
+       |""".stripMargin
+
+  private val known = "/edm:RDF/edm:ProvidedCHO/dc:title"
+  private val unknown = "/edm:RDF/nave:MipResource/nave:architect"
+
+  "Sip.droppedNodeMappings" should "be empty when every output path is in the record definition" in {
+    val xml = mappingWith(known)
+    val recMapping = RecMapping.read(new ByteArrayInputStream(xml.getBytes("UTF-8")), recDefTree())
+    Sip.droppedNodeMappings(xml, recMapping) shouldBe empty
+  }
+
+  it should "name the output paths the record definition has no node for" in {
+    val xml = mappingWith(known, unknown)
+    val recMapping = RecMapping.read(new ByteArrayInputStream(xml.getBytes("UTF-8")), recDefTree())
+    Sip.droppedNodeMappings(xml, recMapping) shouldBe Seq(unknown)
+  }
+
+  "Sip.rewriteFactsInMappingXmlOrReason" should "refuse a mapping that would lose node-mappings" in {
+    val result = Sip.rewriteFactsInMappingXmlOrReason(mappingWith(known, unknown), recDefTree(), Sip.factsToMap(targetFacts))
+    result.isLeft shouldBe true
+    result.left.toOption.get should include(unknown)
+    Sip.rewriteFactsInMappingXml(mappingWith(known, unknown), recDefTree(), Sip.factsToMap(targetFacts)) shouldBe None
+  }
+
+  it should "keep rewriting a mapping that fits" in {
+    Sip.rewriteFactsInMappingXmlOrReason(mappingWith(known), recDefTree(), Sip.factsToMap(targetFacts)).isRight shouldBe true
+  }
 }
