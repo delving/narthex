@@ -1748,6 +1748,14 @@ class DatasetActor(val datasetContext: DatasetContext,
         // Set the interrupt flag so next ProgressTick will trigger interruption
         // The child actor will check this flag and stop gracefully
         stay() using active.copy(interrupt = true)
+      } else if (active.childOpt.isEmpty) {
+        // A pipeline stage runs as a Future (runStageAsync) and always reports
+        // back. Resetting here orphaned it: its completion then arrived in Idle
+        // and was dropped, leaving the run open, and the freed lease let a
+        // second job start on the same files (mip, "start source analysis"
+        // clicked during processing, 2026-11-26).
+        log.warning(s"Ignoring command $commandName: a ${active.progressState} stage is running")
+        stay()
       } else {
         log.warning(s"Active unhandled Command name: $commandName (reset to idle/dormant)")
         // kill active actors; the Idle transition frees the lease
